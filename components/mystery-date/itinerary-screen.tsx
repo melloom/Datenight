@@ -22,9 +22,11 @@ import {
   ArrowLeft,
   Copy,
   Check,
-  Heart
+  Heart,
+  LogOut
 } from "lucide-react"
 import { Venue } from "@/lib/venue-search"
+import { useAuth } from "@/lib/auth-context"
 
 interface Step {
   id: number
@@ -246,6 +248,7 @@ export function ItineraryScreen({ onReset, venues }: ItineraryScreenProps) {
   const [revealedCount, setRevealedCount] = useState(0)
   const [copied, setCopied] = useState(false)
   const [steps, setSteps] = useState<Step[]>([])
+  const { user, signOut } = useAuth()
 
   // Convert venues to steps when venues change
   useEffect(() => {
@@ -300,6 +303,14 @@ export function ItineraryScreen({ onReset, venues }: ItineraryScreenProps) {
     setTimeout(() => setCopied(false), 3000)
   }
 
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+    } catch (error) {
+      console.error("Sign-out failed:", error)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-background to-muted/30">
       {/* Header */}
@@ -319,22 +330,32 @@ export function ItineraryScreen({ onReset, venues }: ItineraryScreenProps) {
                 <p className="text-sm text-muted-foreground">A perfectly curated evening</p>
               </div>
             </div>
-            <button
-              onClick={handleCopyItinerary}
-              className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 active:scale-[0.98] transition-all"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  Copy Plan
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCopyItinerary}
+                className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 active:scale-[0.98] transition-all"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Copy Plan
+                  </>
+                )}
+              </button>
+              
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 px-4 py-2 rounded-2xl border border-border/60 hover:border-destructive/50 hover:bg-destructive/5 transition-all text-sm font-medium text-muted-foreground hover:text-destructive"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
+            </div>
           </div>
         </div>
       </div>

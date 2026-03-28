@@ -1,0 +1,104 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+
+        "profile": {
+          ".validate": "newData.hasChildren(['displayName', 'email'])",
+          "displayName": {
+            ".validate": "newData.isString() && newData.val().length <= 100"
+          },
+          "email": {
+            ".validate": "newData.isString() && newData.val().length <= 320"
+          },
+          "photoURL": {
+            ".validate": "newData.isString() && newData.val().length <= 500"
+          },
+          "createdAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "lastLogin": {
+            ".validate": "newData.isNumber()"
+          }
+        },
+
+        "dates": {
+          "$dateId": {
+            ".validate": "newData.hasChildren(['location', 'createdAt'])",
+            "location": {
+              ".validate": "newData.isString() && newData.val().length <= 500"
+            },
+            "budget": {
+              ".validate": "newData.isString() && newData.val().length <= 10"
+            },
+            "vibes": {
+              "$vibeIndex": {
+                ".validate": "newData.isString() && newData.val().length <= 100"
+              }
+            },
+            "time": {
+              ".validate": "newData.isString() && (newData.val() === 'early' || newData.val() === 'prime' || newData.val() === 'late')"
+            },
+            "venues": {
+              "$venueIndex": {
+                ".validate": "newData.hasChildren(['name', 'category'])"
+              }
+            },
+            "createdAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "status": {
+              ".validate": "newData.isString() && (newData.val() === 'planned' || newData.val() === 'completed' || newData.val() === 'cancelled')"
+            }
+          }
+        },
+
+        "favorites": {
+          "$venueId": {
+            ".validate": "newData.hasChildren(['name', 'category', 'savedAt'])",
+            "savedAt": {
+              ".validate": "newData.isNumber()"
+            }
+          }
+        },
+
+        "preferences": {
+          ".validate": "newData.hasChildren()",
+          "defaultLocation": {
+            ".validate": "newData.isString() && newData.val().length <= 500"
+          },
+          "defaultBudget": {
+            ".validate": "newData.isString() && newData.val().length <= 10"
+          },
+          "favoriteVibes": {
+            "$vibeIndex": {
+              ".validate": "newData.isString() && newData.val().length <= 100"
+            }
+          }
+        }
+      }
+    },
+
+    "shared": {
+      "$shareId": {
+        ".read": true,
+        ".write": "(!data.exists() && auth != null) || (data.exists() && data.child('ownerId').val() === auth.uid)",
+        ".validate": "newData.hasChildren(['ownerId', 'createdAt'])",
+        "ownerId": {
+          ".validate": "newData.isString() && newData.val() === auth.uid"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "expiresAt": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+
+    ".read": false,
+    ".write": false
+  }
+}
