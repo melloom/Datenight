@@ -20,6 +20,7 @@ export interface UserPreferences {
   defaultLocation?: string
   defaultBudget?: string
   favoriteVibes?: string[]
+  hasCompletedTutorial?: boolean
 }
 
 // --- Saved Dates ---

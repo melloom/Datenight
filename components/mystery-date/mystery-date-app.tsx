@@ -97,6 +97,7 @@ export function MysteryDateApp() {
           <ItineraryScreen 
             onReset={handleReset} 
             venues={venues}
+            searchCriteria={getSearchCriteria()}
           />
         )}
       </div>

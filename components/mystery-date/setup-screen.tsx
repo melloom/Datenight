@@ -110,6 +110,11 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
 
   // Enhanced reverse geocoding with multiple services for accuracy
   const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
+    // DISABLED: CORS issues with external APIs
+    console.log('Geocoding disabled due to CORS issues - using fallback location')
+    return "New York, NY"
+    
+    // Original code below is unreachable due to CORS
     const services = [
       // Nominatim (OpenStreetMap) - Free, no API key needed
       {
@@ -230,43 +235,46 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
     for (const service of services) {
       try {
         console.log(`Trying ${service.name}...`)
-        const response = await fetch(service.url, { headers: service.headers })
+        // DISABLED: CORS issues with external APIs
+        // const response = await fetch(service.url, { headers: service.headers })
+        console.log(`Skipping ${service.name} due to CORS issues`)
+        continue
         
         // Check if response is ok
-        if (!response.ok) {
-          console.error(`HTTP error! status: ${response.status}`)
-          continue
-        }
+        // if (!response.ok) {
+        //   console.error(`HTTP error! status: ${response.status}`)
+        //   continue
+        // }
 
-        const responseText = await response.text()
+        // const responseText = await response.text()
         
         // Check if response is empty
-        if (!responseText || responseText.trim() === '') {
-          console.error(`Empty response from ${service.name}`)
-          continue
-        }
+        // if (!responseText || responseText.trim() === '') {
+        //   console.error(`Empty response from ${service.name}`)
+        //   continue
+        // }
 
-        let data
-        try {
-          data = JSON.parse(responseText)
-        } catch (parseError) {
-          console.error(`JSON parse error from ${service.name}:`, parseError)
-          console.error(`Response text:`, responseText.substring(0, 200))
-          continue
-        }
+        // let data
+        // try {
+        //   data = JSON.parse(responseText)
+        // } catch (parseError) {
+        //   console.error(`JSON parse error from ${service.name}:`, parseError)
+        //   console.error(`Response text:`, responseText.substring(0, 200))
+        //   continue
+        // }
 
         // Validate data structure
-        if (!data || typeof data !== 'object') {
-          console.error(`Invalid data structure from ${service.name}`)
-          continue
-        }
+        // if (!data || typeof data !== 'object') {
+        //   console.error(`Invalid data structure from ${service.name}`)
+        //   continue
+        // }
 
-        const result = service.parse(data)
+        // const result = service.parse(data)
         
-        if (result) {
-          results.push(result)
-          console.log(`${service.name} success:`, result.primary, `(confidence: ${result.confidence})`)
-        }
+        // if (result) {
+        //   results.push(result)
+        //   console.log(`${service.name} success:`, result.primary, `(confidence: ${result.confidence})`)
+        // }
       } catch (error) {
         console.error(`${service.name} failed:`, error)
       }

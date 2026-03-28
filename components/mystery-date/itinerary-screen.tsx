@@ -27,6 +27,9 @@ import {
 } from "lucide-react"
 import { Venue } from "@/lib/venue-search"
 import { useAuth } from "@/lib/auth-context"
+import { TutorialButton } from "@/components/tutorial/tutorial-button"
+import { AIAssistant } from "@/components/ai/ai-assistant"
+import { AIRecommendation } from "@/components/ai/ai-recommendation"
 
 interface Step {
   id: number
@@ -242,12 +245,14 @@ function StepCard({ step, index, isRevealed, isNext, onReveal, onSwap }: StepCar
 interface ItineraryScreenProps {
   onReset: () => void
   venues: Venue[]
+  searchCriteria?: any
 }
 
-export function ItineraryScreen({ onReset, venues }: ItineraryScreenProps) {
+export function ItineraryScreen({ onReset, venues, searchCriteria }: ItineraryScreenProps) {
   const [revealedCount, setRevealedCount] = useState(0)
   const [copied, setCopied] = useState(false)
   const [steps, setSteps] = useState<Step[]>([])
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false)
   const { user, signOut } = useAuth()
 
   // Convert venues to steps when venues change
@@ -325,12 +330,13 @@ export function ItineraryScreen({ onReset, venues }: ItineraryScreenProps) {
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </button>
+              <TutorialButton />
               <div>
                 <h1 className="text-2xl font-bold">Your Date Night</h1>
                 <p className="text-sm text-muted-foreground">A perfectly curated evening</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-tutorial="actions">
               <button
                 onClick={handleCopyItinerary}
                 className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 active:scale-[0.98] transition-all"
@@ -361,7 +367,7 @@ export function ItineraryScreen({ onReset, venues }: ItineraryScreenProps) {
       </div>
 
       {/* Progress Header */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-6 py-8" data-tutorial="itinerary">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4">
             <Calendar className="w-4 h-4 text-primary" />
@@ -376,6 +382,13 @@ export function ItineraryScreen({ onReset, venues }: ItineraryScreenProps) {
             <span>Photo Spots {steps.length > 0 ? 'Multiple locations' : 'TBD'}</span>
           </div>
         </div>
+
+        {/* AI Recommendation */}
+        {steps.length > 0 && searchCriteria && (
+          <div className="mb-8">
+            <AIRecommendation venues={venues} criteria={searchCriteria} />
+          </div>
+        )}
 
         {/* Visual Node Flow */}
         <div className="relative">
@@ -431,6 +444,26 @@ export function ItineraryScreen({ onReset, venues }: ItineraryScreenProps) {
           )}
         </div>
       </div>
+      
+      {/* AI Assistant */}
+      <AIAssistant
+        currentVenue={steps[revealedCount - 1] ? {
+          id: steps[revealedCount - 1].id.toString(),
+          name: steps[revealedCount - 1].place,
+          category: steps[revealedCount - 1].label.toLowerCase() as any,
+          rating: steps[revealedCount - 1].rating,
+          reviewCount: steps[revealedCount - 1].reviewCount,
+          priceRange: steps[revealedCount - 1].priceRange,
+          address: steps[revealedCount - 1].address,
+          description: steps[revealedCount - 1].description,
+          highlights: steps[revealedCount - 1].highlights,
+          coordinates: { lat: 0, lng: 0 },
+          tags: [],
+          features: []
+        } : undefined}
+        isOpen={isAIAssistantOpen}
+        onToggle={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
+      />
     </div>
   )
 }

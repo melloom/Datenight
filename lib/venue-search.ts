@@ -1,4 +1,6 @@
 // Venue search and scraping logic
+import { geminiAI } from './gemini'
+
 export interface Venue {
   id: string
   name: string
@@ -22,6 +24,13 @@ export interface Venue {
   capacity?: number // maximum capacity
   features: string[] // venue features like outdoor seating, parking, etc.
   vibe?: string // venue atmosphere/vibe
+  aiEnhanced?: boolean // whether AI has enhanced this venue
+  aiInsights?: {
+    bestFor: string[]
+    insiderTips: string[]
+    photoSpots: string[]
+    vibeTags: string[]
+  }
 }
 
 export interface SearchCriteria {
@@ -151,17 +160,31 @@ class VenueSearcher {
     console.log(`💰 Budget: $${criteria.budget} - Vibe: ${criteria.vibes}`)
     console.log(`📍 Location: ${criteria.location}`)
 
+    // Get AI-powered search enhancement
+    console.log('🤖 Getting AI search enhancement...')
+    const aiEnhancement = await geminiAI.enhanceVenueSearch(criteria.location, {
+      budget: criteria.budget,
+      vibes: criteria.vibes,
+      time: criteria.time
+    })
+    console.log('✨ AI insights:', aiEnhancement.locationInsights)
+
     // Calculate constraints from criteria
     const constraints = this.calculateConstraints(criteria)
-    console.log('� Search constraints:', constraints)
+    console.log('📋 Search constraints:', constraints)
 
-    // Search from multiple sources in parallel
+    // Search from multiple sources in parallel with AI-enhanced terms
     const searchPromises = this.searchSources
       .filter(source => source.enabled)
       .map(async source => {
         try {
           console.log(`🔍 Searching ${source.name}...`)
-          const venues = await this.searchSource(source, criteria)
+          // Use AI-enhanced search terms for better results
+          const enhancedCriteria = {
+            ...criteria,
+            aiSearchTerms: aiEnhancement.searchTerms
+          }
+          const venues = await this.searchSource(source, enhancedCriteria)
           console.log(`✅ ${source.name} returned ${venues.length} venues`)
           usedSources.push(source.name)
           return venues
@@ -185,8 +208,19 @@ class VenueSearcher {
     const filteredVenues = this.enhancedFilter(uniqueVenues, criteria)
     console.log(`🎯 After enhanced filtering: ${filteredVenues.length} venues`)
 
-    // Smart ranking with travel time optimization
-    const rankedVenues = this.smartRank(filteredVenues, criteria)
+    // AI-powered venue analysis for top results
+    console.log('🤖 Analyzing top venues with AI...')
+    const aiEnhancedVenues = await this.enhanceVenuesWithAI(filteredVenues.slice(0, 10))
+    console.log(`✨ AI enhanced ${aiEnhancedVenues.filter(v => v.aiEnhanced).length} venues`)
+
+    // Merge AI-enhanced venues back with the rest
+    const finalVenues = [
+      ...aiEnhancedVenues,
+      ...filteredVenues.slice(10).map(v => ({ ...v, aiEnhanced: false }))
+    ]
+
+    // Smart ranking with travel time optimization and AI insights
+    const rankedVenues = this.smartRank(finalVenues, criteria)
     console.log(`🏆 After smart ranking: ${rankedVenues.length} venues`)
 
     // Optimize date plan with travel time
@@ -2109,6 +2143,58 @@ class VenueSearcher {
   private getCategoryScore(category: string): number {
     // Ensure we get a good mix of venue types
     return Math.random() * 0.5 + 0.5 // 0.5 to 1.0
+  }
+
+  // AI-powered venue enhancement
+  private async enhanceVenuesWithAI(venues: Venue[]): Promise<Venue[]> {
+    const enhancedVenues: Venue[] = []
+
+    // Process venues in batches to avoid rate limits
+    for (let i = 0; i < venues.length; i += 3) {
+      const batch = venues.slice(i, i + 3)
+      
+      const batchPromises = batch.map(async (venue) => {
+        try {
+          console.log(`🤖 Analyzing ${venue.name} with AI...`)
+          const analysis = await geminiAI.analyzeVenue({
+            name: venue.name,
+            category: venue.category,
+            address: venue.address,
+            rating: venue.rating,
+            priceRange: venue.priceRange,
+            existingDescription: venue.description
+          })
+
+          return {
+            ...venue,
+            aiEnhanced: true,
+            description: analysis.description,
+            highlights: [...venue.highlights, ...analysis.highlights],
+            aiInsights: {
+              bestFor: analysis.best_for,
+              insiderTips: analysis.insider_tips,
+              photoSpots: analysis.photo_spots,
+              vibeTags: analysis.vibe_tags
+            },
+            tags: [...venue.tags, ...analysis.vibe_tags],
+            vibe: analysis.vibe_tags[0] || venue.vibe
+          }
+        } catch (error) {
+          console.error(`❌ AI analysis failed for ${venue.name}:`, error)
+          return { ...venue, aiEnhanced: false }
+        }
+      })
+
+      const batchResults = await Promise.all(batchPromises)
+      enhancedVenues.push(...batchResults)
+
+      // Small delay between batches to be respectful to the API
+      if (i + 3 < venues.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+    }
+
+    return enhancedVenues
   }
 }
 
