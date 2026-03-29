@@ -306,6 +306,11 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
     setShowHistory(false)
   }
 
+  // Scroll to top when modal opens
+  const scrollToModal = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const handleSurpriseMe = () => {
     setBudget(BUDGET_OPTIONS[Math.floor(Math.random() * BUDGET_OPTIONS.length)].value)
     setVibes([...VIBE_OPTIONS].sort(() => Math.random() - 0.5).slice(0, 2).map(v => v.id))
@@ -374,7 +379,10 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
 
         {/* History */}
         <button
-          onClick={() => setShowHistory(true)}
+          onClick={() => {
+            setShowHistory(true)
+            scrollToModal()
+          }}
           className="mb-6 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-amber-500/30 text-amber-600 text-xs font-medium hover:bg-amber-500/5 active:scale-[0.98] transition-all"
         >
           <History className="w-3.5 h-3.5" />

@@ -991,6 +991,11 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [datePlanHistory, setDatePlanHistory] = useState<DatePlanHistory[]>([])
   const { signOut } = useAuth()
 
+  // Scroll to top when modal opens
+  const scrollToModal = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   // Load history from localStorage on mount
   useEffect(() => {
     const savedHistory = localStorage.getItem('datePlanHistory')
@@ -1265,14 +1270,20 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
               Send
             </button>
             <button
-              onClick={() => setShowHistory(true)}
+              onClick={() => {
+                setShowHistory(true)
+                scrollToModal()
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-600 text-xs font-medium hover:bg-amber-500/15 transition-all"
             >
               <History className="w-3.5 h-3.5" />
               History
             </button>
             <button
-              onClick={() => setShowSpecialOccasions(true)}
+              onClick={() => {
+                setShowSpecialOccasions(true)
+                scrollToModal()
+              }}
               disabled={steps.length === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-600 text-xs font-medium hover:bg-purple-500/15 transition-all disabled:opacity-40"
             >
@@ -1280,7 +1291,10 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
               Special
             </button>
             <button
-              onClick={() => setShowCalendarDialog(true)}
+              onClick={() => {
+                setShowCalendarDialog(true)
+                scrollToModal()
+              }}
               disabled={steps.length === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 text-xs font-medium hover:bg-blue-500/15 transition-all disabled:opacity-40"
             >
@@ -1288,7 +1302,10 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
               Calendar
             </button>
             <button
-              onClick={() => setShowBudgetCalculator(true)}
+              onClick={() => {
+                setShowBudgetCalculator(true)
+                scrollToModal()
+              }}
               disabled={steps.length === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-600 text-xs font-medium hover:bg-green-500/15 transition-all disabled:opacity-40"
             >
