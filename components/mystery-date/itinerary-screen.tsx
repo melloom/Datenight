@@ -607,6 +607,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [isSwapping, setIsSwapping] = useState<number | null>(null)
   const [isImproving, setIsImproving] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
+  const [swapRequest, setSwapRequest] = useState<string>('')
+  const [showSwapDialog, setShowSwapDialog] = useState<number | null>(null)
   const { signOut } = useAuth()
 
   useEffect(() => {
@@ -680,7 +682,12 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     try { await signOut() } catch {}
   }
 
-  const handleSwapVenue = async (index: number) => {
+  const handleSwapVenue = (index: number) => {
+    setShowSwapDialog(index)
+    setSwapRequest('')
+  }
+
+  const executeSwapVenue = async (index: number, customRequest?: string) => {
     if (!searchCriteria || !onVenuesUpdate) return
     setIsSwapping(index)
     
@@ -692,8 +699,9 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         body: JSON.stringify({
           action: 'swap-venue',
           venue: venueToSwap,
-          criteria: searchCriteria,
-          currentPlan: venues
+          criteria: { ...searchCriteria, customRequests: customRequest },
+          currentPlan: venues,
+          swapCategory: venueToSwap.category
         })
       })
 
@@ -709,6 +717,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       console.error('Failed to swap venue:', e)
     } finally {
       setIsSwapping(null)
+      setShowSwapDialog(null)
+      setSwapRequest('')
     }
   }
 
@@ -1004,6 +1014,62 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         isOpen={isAIAssistantOpen}
         onToggle={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
       />
+
+      {/* Swap Venue Dialog */}
+      {showSwapDialog !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-2xl border p-6 max-w-md w-full">
+            <h3 className="font-semibold text-lg mb-2">Swap {steps[showSwapDialog]?.label}</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Replace "{steps[showSwapDialog]?.place}" with something else?
+            </p>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">
+                  What would you like instead? (optional)
+                </label>
+                <textarea
+                  value={swapRequest}
+                  onChange={(e) => setSwapRequest(e.target.value)}
+                  placeholder="e.g., 'something more romantic', 'a quieter restaurant', 'outdoor seating', 'Italian food', 'closer to downtown'"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+              
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => executeSwapVenue(showSwapDialog, swapRequest)}
+                  disabled={isSwapping === showSwapDialog}
+                  className="flex-1 py-2 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-colors"
+                >
+                  {isSwapping === showSwapDialog ? (
+                    <>
+                      <RefreshCw className="w-3 h-3 animate-spin mr-1" />
+                      Finding Alternative...
+                    </>
+                  ) : (
+                    'Find Alternative'
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSwapDialog(null)
+                    setSwapRequest('')
+                  }}
+                  className="flex-1 py-2 px-3 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+              
+              <div className="text-xs text-muted-foreground">
+                💡 Leave empty for a random alternative, or describe what you want
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Share Modal */}
       <ShareModal

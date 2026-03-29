@@ -37,6 +37,27 @@ const recommendSchema = z.object({
   })
 })
 
+const swapVenueSchema = z.object({
+  action: z.literal('swap-venue'),
+  venue: z.object({
+    name: z.string().max(200),
+    category: z.string().max(100),
+    address: z.string().max(300),
+    rating: z.number().min(0).max(5),
+    priceRange: z.string().max(20)
+  }),
+  criteria: z.object({
+    location: z.string().max(200),
+    budget: z.string().max(50),
+    vibes: z.array(z.string().max(50)).max(10),
+    time: z.string().max(50),
+    partySize: z.number().min(1).max(100),
+    customRequests: z.string().optional()
+  }),
+  currentPlan: z.array(z.any()).max(10),
+  swapCategory: z.string().max(100)
+})
+
 function getModel() {
   if (!GEMINI_API_KEY) return null
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
@@ -55,6 +76,8 @@ export async function POST(request: NextRequest) {
       validationResult = analyzeVenueSchema.safeParse(body)
     } else if (action === 'recommend') {
       validationResult = recommendSchema.safeParse(body)
+    } else if (action === 'swap-venue') {
+      validationResult = swapVenueSchema.safeParse(body)
     } else {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
@@ -340,6 +363,89 @@ Return JSON array:
       } catch (e) {
         console.error('AI plan improvement failed:', e)
         return NextResponse.json({ venues: [] })
+      }
+    } else if (action === 'swap-venue') {
+      const { venue, criteria, currentPlan, swapCategory, customRequests } = body
+      
+      if (!model) {
+        // Fallback: return a generic alternative venue
+        return NextResponse.json({
+          venue: {
+            id: `fallback-${Date.now()}`,
+            name: `Alternative ${swapCategory} venue`,
+            category: swapCategory,
+            address: criteria.location,
+            rating: 4.2,
+            reviewCount: 150,
+            priceRange: criteria.budget,
+            description: `A great ${swapCategory} option that matches your preferences.`,
+            highlights: ['Good alternative', 'Matches your criteria'],
+            coordinates: { lat: 0, lng: 0 }
+          }
+        })
+      }
+
+      const currentVenueNames = currentPlan.map((v: any) => v.name).join(', ')
+      
+      const prompt = `Find a replacement venue for a date night app with these details:
+
+Current venue to replace: ${venue.name} (${venue.category})
+Category needed: ${swapCategory}
+Location: ${criteria.location}
+Budget: ${criteria.budget}
+Vibes: ${criteria.vibes.join(', ')}
+Time: ${criteria.time}
+Party size: ${criteria.partySize}
+Custom request: ${customRequests || 'No specific request'}
+Current venues in plan: ${currentVenueNames}
+
+Provide a JSON response with this exact structure:
+{
+  "venue": {
+    "id": "unique-id",
+    "name": "venue name",
+    "category": "${swapCategory}",
+    "address": "full address",
+    "rating": 4.5,
+    "reviewCount": 200,
+    "priceRange": "${criteria.budget}",
+    "description": "detailed description of the venue",
+    "highlights": ["highlight 1", "highlight 2", "highlight 3"],
+    "coordinates": { "lat": 39.2904, "lng": -76.6122 }
+  }
+}
+
+Requirements:
+- Must be different from all current venues: ${currentVenueNames}
+- Must match the ${swapCategory} category
+- Must be in or near ${criteria.location}
+- Must fit the ${criteria.budget} budget
+- Should match the custom request: "${customRequests || 'none'}"
+- Must be suitable for a romantic date night
+- Must be a real, existing venue if possible`
+
+      try {
+        const result = await model.generateContent(prompt)
+        const text = result.response.text()
+        const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
+        const response = JSON.parse(cleaned)
+        return NextResponse.json(response)
+      } catch (e) {
+        console.error('AI venue swap failed:', e)
+        return NextResponse.json({
+          venue: {
+            id: `fallback-${Date.now()}`,
+            name: `Alternative ${swapCategory} venue`,
+            category: swapCategory,
+            address: criteria.location,
+            rating: 4.0,
+            reviewCount: 100,
+            priceRange: criteria.budget,
+            description: `A ${swapCategory} venue that matches your preferences.`,
+            highlights: ['Good alternative'],
+            coordinates: { lat: 0, lng: 0 }
+          }
+        })
       }
     }
 
