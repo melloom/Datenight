@@ -745,24 +745,30 @@ function generateAlternatives(steps: Step[], partySize: number): { venue: Step; 
 }
 
 // Calendar and Weather functions
-function generateCalendarEvents(steps: Step[], date: Date, travelTimes: any[]): any[] {
+function generateCalendarEvents(steps: Step[], date: Date, travelTimes: any[], startTime: string = '19:00', includeTravelTime: boolean = true, notes: string = ''): any[] {
   const events = []
   let currentTime = new Date(date)
-  currentTime.setHours(19, 0, 0, 0) // Start at 7 PM
+  
+  // Parse start time (format: "19:00")
+  const [hours, minutes] = startTime.split(':').map(Number)
+  currentTime.setHours(hours, minutes || 0, 0, 0)
 
   steps.forEach((step, index) => {
+    const eventDescription = `Date night stop ${index + 1}. ${step.description}${notes ? '\n\n' + notes : ''}`
+    
     const event = {
       title: `${step.label}: ${step.place}`,
       start: new Date(currentTime),
       end: new Date(currentTime.getTime() + 90 * 60 * 1000), // 1.5 hours per venue
       location: step.address,
-      description: `Date night stop ${index + 1}. ${step.description}`,
-      category: step.category
+      description: eventDescription,
+      category: step.category,
+      reminder: reminders ? { method: 'popup', minutes: 30 } : undefined
     }
     events.push(event)
 
     // Add travel time to next venue
-    if (index < steps.length - 1 && travelTimes[index]) {
+    if (index < steps.length - 1 && includeTravelTime && travelTimes[index]) {
       currentTime = new Date(currentTime.getTime() + (90 + travelTimes[index]) * 60 * 1000)
     } else {
       currentTime = new Date(currentTime.getTime() + 90 * 60 * 1000)
@@ -905,6 +911,10 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [weather, setWeather] = useState<any>(null)
   const [calendarEvents, setCalendarEvents] = useState<any[]>([])
   const [showSpecialOccasions, setShowSpecialOccasions] = useState(false)
+  const [startTime, setStartTime] = useState('19:00') // 7 PM default
+  const [reminders, setReminders] = useState<boolean>(true)
+  const [includeTravelTime, setIncludeTravelTime] = useState<boolean>(true)
+  const [calendarNotes, setCalendarNotes] = useState('')
   const { signOut } = useAuth()
 
   // Fetch weather when calendar dialog opens
@@ -914,14 +924,14 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     }
   }, [showCalendarDialog, searchCriteria])
 
-  // Generate calendar events when date or steps change
+  // Generate calendar events when date, steps, or options change
   useEffect(() => {
     if (steps.length > 0) {
       const travelTimes = steps.map((step, index) => step.travelTimeToNext || 10)
-      const events = generateCalendarEvents(steps, selectedDate, travelTimes)
+      const events = generateCalendarEvents(steps, selectedDate, travelTimes, startTime, includeTravelTime, calendarNotes)
       setCalendarEvents(events)
     }
-  }, [steps, selectedDate])
+  }, [steps, selectedDate, startTime, includeTravelTime, calendarNotes])
 
   useEffect(() => {
     if (!venues || venues.length === 0) {
@@ -1600,15 +1610,81 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             </div>
 
             <div className="space-y-6">
-              {/* Date Selection */}
+              {/* Date and Time Selection */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground block mb-2">Select Date</label>
+                  <input
+                    type="date"
+                    value={selectedDate.toISOString().split('T')[0]}
+                    onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground block mb-2">Start Time</label>
+                  <select
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="17:00">5:00 PM</option>
+                    <option value="18:00">6:00 PM</option>
+                    <option value="18:30">6:30 PM</option>
+                    <option value="19:00">7:00 PM</option>
+                    <option value="19:30">7:30 PM</option>
+                    <option value="20:00">8:00 PM</option>
+                    <option value="20:30">8:30 PM</option>
+                    <option value="21:00">9:00 PM</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Calendar Options */}
               <div>
-                <label className="text-sm font-medium text-muted-foreground block mb-2">Select Date</label>
-                <input
-                  type="date"
-                  value={selectedDate.toISOString().split('T')[0]}
-                  onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Calendar Options
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-muted-foreground">Include travel time between venues</label>
+                    <button
+                      onClick={() => setIncludeTravelTime(!includeTravelTime)}
+                      className={`w-12 h-6 rounded-full transition-colors ${
+                        includeTravelTime ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
+                        includeTravelTime ? 'translate-x-6' : 'translate-x-0.5'
+                      }`} />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-muted-foreground">Set reminders (30 min before)</label>
+                    <button
+                      onClick={() => setReminders(!reminders)}
+                      className={`w-12 h-6 rounded-full transition-colors ${
+                        reminders ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 bg-white rounded-full transition-transform ${
+                        reminders ? 'translate-x-6' : 'translate-x-0.5'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Calendar Notes */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground block mb-2">Calendar Notes (optional)</label>
+                <textarea
+                  value={calendarNotes}
+                  onChange={(e) => setCalendarNotes(e.target.value)}
+                  placeholder="Add notes for your calendar events (e.g., 'Birthday celebration', 'Anniversary dinner', 'Dress code: casual')"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
 
@@ -1718,12 +1794,12 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                   <Calendar className="w-4 h-4" />
                   Add to Calendar
                 </h4>
-                <div className="flex gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <a
                     href={createGoogleCalendarUrl(calendarEvents)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                    className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
                   >
                     <Calendar className="w-4 h-4" />
                     Google Calendar
@@ -1731,14 +1807,43 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                   <a
                     href={createAppleCalendarUrl(calendarEvents)}
                     download="date-night.ics"
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-gray-800 text-white text-sm font-medium hover:bg-gray-900 transition-colors"
+                    className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-gray-800 text-white text-sm font-medium hover:bg-gray-900 transition-colors"
                   >
                     <Calendar className="w-4 h-4" />
                     Apple Calendar
                   </a>
                 </div>
+                
+                {/* Calendar Summary */}
+                <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span>Total events:</span>
+                      <span className="font-medium">{calendarEvents.length} venues</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Start time:</span>
+                      <span className="font-medium">{new Date(selectedDate).toLocaleDateString()} at {startTime.replace(':', ':')}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Reminders:</span>
+                      <span className="font-medium">{reminders ? '30 min before' : 'None'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Travel time:</span>
+                      <span className="font-medium">{includeTravelTime ? 'Included' : 'Not included'}</span>
+                    </div>
+                    {calendarNotes && (
+                      <div className="flex items-start gap-2 mt-2">
+                        <span>Notes:</span>
+                        <span className="font-medium">{calendarNotes}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
                 <div className="mt-3 text-xs text-muted-foreground text-center">
-                  Events include travel time and venue details
+                  Events include venue details, locations, and {reminders ? 'automatic reminders' : 'no reminders'}
                 </div>
               </div>
             </div>
