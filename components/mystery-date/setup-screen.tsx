@@ -252,6 +252,11 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   }
 
   const hasInputErrors = () => {
+    // Check if location is provided
+    if (!location || location.trim().length === 0) {
+      return true
+    }
+    
     if (cuisine === "custom" && customCuisine) {
       const err = validateCustomInput(customCuisine)
       if (err) return true
@@ -667,7 +672,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           <button
             onClick={handleSubmit}
             data-tutorial="submit"
-            disabled={vibes.length === 0 || hasInputErrors()}
+            disabled={vibes.length === 0 || !location || location.trim().length === 0 || hasInputErrors()}
             className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/25 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Sparkles className="w-4 h-4" />
@@ -675,6 +680,9 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </button>
           {vibes.length === 0 && (
             <p className="text-center text-xs text-destructive mt-2">Select at least one vibe to continue</p>
+          )}
+          {(!location || location.trim().length === 0) && vibes.length > 0 && (
+            <p className="text-center text-xs text-destructive mt-2">Enter a location to continue</p>
           )}
         </div>
       </div>
