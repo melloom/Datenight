@@ -161,7 +161,7 @@ html, body {
   padding: 0;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: auto;
-  touch-action: manipulation; /* Add this for better touch response */
+  touch-action: manipulation;
 }
 
 main {
@@ -171,27 +171,44 @@ main {
   min-height: 100svh;
   -webkit-overflow-scrolling: touch;
   overflow-x: hidden;
-  overflow-y: auto; /* Ensure vertical scrolling works */
-  touch-action: pan-y; /* Allow vertical panning only */
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+
+/* Prevent double scroll bars on nested containers */
+.min-h-screen {
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+.min-h-svh {
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+/* Ensure only one scrollable container */
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* Improve mobile touch scrolling */
 * {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: default;
-  touch-action: manipulation; /* Better touch response */
+  touch-action: manipulation;
 }
 
 /* Allow text selection and touch interactions */
 input, textarea, [contenteditable] {
   -webkit-user-select: text;
   user-select: text;
-  touch-action: auto; /* Allow normal touch for inputs */
+  touch-action: auto;
 }
 
 /* Remove smooth scrolling that causes delays */
 html {
-  scroll-behavior: auto; /* Changed from smooth to auto */
+  scroll-behavior: auto;
 }
 
 /* Fix modal scrolling on mobile */
@@ -221,9 +238,4 @@ body {
 * {
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
-}
-
-/* Prevent scroll chaining issues */
-* {
-  -webkit-overflow-scrolling: touch;
 }

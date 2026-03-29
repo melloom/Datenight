@@ -423,7 +423,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   }
 
   return (
-    <div className="flex flex-col min-h-svh bg-background relative overflow-hidden">
+    <div className="flex flex-col min-h-svh bg-background relative">
       {/* Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-32 -right-32 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />

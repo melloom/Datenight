@@ -1535,7 +1535,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const allRevealed = revealedCount >= steps.length && steps.length > 0
 
   return (
-    <div className="min-h-screen bg-background" style={{ minHeight: '100vh', WebkitOverflowScrolling: 'touch' }}>
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border/50">
         <div className="mx-auto px-4 md:px-12 py-3 flex items-center justify-between w-full">
