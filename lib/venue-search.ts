@@ -898,7 +898,7 @@ class VenueSearcher {
       address: this.buildFoursquareAddress(place.location) || 'Address not available',
       phone: place.tel,
       website: place.website,
-      imageUrl: place.photos?.[0] ? `https://igx.4sqi.net/img/general/300x300${place.photos[0].suffix}` : `https://source.unsplash.com/400x300/?${encodeURIComponent(place.name)}`,
+      imageUrl: place.photos?.[0] ? `https://igx.4sqi.net/img/general/800x800${place.photos[0].suffix}` : `https://source.unsplash.com/800x600/?${encodeURIComponent(place.name)}`,
       description: this.generateFoursquareDescription(place),
       highlights: this.generateFoursquareHighlights(place),
       coordinates: {
@@ -1302,8 +1302,8 @@ class VenueSearcher {
       phone: place.formatted_phone_number,
       website: place.website,
       imageUrl: place.photos ? 
-        `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${place.photos[0].photo_reference}&key=${this.getGoogleApiKey()}` :
-        `https://source.unsplash.com/400x300/?${encodeURIComponent(place.name)}`,
+        `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${place.photos[0].photo_reference}&key=${this.getGoogleApiKey()}` :
+        `https://source.unsplash.com/800x600/?${encodeURIComponent(place.name)}`,
       description: this.generateGoogleDescription(place),
       highlights: this.generateGoogleHighlights(place),
       coordinates: {
@@ -2224,7 +2224,7 @@ out count;
   private generateImageUrl(tags: any): string {
     const category = tags.amenity || 'venue'
     const seed = tags.name || category
-    return `https://source.unsplash.com/400x300/?${seed},venue&sig=${Math.random().toString(36).substr(2, 9)}`
+    return `https://source.unsplash.com/800x600/?${seed},venue&sig=${Math.random().toString(36).substr(2, 9)}`
   }
 
   
