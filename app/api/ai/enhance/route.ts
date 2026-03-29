@@ -1,7 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { z } from 'zod'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
+
+const enhanceSearchSchema = z.object({
+  action: z.literal('enhance-search'),
+  location: z.string().min(1).max(200),
+  criteria: z.object({
+    budget: z.string().max(50),
+    vibes: z.array(z.string().max(50)).max(10),
+    time: z.string().max(50)
+  })
+})
+
+const analyzeVenueSchema = z.object({
+  action: z.literal('analyze-venue'),
+  venue: z.object({
+    name: z.string().max(200),
+    category: z.string().max(100),
+    address: z.string().max(300),
+    rating: z.number().min(0).max(5),
+    priceRange: z.string().max(20)
+  })
+})
+
+const recommendSchema = z.object({
+  action: z.literal('recommend'),
+  venues: z.array(z.any()).max(50),
+  criteria: z.object({
+    location: z.string().max(200),
+    budget: z.string().max(50),
+    vibes: z.array(z.string().max(50)).max(10),
+    time: z.string().max(50),
+    partySize: z.number().min(1).max(100)
+  })
+})
 
 function getModel() {
   if (!GEMINI_API_KEY) return null
@@ -13,6 +47,24 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { action } = body
+
+    let validationResult
+    if (action === 'enhance-search') {
+      validationResult = enhanceSearchSchema.safeParse(body)
+    } else if (action === 'analyze-venue') {
+      validationResult = analyzeVenueSchema.safeParse(body)
+    } else if (action === 'recommend') {
+      validationResult = recommendSchema.safeParse(body)
+    } else {
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+    }
+
+    if (!validationResult.success) {
+      return NextResponse.json({ 
+        error: 'Invalid input', 
+        details: validationResult.error.errors 
+      }, { status: 400 })
+    }
 
     const model = getModel()
 

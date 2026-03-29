@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Heart, Sparkles, MapPin, Wine } from "lucide-react"
+import { Sparkles, MapPin, Wine } from "lucide-react"
+import Image from "next/image"
 import { useAuth } from "@/lib/auth-context"
 
 export function LoginScreen() {
@@ -33,8 +34,8 @@ export function LoginScreen() {
         {/* Brand */}
         <div className="flex flex-col items-center gap-5">
           <div className="relative">
-            <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <Heart className="w-9 h-9 text-primary" />
+            <div className="w-20 h-20 rounded-2xl overflow-hidden flex items-center justify-center">
+              <Image src="/android-chrome-192x192.png" alt="Date Night" width={80} height={80} priority />
             </div>
             <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-card border border-border flex items-center justify-center shadow-sm">
               <Wine className="w-3 h-3 text-primary" />
@@ -57,7 +58,7 @@ export function LoginScreen() {
           {[
             { icon: MapPin, label: "Local Spots" },
             { icon: Sparkles, label: "AI Plans" },
-            { icon: Heart, label: "Save Faves" },
+            { icon: Sparkles, label: "Save Faves" },
           ].map(({ icon: Icon, label }) => (
             <div key={label} className="flex flex-col items-center gap-1.5">
               <div className="w-9 h-9 rounded-xl bg-primary/8 border border-primary/15 flex items-center justify-center">

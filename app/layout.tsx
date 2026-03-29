@@ -8,7 +8,7 @@ import { FullscreenToggle } from '@/components/fullscreen-toggle'
 import './globals.css'
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
 export const viewport = {
   width: 'device-width',
@@ -160,7 +160,7 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${geistMono.variable}`}>
       <head>
         <script
           type="application/ld+json"

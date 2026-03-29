@@ -45,6 +45,10 @@ export function MysteryDateApp() {
     setScreen("setup")
   }
 
+  const handleVenuesUpdate = (newVenues: Venue[]) => {
+    setVenues(newVenues)
+  }
+
   // Convert DateConfig to SearchCriteria
   const getSearchCriteria = (): SearchCriteria | null => {
     if (!config) return null
@@ -98,6 +102,7 @@ export function MysteryDateApp() {
             onReset={handleReset} 
             venues={venues}
             searchCriteria={getSearchCriteria()}
+            onVenuesUpdate={handleVenuesUpdate}
           />
         )}
       </div>

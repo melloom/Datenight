@@ -160,31 +160,31 @@ class VenueSearcher {
     console.log(`💰 Budget: $${criteria.budget} - Vibe: ${criteria.vibes}`)
     console.log(`📍 Location: ${criteria.location}`)
 
-    // Get AI-powered search enhancement
-    console.log('🤖 Getting AI search enhancement...')
-    const aiEnhancement = await geminiAI.enhanceVenueSearch(criteria.location, {
-      budget: criteria.budget,
-      vibes: criteria.vibes,
-      time: criteria.time
-    })
-    console.log('✨ AI insights:', aiEnhancement.locationInsights)
+    // Try to get AI-powered search enhancement (optional)
+    let aiEnhancement = null
+    try {
+      console.log('🤖 Attempting AI search enhancement...')
+      aiEnhancement = await geminiAI.enhanceVenueSearch(criteria.location, {
+        budget: criteria.budget,
+        vibes: criteria.vibes,
+        time: criteria.time
+      })
+      console.log('✨ AI insights:', aiEnhancement.locationInsights)
+    } catch (error) {
+      console.log('⚠️ AI enhancement unavailable, continuing with standard search')
+    }
 
     // Calculate constraints from criteria
     const constraints = this.calculateConstraints(criteria)
     console.log('📋 Search constraints:', constraints)
 
-    // Search from multiple sources in parallel with AI-enhanced terms
+    // Search from multiple sources in parallel (AI enhancement is optional)
     const searchPromises = this.searchSources
       .filter(source => source.enabled)
       .map(async source => {
         try {
           console.log(`🔍 Searching ${source.name}...`)
-          // Use AI-enhanced search terms for better results
-          const enhancedCriteria = {
-            ...criteria,
-            aiSearchTerms: aiEnhancement.searchTerms
-          }
-          const venues = await this.searchSource(source, enhancedCriteria)
+          const venues = await this.searchSource(source, criteria)
           console.log(`✅ ${source.name} returned ${venues.length} venues`)
           usedSources.push(source.name)
           return venues
@@ -208,10 +208,16 @@ class VenueSearcher {
     const filteredVenues = this.enhancedFilter(uniqueVenues, criteria)
     console.log(`🎯 After enhanced filtering: ${filteredVenues.length} venues`)
 
-    // AI-powered venue analysis for top results
-    console.log('🤖 Analyzing top venues with AI...')
-    const aiEnhancedVenues = await this.enhanceVenuesWithAI(filteredVenues.slice(0, 10))
-    console.log(`✨ AI enhanced ${aiEnhancedVenues.filter(v => v.aiEnhanced).length} venues`)
+    // Try AI-powered venue analysis for top results (optional)
+    let aiEnhancedVenues = filteredVenues
+    try {
+      console.log('🤖 Attempting AI venue analysis...')
+      aiEnhancedVenues = await this.enhanceVenuesWithAI(filteredVenues.slice(0, 10))
+      console.log(`✨ AI enhanced ${aiEnhancedVenues.filter(v => v.aiEnhanced).length} venues`)
+    } catch (error) {
+      console.log('⚠️ AI analysis unavailable, using venues without AI enhancement')
+      aiEnhancedVenues = filteredVenues.slice(0, 10).map(v => ({ ...v, aiEnhanced: false }))
+    }
 
     // Merge AI-enhanced venues back with the rest
     const finalVenues = [
@@ -227,12 +233,11 @@ class VenueSearcher {
     const optimizedPlan = this.optimizeDatePlan(rankedVenues, criteria)
     console.log(`🗺️ Optimized date plan with ${optimizedPlan.length} venues`)
 
-    // If no venues found from any source, try AI generation then static fallback
+    // If no venues found, return empty array - NO FAKE FALLBACKS
     let finalPlan = optimizedPlan
     if (optimizedPlan.length === 0) {
-      console.log('⚠️ No venues from APIs, trying AI venue generation...')
-      const aiVenues = await this.generateAIVenues(criteria)
-      finalPlan = aiVenues.length > 0 ? aiVenues : this.createFallbackVenues(criteria)
+      console.log('⚠️ No venues found from any API source')
+      console.log('💡 Try: Check API keys, verify location name, or try a different location')
     }
 
     const endTime = Date.now()
@@ -465,129 +470,7 @@ class VenueSearcher {
     })
   }
 
-  private async generateAIVenues(criteria: SearchCriteria): Promise<Venue[]> {
-    try {
-      const response = await fetch('/api/ai/enhance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'generate-venues',
-          location: criteria.location,
-          criteria: {
-            budget: criteria.budget,
-            vibes: criteria.vibes,
-            time: criteria.time,
-            partySize: criteria.partySize,
-          }
-        })
-      })
-
-      if (!response.ok) return []
-      const data = await response.json()
-      if (!data.venues || data.venues.length === 0) return []
-
-      return data.venues.map((v: any, i: number) => ({
-        id: `ai-${v.category}-${Date.now()}-${i}`,
-        name: v.name,
-        category: v.category || ['drinks', 'dinner', 'activity'][i] || 'dinner',
-        rating: v.rating || 4.2,
-        reviewCount: v.reviewCount || 200,
-        priceRange: v.priceRange || criteria.budget,
-        address: v.address || criteria.location,
-        phone: v.phone || '',
-        description: v.description || '',
-        highlights: v.highlights || [],
-        coordinates: { lat: 0, lng: 0 },
-        tags: v.tags || [],
-        features: [],
-        vibe: v.vibe || criteria.vibes[0] || 'romantic',
-        aiEnhanced: true,
-      })) as Venue[]
-    } catch (e) {
-      console.error('AI venue generation failed:', e)
-      return []
-    }
-  }
-
-  private createFallbackVenues(criteria: SearchCriteria): Venue[] {
-    console.log('🔄 Creating fallback venues for', criteria.location)
-    
-    const fallbackVenues: Venue[] = []
-    
-    // Create fallback venues based on location and time
-    const locationName = criteria.location.split(',')[0].trim()
-    
-    // Fallback drinks venue
-    fallbackVenues.push({
-      id: `fallback-drinks-${Date.now()}`,
-      name: `${locationName} Craft Bar`,
-      category: 'drinks',
-      rating: 4.2,
-      reviewCount: 150,
-      priceRange: this.getBudgetString(criteria.budget),
-      address: `${criteria.location}`,
-      phone: '(555) 123-4567',
-      website: 'https://example.com',
-      imageUrl: 'https://source.unsplash.com/400x300/?craft,cocktail,bar',
-      description: `A popular craft bar in ${locationName} known for its creative cocktails and relaxed atmosphere.`,
-      highlights: ['Craft cocktails', 'Relaxed atmosphere', 'Popular with locals'],
-      coordinates: { lat: 40.7128, lng: -74.0060 }, // Default NYC coordinates
-      tags: ['bar', 'cocktails', 'craft'],
-      features: ['Popular Spot', 'Great atmosphere'],
-      vibe: this.getVibeFromCriteria(criteria.vibes)
-    })
-    
-    // Fallback dinner venue
-    fallbackVenues.push({
-      id: `fallback-dinner-${Date.now()}`,
-      name: `${locationName} Bistro`,
-      category: 'dinner',
-      rating: 4.5,
-      reviewCount: 200,
-      priceRange: this.getBudgetString(criteria.budget),
-      address: `${criteria.location}`,
-      phone: '(555) 123-4568',
-      website: 'https://example.com',
-      imageUrl: 'https://source.unsplash.com/400x300/?restaurant,bistro,dinner',
-      description: `A charming bistro in ${locationName} serving delicious cuisine in a cozy setting.`,
-      highlights: ['Cozy atmosphere', 'Excellent service', 'Fresh ingredients'],
-      coordinates: { lat: 40.7128, lng: -74.0060 },
-      tags: ['restaurant', 'bistro', 'cuisine'],
-      features: ['Popular Spot', 'Great atmosphere'],
-      vibe: this.getVibeFromCriteria(criteria.vibes)
-    })
-    
-    // Fallback activity venue
-    fallbackVenues.push({
-      id: `fallback-activity-${Date.now()}`,
-      name: `${locationName} Entertainment`,
-      category: 'activity',
-      rating: 4.3,
-      reviewCount: 180,
-      priceRange: this.getBudgetString(criteria.budget),
-      address: `${criteria.location}`,
-      phone: '(555) 123-4569',
-      website: 'https://example.com',
-      imageUrl: 'https://source.unsplash.com/400x300/?entertainment,activity,fun',
-      description: `An exciting entertainment venue in ${locationName} perfect for a fun night out.`,
-      highlights: ['Fun atmosphere', 'Great for dates', 'Entertainment'],
-      coordinates: { lat: 40.7128, lng: -74.0060 },
-      tags: ['entertainment', 'activity', 'fun'],
-      features: ['Popular Spot', 'Great atmosphere'],
-      vibe: this.getVibeFromCriteria(criteria.vibes)
-    })
-    
-    return fallbackVenues
-  }
-
-  private getBudgetString(budget: string): string {
-    return budget || '$$'
-  }
-
-  private getVibeFromCriteria(vibes: string[]): string {
-    if (vibes.length === 0) return 'casual'
-    return vibes[0]
-  }
+  // Removed fake fallback venue generation - only return real venues from APIs
 
   // Missing methods that need to be added
   private removeDuplicates(venues: Venue[]): Venue[] {
@@ -1718,9 +1601,7 @@ class VenueSearcher {
             await new Promise(resolve => setTimeout(resolve, 5000))
             continue
           } else if (response.status === 504) {
-            console.error('⏰ Gateway timeout (504), using fallback data...')
-            const fallbackVenues = this.createFallbackVenues(criteria)
-            venues.push(...fallbackVenues)
+            console.error('⏰ Gateway timeout (504), skipping this query...')
             continue
           } else {
             console.error(`Overpass API error: ${response.status}`)

@@ -20,6 +20,7 @@ import {
   Palette,
   TreePine
 } from "lucide-react"
+import Image from "next/image"
 
 const BUDGET_OPTIONS = [
   { value: "$", label: "Casual", price: "$30-50", emoji: "🍕" },
@@ -167,8 +168,8 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
       <div className="relative z-10 flex flex-col px-5 pt-10 pb-6 flex-1 max-w-lg mx-auto w-full">
         {/* Header */}
         <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-            <Heart className="w-7 h-7 text-primary" />
+          <div className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center">
+            <Image src="/android-chrome-192x192.png" alt="Date Night" width={56} height={56} />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Plan Your Night</h1>
           <p className="text-muted-foreground text-sm text-center max-w-xs">Set your preferences and we'll curate the perfect evening</p>

@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+
+const geocodeSchema = z.object({
+  lat: z.number().min(-90).max(90),
+  lon: z.number().min(-180).max(180)
+})
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { lat, lon } = body
-
-    if (!lat || !lon) {
-      return NextResponse.json({ error: 'Missing coordinates' }, { status: 400 })
+    
+    const validationResult = geocodeSchema.safeParse(body)
+    if (!validationResult.success) {
+      return NextResponse.json({ 
+        error: 'Invalid input', 
+        details: validationResult.error.errors 
+      }, { status: 400 })
     }
+
+    const { lat, lon } = validationResult.data
 
     // Use OpenStreetMap Nominatim API (server-side, no CORS issues)
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`

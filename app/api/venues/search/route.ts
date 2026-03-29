@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 
 // Server-side venue search endpoint — keeps API keys secret
 const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || ''
@@ -6,10 +7,30 @@ const FOURSQUARE_CLIENT_ID = process.env.FOURSQUARE_CLIENT_ID || ''
 const FOURSQUARE_CLIENT_SECRET = process.env.FOURSQUARE_CLIENT_SECRET || ''
 const YELP_API_KEY = process.env.YELP_API_KEY || ''
 
+const venueSearchSchema = z.object({
+  action: z.enum(['google-places', 'google-geocode', 'google-place-details', 'foursquare', 'yelp', 'overpass']),
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  radius: z.number().min(1).max(50000).optional(),
+  type: z.string().max(100).optional(),
+  query: z.string().max(500).optional(),
+  location: z.string().max(200).optional(),
+  placeId: z.string().max(200).optional()
+})
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { action, lat, lng, radius, type, query, location } = body
+    
+    const validationResult = venueSearchSchema.safeParse(body)
+    if (!validationResult.success) {
+      return NextResponse.json({ 
+        error: 'Invalid input', 
+        details: validationResult.error.errors 
+      }, { status: 400 })
+    }
+
+    const { action, lat, lng, radius, type, query, location } = validationResult.data
 
     if (action === 'google-places') {
       if (!GOOGLE_PLACES_API_KEY || GOOGLE_PLACES_API_KEY === 'your_google_places_api_key_here') {
@@ -25,6 +46,10 @@ export async function POST(request: NextRequest) {
     if (action === 'google-geocode') {
       if (!GOOGLE_PLACES_API_KEY || GOOGLE_PLACES_API_KEY === 'your_google_places_api_key_here') {
         return NextResponse.json({ error: 'Google API key not configured' }, { status: 503 })
+      }
+
+      if (!location) {
+        return NextResponse.json({ error: 'Location is required for geocoding' }, { status: 400 })
       }
 
       const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${GOOGLE_PLACES_API_KEY}`
@@ -59,6 +84,10 @@ export async function POST(request: NextRequest) {
     if (action === 'yelp') {
       if (!YELP_API_KEY || YELP_API_KEY === 'your_yelp_api_key_here') {
         return NextResponse.json({ error: 'Yelp API not configured' }, { status: 503 })
+      }
+
+      if (radius === undefined) {
+        return NextResponse.json({ error: 'Radius is required for Yelp search' }, { status: 400 })
       }
 
       const url = `https://api.yelp.com/v3/businesses/search?latitude=${lat}&longitude=${lng}&radius=${Math.min(radius, 40000)}&term=${encodeURIComponent(query || '')}&limit=20`

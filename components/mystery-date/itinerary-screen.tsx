@@ -13,6 +13,8 @@ import {
   RefreshCw,
   Share2,
   ArrowLeft,
+  Shuffle,
+  Wand2,
   Copy,
   Check,
   Heart,
@@ -183,6 +185,22 @@ function StepCard({
                 </a>
               )}
             </div>
+
+            {/* Swap Button */}
+            {onVenuesUpdate && (
+              <button
+                onClick={() => handleSwapVenue(index)}
+                disabled={isSwapping === index}
+                className="flex items-center gap-1.5 py-2 px-3 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all disabled:opacity-50 w-full justify-center mt-2"
+              >
+                {isSwapping === index ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Shuffle className="w-3.5 h-3.5" />
+                )}
+                {isSwapping === index ? 'Finding Alternative...' : 'Swap This Venue'}
+              </button>
+            )}
           </div>
         ) : (
           /* Locked */
@@ -217,13 +235,16 @@ interface ItineraryScreenProps {
   onReset: () => void
   venues: Venue[]
   searchCriteria?: any
+  onVenuesUpdate?: (venues: Venue[]) => void
 }
 
-export function ItineraryScreen({ onReset, venues, searchCriteria }: ItineraryScreenProps) {
+export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdate }: ItineraryScreenProps) {
   const [revealedCount, setRevealedCount] = useState(0)
   const [copied, setCopied] = useState(false)
   const [steps, setSteps] = useState<Step[]>([])
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false)
+  const [isSwapping, setIsSwapping] = useState<number | null>(null)
+  const [isImproving, setIsImproving] = useState(false)
   const { signOut } = useAuth()
 
   useEffect(() => {
@@ -267,6 +288,66 @@ export function ItineraryScreen({ onReset, venues, searchCriteria }: ItinerarySc
 
   const handleSignOut = async () => {
     try { await signOut() } catch {}
+  }
+
+  const handleSwapVenue = async (index: number) => {
+    if (!searchCriteria || !onVenuesUpdate) return
+    setIsSwapping(index)
+    
+    try {
+      const venueToSwap = venues[index]
+      const response = await fetch('/api/ai/enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'swap-venue',
+          venue: venueToSwap,
+          criteria: searchCriteria,
+          currentPlan: venues
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.venue) {
+          const newVenues = [...venues]
+          newVenues[index] = data.venue
+          onVenuesUpdate(newVenues)
+        }
+      }
+    } catch (e) {
+      console.error('Failed to swap venue:', e)
+    } finally {
+      setIsSwapping(null)
+    }
+  }
+
+  const handleImprovePlan = async () => {
+    if (!searchCriteria || !onVenuesUpdate) return
+    setIsImproving(true)
+    
+    try {
+      const response = await fetch('/api/ai/enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'improve-plan',
+          currentPlan: venues,
+          criteria: searchCriteria
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.venues && data.venues.length > 0) {
+          onVenuesUpdate(data.venues)
+        }
+      }
+    } catch (e) {
+      console.error('Failed to improve plan:', e)
+    } finally {
+      setIsImproving(false)
+    }
   }
 
   const allRevealed = revealedCount >= steps.length && steps.length > 0
@@ -323,10 +404,26 @@ export function ItineraryScreen({ onReset, venues, searchCriteria }: ItinerarySc
           </div>
 
           {steps.length > 0 && (
-            <div className="flex items-center justify-center gap-4 text-[11px] text-muted-foreground mt-3">
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> ~4-5 hrs</span>
-              <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {steps.length} stops</span>
-              <span className="flex items-center gap-1">{steps.map(s => s.priceRange).join(" + ")}</span>
+            <div className="space-y-3">
+              <div className="flex items-center justify-center gap-4 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> ~4-5 hrs</span>
+                <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {steps.length} stops</span>
+                <span className="flex items-center gap-1">{steps.map(s => s.priceRange).join(" + ")}</span>
+              </div>
+              {onVenuesUpdate && (
+                <button
+                  onClick={handleImprovePlan}
+                  disabled={isImproving}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-purple-500 text-white text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 mx-auto"
+                >
+                  {isImproving ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Wand2 className="w-3.5 h-3.5" />
+                  )}
+                  {isImproving ? 'Improving Plan...' : 'AI Improve Entire Plan'}
+                </button>
+              )}
             </div>
           )}
         </div>
