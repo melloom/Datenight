@@ -21,7 +21,11 @@ import {
   TreePine,
   Plus,
   X,
-  AlertCircle
+  AlertCircle,
+  History,
+  Archive,
+  CalendarDays,
+  Trash2
 } from "lucide-react"
 import Image from "next/image"
 import { validateCustomInput } from "@/lib/profanity-filter"
@@ -76,6 +80,20 @@ interface DateConfig {
   customActivity?: string
 }
 
+interface DatePlanHistory {
+  id: string
+  date: Date
+  location: string
+  budget: string
+  vibes: string[]
+  venues: any[]
+  totalCost?: number
+  partySize?: number
+  notes?: string
+  rating?: number
+  favorite?: boolean
+}
+
 interface SetupScreenProps {
   onSubmit: (config: DateConfig) => void
 }
@@ -99,9 +117,27 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const [locationResults, setLocationResults] = useState<Array<{ label: string; displayName: string; lat: string; lon: string }>>([])
   const [isSearchingLocation, setIsSearchingLocation] = useState(false)
   const [showLocationDropdown, setShowLocationDropdown] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [datePlanHistory, setDatePlanHistory] = useState<DatePlanHistory[]>([])
   const locationDropdownRef = useRef<HTMLDivElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Load history from localStorage on mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('datePlanHistory')
+    if (savedHistory) {
+      try {
+        const parsed = JSON.parse(savedHistory)
+        setDatePlanHistory(parsed.map((item: any) => ({
+          ...item,
+          date: new Date(item.date)
+        })))
+      } catch (e) {
+        console.error('Failed to load history:', e)
+      }
+    }
+  }, [])
 
   const searchLocation = useCallback(async (query: string) => {
     if (query.length < 2) {
@@ -244,6 +280,32 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
     throw new Error('IP location service failed')
   }
 
+  // Delete history item
+  const deleteHistoryItem = (id: string) => {
+    const updatedHistory = datePlanHistory.filter(item => item.id !== id)
+    setDatePlanHistory(updatedHistory)
+    localStorage.setItem('datePlanHistory', JSON.stringify(updatedHistory))
+  }
+
+  // Toggle favorite
+  const toggleFavorite = (id: string) => {
+    const updatedHistory = datePlanHistory.map(item =>
+      item.id === id ? { ...item, favorite: !item.favorite } : item
+    )
+    setDatePlanHistory(updatedHistory)
+    localStorage.setItem('datePlanHistory', JSON.stringify(updatedHistory))
+  }
+
+  // Load plan from history
+  const loadPlanFromHistory = (plan: DatePlanHistory) => {
+    setLocation(plan.location)
+    setBudget(plan.budget as any)
+    setVibes(plan.vibes)
+    setPartySize(plan.partySize || 2)
+    setTime("prime")
+    setShowHistory(false)
+  }
+
   const handleSurpriseMe = () => {
     setBudget(BUDGET_OPTIONS[Math.floor(Math.random() * BUDGET_OPTIONS.length)].value)
     setVibes([...VIBE_OPTIONS].sort(() => Math.random() - 0.5).slice(0, 2).map(v => v.id))
@@ -304,10 +366,19 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
         {/* Randomize */}
         <button
           onClick={handleSurpriseMe}
-          className="mb-6 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/30 text-primary text-xs font-medium hover:bg-primary/5 active:scale-[0.98] transition-all"
+          className="mb-4 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/30 text-primary text-xs font-medium hover:bg-primary/5 active:scale-[0.98] transition-all"
         >
           <Shuffle className="w-3.5 h-3.5" />
           Surprise Me
+        </button>
+
+        {/* History */}
+        <button
+          onClick={() => setShowHistory(true)}
+          className="mb-6 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-amber-500/30 text-amber-600 text-xs font-medium hover:bg-amber-500/5 active:scale-[0.98] transition-all"
+        >
+          <History className="w-3.5 h-3.5" />
+          View Past Plans
         </button>
 
         {/* Form */}
@@ -686,6 +757,124 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           )}
         </div>
       </div>
+
+      {/* Date Plan History Modal */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-background rounded-2xl border p-6 max-w-4xl w-full max-h-[85vh] overflow-y-auto my-4">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-amber-600" />
+                <h3 className="font-semibold text-lg">Past Date Plans</h3>
+              </div>
+              <button
+                onClick={() => setShowHistory(false)}
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {datePlanHistory.length === 0 ? (
+              <div className="text-center py-12">
+                <Archive className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h4 className="font-medium text-lg mb-2">No Past Plans Yet</h4>
+                <p className="text-sm text-muted-foreground">
+                  Your completed date plans will appear here for easy access
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* History List */}
+                <div className="space-y-3">
+                  {datePlanHistory.map((plan) => (
+                    <div key={plan.id} className="bg-muted/50 rounded-lg p-4 border">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <CalendarDays className="w-4 h-4 text-amber-600" />
+                            <span className="font-medium text-sm">
+                              {plan.date.toLocaleDateString()} at {plan.date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                            </span>
+                            {plan.favorite && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-amber-500/20 text-amber-600 border border-amber-500/30">
+                                ⭐ Favorite
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground space-y-1">
+                            <div>📍 {plan.location} • 💰 {plan.budget} • 👥 {plan.partySize || 2} people</div>
+                            <div>🎭 {plan.vibes.join(', ')}</div>
+                            {plan.totalCost && (
+                              <div>💸 Total: ${plan.totalCost.toFixed(2)}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => loadPlanFromHistory(plan)}
+                            className="px-2 py-1 rounded-lg bg-amber-500 text-white text-xs font-medium hover:bg-amber-600 transition-colors"
+                          >
+                            Use This Plan
+                          </button>
+                          <button
+                            onClick={() => toggleFavorite(plan.id)}
+                            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+                          >
+                            <Heart className={`w-4 h-4 ${plan.favorite ? 'text-red-500 fill-red-500' : 'text-muted-foreground'}`} />
+                          </button>
+                          <button
+                            onClick={() => deleteHistoryItem(plan.id)}
+                            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4 text-muted-foreground" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Venue Preview */}
+                      <div className="border-t border-border/60 pt-3">
+                        <div className="text-xs font-medium text-muted-foreground mb-2">Venues ({plan.venues.length}):</div>
+                        <div className="flex flex-wrap gap-2">
+                          {plan.venues.map((venue, index) => (
+                            <span key={index} className="text-xs px-2 py-1 rounded-full bg-background border border-border">
+                              {venue.category === 'dinner' ? '🍽️' : venue.category === 'drinks' ? '🍷' : '🎯'} {venue.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* History Stats */}
+                <div className="bg-blue-500/5 rounded-lg p-3 border border-blue-500/20">
+                  <div className="text-xs text-muted-foreground grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <div className="font-medium text-blue-600">{datePlanHistory.length}</div>
+                      <div>Total Plans</div>
+                    </div>
+                    <div>
+                      <div className="font-medium text-blue-600">
+                        {datePlanHistory.filter(p => p.favorite).length}
+                      </div>
+                      <div>Favorites</div>
+                    </div>
+                    <div>
+                      <div className="font-medium text-blue-600">
+                        {datePlanHistory.length > 0 ? 
+                          new Set(datePlanHistory.map(p => p.location)).size : 0
+                        }
+                      </div>
+                      <div>Locations</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
