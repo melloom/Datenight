@@ -44,6 +44,11 @@ export interface SearchCriteria {
   customCuisine?: string
   activity?: string
   customActivity?: string
+  // Custom preferences for AI and venue selection
+  timeGapPreference?: 'short' | 'medium' | 'long' // Preference for travel time between venues
+  maxTravelTime?: number // Maximum travel time in minutes between venues
+  customRequests?: string // Any other custom requirements like "closer time gaps"
+  venueDensity?: 'concentrated' | 'spread_out' // Prefer venues close together or spread out
 }
 
 export interface VenueConstraints {
@@ -253,14 +258,14 @@ class VenueSearcher {
     // Only run AI enhancement if we have venues and it's not disabled
     if (filteredVenues.length > 0 && filteredVenues.length <= 20) {
       try {
-        console.log('🤖 Attempting AI venue analysis...')
+        console.log('🤖 Attempting AI venue analysis with custom preferences...')
         // Reduce AI processing to only top 5 venues for speed
-        const aiPromise = this.enhanceVenuesWithAI(filteredVenues.slice(0, 5))
+        const aiPromise = this.enhanceVenuesWithAI(filteredVenues.slice(0, 5), criteria)
         const timeoutPromise = new Promise<Venue[]>(resolve => 
           setTimeout(() => resolve(filteredVenues.slice(0, 5)), 8000) // 8s timeout
         )
         aiEnhancedVenues = await Promise.race([aiPromise, timeoutPromise])
-        console.log(`✨ AI enhanced ${aiEnhancedVenues.filter(v => v.aiEnhanced).length} venues`)
+        console.log(`✨ AI enhanced ${aiEnhancedVenues.filter(v => v.aiEnhanced).length} venues with custom preferences`)
       } catch (error) {
         console.log('⚠️ AI analysis unavailable, using venues without AI enhancement')
         aiEnhancedVenues = filteredVenues
@@ -372,20 +377,29 @@ class VenueSearcher {
     let score = 0
     const reasons: string[] = []
 
-    // Budget matching (30% weight)
+    // Budget matching (25% weight)
     const budgetScore = this.calculateBudgetScore(venue, criteria.budget)
-    score += budgetScore * 0.3
+    score += budgetScore * 0.25
     if (budgetScore > 0.8) reasons.push('Great budget match')
 
-    // Rating quality (25% weight)
+    // Rating quality (20% weight)
     const ratingScore = Math.min(venue.rating / 5, 1)
-    score += ratingScore * 0.25
+    score += ratingScore * 0.2
     if (venue.rating >= 4.5) reasons.push('Excellent rating')
 
     // Vibe compatibility (20% weight)
     const vibeScore = this.calculateVibeScore(venue, criteria.vibes)
     score += vibeScore * 0.2
     if (vibeScore > 0.8) reasons.push('Perfect vibe match')
+
+    // Custom preferences scoring (20% weight)
+    const customScore = this.calculateCustomPreferencesScore(venue, criteria)
+    score += customScore * 0.2
+    if (customScore > 0.8) reasons.push('Matches custom preferences')
+
+    // Category diversity (15% weight)
+    const categoryScore = this.getCategoryScore(venue.category)
+    score += categoryScore * 0.15
 
     // Time compatibility (15% weight)
     const timeScore = this.calculateTimeScore(venue, criteria.time)
@@ -464,32 +478,46 @@ class VenueSearcher {
   }
 
   private optimizeDatePlan(venues: Venue[], criteria: SearchCriteria): Venue[] {
-    console.log('🗺️ Optimizing date plan with travel time...')
+    console.log('🗺️ Optimizing date plan with travel time and custom preferences...')
 
     // Group venues by category
-    const drinks = venues.filter(v => v.category === 'drinks').slice(0, 3)
-    const dinner = venues.filter(v => v.category === 'dinner').slice(0, 3)
-    const activity = venues.filter(v => v.category === 'activity').slice(0, 3)
+    const drinks = venues.filter(v => v.category === 'drinks').slice(0, 5)
+    const dinner = venues.filter(v => v.category === 'dinner').slice(0, 5)
+    const activity = venues.filter(v => v.category === 'activity').slice(0, 5)
+
+    // Apply custom preference filtering
+    const filteredDrinks = this.applyCustomPreferencesFilter(drinks, criteria)
+    const filteredDinner = this.applyCustomPreferencesFilter(dinner, criteria)
+    const filteredActivity = this.applyCustomPreferencesFilter(activity, criteria)
 
     // Select best venues for each category
     const selectedVenues: Venue[] = []
 
     // Add best drinks venue
-    if (drinks.length > 0) {
+    if (filteredDrinks.length > 0) {
+      selectedVenues.push(filteredDrinks[0])
+      console.log(`🍷 Selected drinks: ${filteredDrinks[0].name} (custom preferences applied)`)
+    } else if (drinks.length > 0) {
       selectedVenues.push(drinks[0])
-      console.log(`🍷 Selected drinks: ${drinks[0].name}`)
+      console.log(`🍷 Selected drinks: ${drinks[0].name} (fallback)`)
     }
 
     // Add best dinner venue
-    if (dinner.length > 0) {
+    if (filteredDinner.length > 0) {
+      selectedVenues.push(filteredDinner[0])
+      console.log(`🍽️ Selected dinner: ${filteredDinner[0].name} (custom preferences applied)`)
+    } else if (dinner.length > 0) {
       selectedVenues.push(dinner[0])
-      console.log(`🍽️ Selected dinner: ${dinner[0].name}`)
+      console.log(`🍽️ Selected dinner: ${dinner[0].name} (fallback)`)
     }
 
     // Add best activity venue
-    if (activity.length > 0) {
+    if (filteredActivity.length > 0) {
+      selectedVenues.push(filteredActivity[0])
+      console.log(`🎯 Selected activity: ${filteredActivity[0].name} (custom preferences applied)`)
+    } else if (activity.length > 0) {
       selectedVenues.push(activity[0])
-      console.log(`🎯 Selected activity: ${activity[0].name}`)
+      console.log(`🎯 Selected activity: ${activity[0].name} (fallback)`)
     }
 
     // If we don't have enough venues, add the best remaining ones
@@ -2481,9 +2509,183 @@ out count;
     return Math.random() * 0.5 + 0.5 // 0.5 to 1.0
   }
 
+  private calculateCustomPreferencesScore(venue: Venue, criteria: SearchCriteria): number {
+    let score = 0.5 // Base score
+    
+    // Time gap preferences
+    if (criteria.timeGapPreference === 'short' || criteria.maxTravelTime) {
+      // For venues that would result in shorter travel times, give higher scores
+      // This would require calculating travel between venues, which is complex
+      // For now, we'll use venue density as a proxy
+      if (criteria.venueDensity === 'concentrated') {
+        score += 0.3
+      }
+    }
+    
+    // Custom requests parsing
+    if (criteria.customRequests) {
+      const customLower = criteria.customRequests.toLowerCase()
+      
+      // Walking distance preference
+      if (customLower.includes('walking distance') || customLower.includes('walkable')) {
+        // Prefer venues in dense urban areas (this is a simplified approach)
+        if (venue.address && (venue.address.includes('Downtown') || venue.address.includes('City Center'))) {
+          score += 0.3
+        }
+      }
+      
+      // Less travel preference
+      if (customLower.includes('less travel') || customLower.includes('minimize travel') || 
+          customLower.includes('closer time gaps') || customLower.includes('shorter travel')) {
+        // Prefer venues that are likely to be closer together
+        score += 0.2
+      }
+      
+      // More variety preference  
+      if (customLower.includes('more variety') || customLower.includes('different areas')) {
+        // Reward venues in different neighborhoods/areas
+        score += 0.2
+      }
+    }
+    
+    // Venue density preference
+    if (criteria.venueDensity === 'concentrated') {
+      // Prefer venues in central locations
+      if (venue.address && (venue.address.includes('Center') || venue.address.includes('Downtown'))) {
+        score += 0.2
+      }
+    } else if (criteria.venueDensity === 'spread_out') {
+      // Prefer venues in different areas
+      score += 0.1
+    }
+    
+    return Math.min(score, 1.0)
+  }
+
+  private applyCustomPreferencesFilter(venues: Venue[], criteria: SearchCriteria): Venue[] {
+    if (!criteria.customRequests && !criteria.timeGapPreference && !criteria.venueDensity) {
+      return venues // No custom preferences to apply
+    }
+
+    return venues.filter(venue => {
+      let score = 0
+      
+      // Custom requests filtering
+      if (criteria.customRequests) {
+        const customLower = criteria.customRequests.toLowerCase()
+        
+        // Walking distance preference - prefer downtown/central venues
+        if (customLower.includes('walking distance') || customLower.includes('walkable')) {
+          if (venue.address && (venue.address.includes('Downtown') || venue.address.includes('City Center') || venue.address.includes('Center'))) {
+            score += 1
+          } else {
+            score -= 0.5
+          }
+        }
+        
+        // Less travel/closer time gaps - prefer venues in same general area
+        if (customLower.includes('less travel') || customLower.includes('minimize travel') || 
+            customLower.includes('closer time gaps') || customLower.includes('shorter travel')) {
+          // This is simplified - in reality we'd calculate distances between venues
+          if (venue.address && venue.address.length < 30) { // Shorter addresses might indicate more central locations
+            score += 0.5
+          }
+        }
+        
+        // More variety - prefer venues in different areas
+        if (customLower.includes('more variety') || customLower.includes('different areas')) {
+          score += 0.3 // All venues get a small boost for variety preference
+        }
+      }
+      
+      // Venue density preference
+      if (criteria.venueDensity === 'concentrated') {
+        if (venue.address && (venue.address.includes('Downtown') || venue.address.includes('Center'))) {
+          score += 1
+        } else {
+          score -= 0.3
+        }
+      } else if (criteria.venueDensity === 'spread_out') {
+        // Prefer venues not in downtown areas
+        if (venue.address && !venue.address.includes('Downtown')) {
+          score += 0.5
+        }
+      }
+      
+      // Keep venues that meet minimum score threshold
+      return score >= 0
+    })
+  }
+
+  private buildCustomPreferencesPrompt(criteria: SearchCriteria): string {
+    const preferences = []
+    
+    // Time gap preferences
+    if (criteria.timeGapPreference === 'short') {
+      preferences.push('User prefers venues with short travel times between locations (under 10 minutes)')
+    } else if (criteria.timeGapPreference === 'medium') {
+      preferences.push('User prefers moderate travel times between venues (10-20 minutes)')
+    } else if (criteria.timeGapPreference === 'long') {
+      preferences.push('User is comfortable with longer travel times between venues (20+ minutes)')
+    }
+    
+    // Maximum travel time
+    if (criteria.maxTravelTime) {
+      preferences.push(`User wants maximum travel time of ${criteria.maxTravelTime} minutes between venues`)
+    }
+    
+    // Venue density preference
+    if (criteria.venueDensity === 'concentrated') {
+      preferences.push('User prefers venues concentrated in one area to minimize travel')
+    } else if (criteria.venueDensity === 'spread_out') {
+      preferences.push('User prefers venues spread out across different areas for variety')
+    }
+    
+    // Custom requests
+    if (criteria.customRequests) {
+      // Parse common phrases from custom requests
+      const customLower = criteria.customRequests.toLowerCase()
+      
+      if (customLower.includes('closer time gaps') || customLower.includes('shorter travel')) {
+        preferences.push('User specifically requested closer time gaps between venues')
+      }
+      
+      if (customLower.includes('walking distance') || customLower.includes('walkable')) {
+        preferences.push('User prefers venues within walking distance of each other')
+      }
+      
+      if (customLower.includes('less travel') || customLower.includes('minimize travel')) {
+        preferences.push('User wants to minimize travel time between venues')
+      }
+      
+      if (customLower.includes('more variety') || customLower.includes('different areas')) {
+        preferences.push('User wants variety in locations and venue types')
+      }
+      
+      // Add the full custom request for AI to interpret
+      preferences.push(`User specifically requested: "${criteria.customRequests}"`)
+    }
+    
+    // Add vibe and budget context
+    if (criteria.vibes.includes('romantic')) {
+      preferences.push('User wants romantic venues suitable for dates')
+    }
+    
+    if (criteria.budget === '$') {
+      preferences.push('User prefers budget-friendly options')
+    } else if (criteria.budget === '$$$$') {
+      preferences.push('User wants upscale, premium venues')
+    }
+    
+    return preferences.length > 0 ? preferences.join('. ') + '.' : 'No specific custom preferences provided.'
+  }
+
   // AI-powered venue enhancement
-  private async enhanceVenuesWithAI(venues: Venue[]): Promise<Venue[]> {
+  private async enhanceVenuesWithAI(venues: Venue[], criteria: SearchCriteria): Promise<Venue[]> {
     const enhancedVenues: Venue[] = []
+
+    // Build custom preferences prompt for AI
+    const customPreferences = this.buildCustomPreferencesPrompt(criteria)
 
     // Process venues in batches to avoid rate limits
     for (let i = 0; i < venues.length; i += 3) {
@@ -2491,14 +2693,15 @@ out count;
       
       const batchPromises = batch.map(async (venue) => {
         try {
-          console.log(`🤖 Analyzing ${venue.name} with AI...`)
+          console.log(`🤖 Analyzing ${venue.name} with AI and custom preferences...`)
           const analysis = await geminiAI.analyzeVenue({
             name: venue.name,
             category: venue.category,
             address: venue.address,
             rating: venue.rating,
             priceRange: venue.priceRange,
-            existingDescription: venue.description
+            existingDescription: venue.description,
+            customPreferences: customPreferences // Pass custom preferences to AI
           })
 
           return {
