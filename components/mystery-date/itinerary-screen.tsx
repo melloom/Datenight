@@ -331,7 +331,7 @@ function ShareModal({ steps, isOpen, onClose }: { steps: Step[]; isOpen: boolean
   }
 
   return (
-    <div className="fixed inset-0 z-60 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md mx-4 mb-4 sm:mb-0 bg-card border border-border rounded-2xl shadow-2xl animate-in slide-in-from-bottom-4 fade-in duration-300 overflow-hidden">
         {/* Header */}
@@ -1414,9 +1414,9 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const allRevealed = revealedCount >= steps.length && steps.length > 0
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={{ minHeight: '100vh', WebkitOverflowScrolling: 'touch' }}>
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/50">
+      <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border/50">
         <div className="mx-auto px-4 md:px-12 py-3 flex items-center justify-between w-full">
           <button
             onClick={onReset}
@@ -1747,8 +1747,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       {/* Budget Calculator Modal */}
       {showBudgetCalculator && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-9999 p-4">
-          <div className="bg-background rounded-2xl border p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto my-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-2xl border p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto my-4 md:my-0">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Calculator className="w-5 h-5 text-green-600" />
@@ -1933,8 +1933,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       {/* Calendar Integration Modal */}
       {showCalendarDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-9999 p-4">
-          <div className="bg-background rounded-2xl border p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto my-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-2xl border p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto my-4 md:my-0">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-blue-600" />
@@ -2209,8 +2209,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       {/* Special Occasions Modal */}
       {showSpecialOccasions && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-9999 p-4">
-          <div className="bg-background rounded-2xl border p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto my-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-2xl border p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto my-4 md:my-0">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Gift className="w-5 h-5 text-purple-600" />
@@ -2476,8 +2476,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       {/* Date Plan History Modal */}
       {showHistory && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-9999 p-4">
-          <div className="bg-background rounded-2xl border p-6 max-w-4xl w-full max-h-[85vh] overflow-y-auto my-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-2xl border p-6 max-w-4xl w-full max-h-[85vh] overflow-y-auto my-4 md:my-0">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <History className="w-5 h-5 text-amber-600" />

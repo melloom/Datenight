@@ -80,7 +80,7 @@ export function MysteryDateApp() {
   }
 
   return (
-    <main className="w-full min-h-svh relative overflow-x-hidden">
+    <main className="w-full min-h-svh relative">
       {/* Screen transitions */}
       <div 
         className={`transition-all duration-500 ${
