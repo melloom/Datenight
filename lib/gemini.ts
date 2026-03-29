@@ -211,31 +211,57 @@ Focus on romantic, date-appropriate venues and hidden gems. Consider local cultu
       currentVenue?: any
       searchCriteria?: any
       previousMessages?: string[]
+      currentTime?: string
+      venueCount?: number
+      location?: string
+      budget?: string
+      vibes?: string[]
+      partySize?: number
     }
   ): Promise<string> {
     const contextInfo = context.currentVenue 
-      ? `Current venue: ${context.currentVenue.name} - ${context.currentVenue.category}`
+      ? `Current venue: ${context.currentVenue.name} - ${context.currentVenue.category} (${context.currentVenue.rating}⭐, ${context.currentVenue.priceRange})`
       : 'No venue selected'
     
     const criteriaInfo = context.searchCriteria
-      ? `Search criteria: ${context.searchCriteria.location}, ${context.searchCriteria.budget}, ${context.searchCriteria.vibes.join(', ')}`
+      ? `Date plan: ${context.searchCriteria.location}, ${context.searchCriteria.budget} budget, ${context.searchCriteria.partySize} people, vibes: ${context.searchCriteria.vibes.join(', ')}`
       : 'No search criteria set'
 
     const prompt = `
-You are a helpful Date Night AI assistant. Help users plan perfect dates.
+You are Date Night AI, a romantic and helpful date planning assistant. Your goal is to make users feel confident, excited, and well-prepared for their dates.
 
-Context: ${contextInfo}
+CONTEXT:
+${contextInfo}
 ${criteriaInfo}
+Current time: ${context.currentTime || 'Unknown'}
+Venues available: ${context.venueCount || 0}
 
-User message: "${message}"
+USER QUESTION: "${message}"
 
-Provide a helpful, friendly, and romantic response. Focus on:
-- Making the user feel confident about their date plans
-- Offering practical advice
-- Being encouraging and positive
-- Keeping responses concise but warm
+RESPONSE GUIDELINES:
+- Be warm, encouraging, and romantic
+- Provide practical, actionable advice
+- Use emojis to add warmth and personality 💝✨🌟
+- Keep responses conversational and friendly
+- Focus on making dates special and memorable
+- Offer specific suggestions when possible
+- Be positive and confidence-boosting
+- Include romantic tips and thoughtful details
 
-Don't use markdown or special formatting. Just respond naturally.
+TOPICS TO EXCEL AT:
+• Date outfit recommendations and style advice
+• Conversation starters and topics
+• Romantic gestures and surprises
+• Restaurant etiquette and tipping guidance
+• Photo spot suggestions and posing tips
+• Backup plans and contingency ideas
+• Gift recommendations and thoughtful touches
+• Timing and logistics advice
+• Dietary restriction accommodations
+• First date vs established date advice
+• Seasonal and weather considerations
+
+Respond naturally without markdown formatting. Make them feel excited about their date! 🌹
 `
 
     return this.generateContent(prompt)

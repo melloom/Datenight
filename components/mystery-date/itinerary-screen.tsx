@@ -1103,18 +1103,25 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       if (newCriteria) {
         console.log('🔍 Starting new search with alternative criteria...')
         
-        // For now, show a message and potentially navigate back
-        alert(`Generating ${suggestion.title} plan... This would start a new search with optimized criteria for ${suggestion.availability} options.\n\nNew criteria: ${JSON.stringify(newCriteria, null, 2)}`)
+        // Navigate back to setup with pre-filled criteria for a real search
+        setShowLateNightAlert(false)
         
-        // Optional: Navigate back to setup with pre-filled criteria
-        // onReset() // This would take them back to setup
+        // Store the new criteria in session storage for the setup screen to use
+        sessionStorage.setItem('alternativeSearchCriteria', JSON.stringify(newCriteria))
+        
+        // Navigate back to setup screen to trigger a real search
+        onReset()
+        
+        // Show message about what's happening
+        setTimeout(() => {
+          alert(`Generating ${suggestion.title} plan with optimized search criteria... Starting new search!`)
+        }, 100)
       }
     } catch (error) {
       console.error('Error generating alternative plan:', error)
       alert('Sorry, something went wrong generating that plan. Please try again.')
     } finally {
       setIsGeneratingAlternative(false)
-      setShowLateNightAlert(false)
     }
   }
 
@@ -1124,41 +1131,27 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     try {
       setIsGeneratingAlternative(true)
       
-      // Generate immediate plan based on the same-day option
-      const immediatePlan = generateImmediatePlan(option, searchCriteria)
+      // Generate real search criteria for same-day options
+      const sameDayCriteria = generateCriteriaFromSameDayOption(option, searchCriteria)
       
-      if (immediatePlan && immediatePlan.length > 0) {
-        console.log('⚡ Creating immediate plan...')
+      if (sameDayCriteria) {
+        console.log('⚡ Starting real search for same-day option...')
         setShowLateNightAlert(false)
         
-        // Convert mock venues to steps format
-        const newSteps = immediatePlan.map((venue, index) => ({
-          ...venue,
-          id: index,
-          label: venue.category === 'dinner' ? 'Dinner' : venue.category === 'drinks' ? 'Drinks' : 'Activity',
-          time: option.setupTime || '30 mins',
-          icon: venue.category === 'dinner' ? '🍽️' : venue.category === 'drinks' ? '🍸' : '✨',
-          travelTimeToNext: index < immediatePlan.length - 1 ? 10 : undefined
-        }))
+        // Store the new criteria for setup screen
+        sessionStorage.setItem('alternativeSearchCriteria', JSON.stringify(sameDayCriteria))
         
-        // Update the venues with the immediate plan
-        if (onVenuesUpdate) {
-          onVenuesUpdate(newSteps)
-        }
+        // Navigate back to setup for a real search
+        onReset()
         
-        // Update the local steps state
-        setSteps(newSteps)
-        setRevealedCount(newSteps.length)
-        
-        // Show success message
         setTimeout(() => {
-          alert(`${option.title} plan ready! Check your updated itinerary.`)
-        }, 500)
+          alert(`Generating ${option.title} plan with real venues... Starting optimized search!`)
+        }, 100)
       } else {
-        alert(`Sorry, couldn't generate ${option.title} plan right now. Please try a different option.`)
+        alert(`Sorry, couldn't generate search criteria for ${option.title}. Please try a different option.`)
       }
     } catch (error) {
-      console.error('Error creating immediate plan:', error)
+      console.error('Error creating same-day plan:', error)
       alert('Sorry, something went wrong creating that plan. Please try again.')
     } finally {
       setIsGeneratingAlternative(false)
@@ -1180,19 +1173,24 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       case 'immediate-delivery':
         newCriteria.time = 'early' // Earlier time for delivery
         newCriteria.activity = 'delivery'
+        newCriteria.cuisine = 'delivery-friendly' // Favor delivery-friendly cuisines
         break
       case 'immediate-late-night':
         newCriteria.time = 'late' // Late night venues
+        newCriteria.vibes = ['late-night', 'casual', 'spontaneous']
         break
       case 'tomorrow-planned':
         newCriteria.time = 'prime' // Prime time for tomorrow
+        newCriteria.vibes = ['romantic', 'special-occasion']
         break
       case 'tomorrow-lunch':
         newCriteria.time = 'early' // Lunch time
+        newCriteria.vibes = ['casual', 'daytime', 'relaxed']
         break
       case 'weekend-experience':
         newCriteria.time = 'prime' // Weekend prime time
         newCriteria.partySize = Math.max(newCriteria.partySize, 2) // Ensure minimum party size
+        newCriteria.vibes = ['weekend', 'special', 'memorable']
         break
       default:
         break
@@ -1201,135 +1199,39 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     return newCriteria
   }
 
-  const generateImmediatePlan = (option: SameDayOption, originalCriteria: any): any[] => {
-    if (!originalCriteria) return []
+  const generateCriteriaFromSameDayOption = (option: SameDayOption, originalCriteria: any): any => {
+    if (!originalCriteria) return null
     
-    // Create mock venues for same-day options
-    const mockVenues: any[] = []
+    const newCriteria = { ...originalCriteria }
     
+    // Adjust criteria based on same-day option type
     switch (option.type) {
       case 'delivery':
-        mockVenues.push(
-          {
-            id: 'delivery-dinner',
-            name: 'Gourmet Dinner Delivery',
-            category: 'dinner',
-            rating: 4.8,
-            reviewCount: 1250,
-            priceRange: '$$$',
-            address: 'Your Home',
-            description: 'Premium restaurant-quality meal delivered to your door',
-            highlights: ['Restaurant quality', 'No cleanup', 'Romantic packaging'],
-            coordinates: { lat: 0, lng: 0 },
-            tags: ['delivery', 'romantic', 'convenient'],
-            aiEnhanced: true,
-            aiInsights: {
-              bestFor: ['Intimate dinners', 'Special occasions'],
-              insiderTips: ['Set the table nicely', 'Dim the lights'],
-              photoSpots: ['Dining table setup'],
-              vibeTags: ['romantic', 'cozy']
-            }
-          },
-          {
-            id: 'delivery-cocktails',
-            name: 'Cocktail Kit Experience',
-            category: 'drinks',
-            rating: 4.6,
-            reviewCount: 890,
-            priceRange: '$$',
-            address: 'Your Home',
-            description: 'Premium cocktail ingredients and recipes for mixing together',
-            highlights: ['Interactive', 'Premium ingredients', 'Learn mixology'],
-            coordinates: { lat: 0, lng: 0 },
-            tags: ['cocktails', 'interactive', 'learning'],
-            aiEnhanced: true,
-            aiInsights: {
-              bestFor: ['Fun activities', 'Learning together'],
-              insiderTips: ['Watch tutorial videos', 'Prepare garnishes'],
-              photoSpots: ['Cocktail making process'],
-              vibeTags: ['fun', 'interactive', 'classy']
-            }
-          }
-        )
+        newCriteria.time = 'early' // Early time for delivery availability
+        newCriteria.activity = 'delivery'
+        newCriteria.cuisine = 'italian,american,asian' // Delivery-friendly cuisines
+        newCriteria.vibes = ['cozy', 'romantic', 'comfortable']
         break
-        
       case 'streaming':
-        mockVenues.push(
-          {
-            id: 'movie-night',
-            name: 'Romantic Movie Marathon',
-            category: 'activity',
-            rating: 4.9,
-            reviewCount: 2100,
-            priceRange: '$',
-            address: 'Your Living Room',
-            description: 'Curated romantic movie collection with themed snacks and drinks',
-            highlights: ['Curated selection', 'Themed snacks', 'Cozy atmosphere'],
-            coordinates: { lat: 0, lng: 0 },
-            tags: ['movies', 'cozy', 'romantic'],
-            aiEnhanced: true,
-            aiInsights: {
-              bestFor: ['Relaxed evenings', 'Budget-friendly dates'],
-              insiderTips: ['Prepare themed snacks', 'Create cozy atmosphere'],
-              photoSpots: ['Movie setup', 'Snack arrangement'],
-              vibeTags: ['cozy', 'romantic', 'comfortable']
-            }
-          }
-        )
+        newCriteria.time = 'early' // Home-based activity
+        newCriteria.activity = 'movie-night'
+        newCriteria.vibes = ['cozy', 'relaxed', 'entertaining']
         break
-        
       case 'outdoor':
-        mockVenues.push(
-          {
-            id: 'sunset-picnic',
-            name: 'Sunset Picnic Experience',
-            category: 'activity',
-            rating: 4.7,
-            reviewCount: 650,
-            priceRange: '$',
-            address: 'Local Park',
-            description: 'Romantic picnic setup with sunset views and premium snacks',
-            highlights: ['Scenic views', 'Romantic setting', 'Fresh air'],
-            coordinates: { lat: 0, lng: 0 },
-            tags: ['outdoor', 'romantic', 'scenic'],
-            aiEnhanced: true,
-            aiInsights: {
-              bestFor: ['Romantic settings', 'Nature lovers'],
-              insiderTips: ['Bring blanket', 'Check weather', 'Arrive before sunset'],
-              photoSpots: ['Sunset views', 'Picnic setup'],
-              vibeTags: ['romantic', 'natural', 'peaceful']
-            }
-          }
-        )
+        newCriteria.time = 'early' // Before sunset
+        newCriteria.activity = 'outdoor'
+        newCriteria.vibes = ['adventurous', 'romantic', 'scenic']
         break
-        
       case 'quick_venue':
-        mockVenues.push(
-          {
-            id: 'dessert-spot',
-            name: 'Late Night Dessert Bar',
-            category: 'drinks',
-            rating: 4.5,
-            reviewCount: 420,
-            priceRange: '$',
-            address: 'Nearby Location',
-            description: 'Intimate dessert spot with artisanal sweets and late-night hours',
-            highlights: ['Late hours', 'Artisanal desserts', 'Intimate setting'],
-            coordinates: { lat: 0, lng: 0 },
-            tags: ['desserts', 'late-night', 'intimate'],
-            aiEnhanced: true,
-            aiInsights: {
-              bestFor: ['Sweet endings', 'Late-night cravings'],
-              insiderTips: ['Try special desserts', 'Check daily specials'],
-              photoSpots: ['Dessert presentation'],
-              vibeTags: ['sweet', 'intimate', 'cozy']
-            }
-          }
-        )
+        newCriteria.time = 'late' // Late night options
+        newCriteria.activity = 'dessert' // Focus on dessert spots
+        newCriteria.vibes = ['casual', 'sweet', 'late-night']
+        break
+      default:
         break
     }
     
-    return mockVenues
+    return newCriteria
   }
 
   // Calendar export functions

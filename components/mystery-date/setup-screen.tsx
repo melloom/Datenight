@@ -109,6 +109,39 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const [partySize, setPartySize] = useState(2)
   const [cuisine, setCuisine] = useState<string>("any")
   const [activity, setActivity] = useState<string>("none")
+
+  // Check for alternative search criteria from late night suggestions
+  useEffect(() => {
+    const alternativeCriteria = sessionStorage.getItem('alternativeSearchCriteria')
+    if (alternativeCriteria) {
+      try {
+        const criteria = JSON.parse(alternativeCriteria)
+        console.log('🔄 Loading alternative search criteria:', criteria)
+        
+        // Apply the alternative criteria to the form
+        if (criteria.budget) setBudget(criteria.budget)
+        if (criteria.location) setLocation(criteria.location)
+        if (criteria.vibes && Array.isArray(criteria.vibes)) setVibes(criteria.vibes)
+        if (criteria.time) setTime(criteria.time)
+        if (criteria.partySize) setPartySize(criteria.partySize)
+        if (criteria.cuisine) setCuisine(criteria.cuisine)
+        if (criteria.activity) setActivity(criteria.activity)
+        
+        // Clear the stored criteria so it doesn't affect future searches
+        sessionStorage.removeItem('alternativeSearchCriteria')
+        
+        // Show a brief notification that criteria was loaded
+        setTimeout(() => {
+          console.log('✨ Alternative search criteria applied!')
+        }, 100)
+      } catch (error) {
+        console.error('Error parsing alternative search criteria:', error)
+        sessionStorage.removeItem('alternativeSearchCriteria')
+      }
+    }
+  }, [])
+  const [cuisine, setCuisine] = useState<string>("any")
+  const [activity, setActivity] = useState<string>("none")
   const [customCuisine, setCustomCuisine] = useState("")
   const [showCustomCuisine, setShowCustomCuisine] = useState(false)
   const [customActivity, setCustomActivity] = useState("")

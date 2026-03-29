@@ -23,15 +23,31 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hi! I'm your Date Night AI assistant. I can help you plan the perfect date, suggest venues, or answer any questions about your date night. What would you like to know?",
+      text: "🌟 Welcome to your Date Night AI! I'm your personal date planning assistant. I can help you:\n\n💝 **Plan the perfect date** - venue suggestions, timing, and logistics\n🎯 **Answer date questions** - what to wear, conversation starters, gift ideas\n📍 **Local recommendations** - nearby attractions, backup plans, hidden gems\n🍽️ **Dining advice** - menu suggestions, dietary needs, reservation tips\n🎭 **Activity ideas** - conversation topics, photo spots, romantic gestures\n\nWhat's on your mind? Ask me anything about your date night!",
       sender: 'ai',
       timestamp: Date.now()
     }
   ])
   const [inputValue, setInputValue] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const quickSuggestions = [
+    "What should I wear on this date?",
+    "Help me with conversation starters",
+    "Suggest backup indoor activities",
+    "What's a good gift idea?",
+    "How should I tip at restaurants?",
+    "Photo spot recommendations?",
+    "What if we're running late?",
+    "Dietary restriction options?",
+    "What makes this venue special?",
+    "Romantic gesture ideas?",
+    "How to impress on first date?",
+    "Conversation topics for dinner?"
+  ]
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -45,12 +61,16 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
     }
   }, [isOpen])
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return
+  const handleSendMessage = async (messageText?: string) => {
+    const textToSend = messageText || inputValue
+    if (!textToSend.trim()) return
+
+    // Hide suggestions when user sends a message
+    setShowSuggestions(false)
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: inputValue,
+      text: textToSend,
       sender: 'user',
       timestamp: Date.now()
     }
@@ -60,11 +80,20 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
     setIsTyping(true)
 
     try {
-      const aiResponse = await geminiAI.generateChatResponse(inputValue, {
+      // Enhanced context for better AI responses
+      const context = {
         currentVenue,
         searchCriteria,
-        previousMessages: messages.slice(-3).map(m => m.text)
-      })
+        previousMessages: messages.slice(-3).map(m => m.text),
+        currentTime: new Date().toLocaleString(),
+        venueCount: searchCriteria?.venues?.length || 0,
+        location: searchCriteria?.location || 'Unknown',
+        budget: searchCriteria?.budget || 'Unknown',
+        vibes: searchCriteria?.vibes || [],
+        partySize: searchCriteria?.partySize || 2
+      }
+
+      const aiResponse = await geminiAI.generateChatResponse(textToSend, context)
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -79,7 +108,7 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
       
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "I'm having trouble responding right now. Please try again in a moment!",
+        text: "🤔 I'm having trouble responding right now. Please try again in a moment! In the meantime, you can ask me about:\n\n• Date outfit suggestions\n• Conversation starters\n• Restaurant etiquette\n• Backup activity ideas\n• Gift recommendations\n• Photo spot locations",
         sender: 'ai',
         timestamp: Date.now()
       }
@@ -90,6 +119,10 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
     }
   }
 
+  const handleSuggestionClick = (suggestion: string) => {
+    handleSendMessage(suggestion)
+  }
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -97,22 +130,17 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
     }
   }
 
-  const quickSuggestions = [
-    "What makes this venue special for dates?",
-    "What should I wear?",
-    "How can I make this date extra special?",
-    "Backup plans if this doesn't work out?",
-    "Conversation starters for this venue?"
-  ]
-
   if (!isOpen) {
     return (
       <button
         onClick={onToggle}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center group z-40"
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center group z-50"
       >
         <MessageCircle className="w-6 h-6" />
         <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-accent animate-pulse" />
+        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover border border-border rounded-lg px-2 py-1 text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          Date Night AI
+        </div>
       </button>
     )
   }
@@ -173,18 +201,31 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
       </div>
 
       {/* Quick Suggestions */}
-      {messages.length <= 2 && (
+      {showSuggestions && messages.length <= 2 && (
         <div className="px-4 pb-2">
           <div className="flex items-center gap-2 mb-2">
             <Lightbulb className="w-4 h-4 text-primary" />
-            <span className="text-xs font-medium text-foreground">Try asking:</span>
+            <span className="text-xs font-medium text-foreground">Popular questions:</span>
           </div>
-          <div className="flex flex-wrap gap-1">
-            {quickSuggestions.slice(0, 3).map((suggestion, index) => (
+          <div className="grid grid-cols-2 gap-1">
+            {quickSuggestions.slice(0, 6).map((suggestion, index) => (
               <button
                 key={index}
-                onClick={() => setInputValue(suggestion)}
-                className="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 rounded-full transition-colors"
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="px-2 py-1.5 text-xs bg-secondary hover:bg-secondary/80 rounded-lg transition-colors text-left leading-tight h-8"
+                disabled={isTyping}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-1 mt-1">
+            {quickSuggestions.slice(6, 12).map((suggestion, index) => (
+              <button
+                key={index + 6}
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="px-2 py-1.5 text-xs bg-muted hover:bg-muted/80 rounded-lg transition-colors text-left leading-tight h-8"
+                disabled={isTyping}
               >
                 {suggestion}
               </button>
