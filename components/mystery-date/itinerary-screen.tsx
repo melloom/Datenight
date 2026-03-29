@@ -101,21 +101,21 @@ function VenueImage({ src, alt, category }: { src?: string; alt: string; categor
 
   if (!src || imgError) {
     return (
-      <div className={`w-full h-40 bg-linear-to-br ${fallbackGradients[category] || fallbackGradients.activity} flex items-center justify-center`}>
+      <div className={`w-full aspect-[4/3] sm:aspect-[16/9] bg-gradient-to-br ${fallbackGradients[category] || fallbackGradients.activity} flex items-center justify-center`}>
         {fallbackIcons[category] || fallbackIcons.activity}
       </div>
     )
   }
 
   return (
-    <div className="relative w-full h-40 overflow-hidden">
+    <div className="relative w-full aspect-[4/3] sm:aspect-[16/9] overflow-hidden bg-gray-100">
       <img
         src={src}
         alt={alt}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
         onError={() => setImgError(true)}
       />
-      <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
     </div>
   )
 }
