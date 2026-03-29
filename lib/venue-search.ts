@@ -143,7 +143,7 @@ class VenueSearcher {
     {
       name: 'Yelp Fusion API',
       baseUrl: 'https://api.yelp.com/v3/businesses',
-      enabled: true,
+      enabled: false, // Disabled - API key not configured
       rateLimit: {
         requestsPerSecond: 5,
         requestsPerMinute: 300,
@@ -714,11 +714,9 @@ class VenueSearcher {
 
       // Use AI search terms if available, otherwise use defaults
       const defaultActivityTerms = [
-        'bowling alley', 'TopGolf driving range', 'escape room',
-        'arcade bar', 'comedy club', 'karaoke',
-        'mini golf', 'movie theater', 'axe throwing',
-        'trampoline park', 'go kart', 'laser tag',
-        'roller skating rink', 'Dave and Busters', 'paintball'
+        'bowling alley', 'TopGolf', 'escape room',
+        'comedy club', 'karaoke', 'movie theater',
+        'mini golf', 'arcade'
       ]
 
       // Pick activity-relevant terms from AI or defaults
@@ -733,21 +731,21 @@ class VenueSearcher {
           activityKeywords.some(kw => term.toLowerCase().includes(kw))
         )
         // Use AI activity terms plus some defaults for variety
-        searchTerms = [...aiActivityTerms, ...defaultActivityTerms.slice(0, 5)]
+        searchTerms = [...aiActivityTerms, ...defaultActivityTerms.slice(0, 3)]
       } else {
-        searchTerms = defaultActivityTerms.slice(0, 8)
+        searchTerms = defaultActivityTerms.slice(0, 5)
       }
 
       // Dedupe and limit
-      searchTerms = [...new Set(searchTerms)].slice(0, 10)
+      searchTerms = [...new Set(searchTerms)].slice(0, 6)
 
       console.log(`🎮 Searching for activity venues with ${searchTerms.length} terms: ${searchTerms.slice(0, 5).join(', ')}...`)
 
       const venues: Venue[] = []
 
-      // Search in parallel batches of 3 to avoid rate limiting
-      for (let i = 0; i < searchTerms.length; i += 3) {
-        const batch = searchTerms.slice(i, i + 3)
+      // Search in parallel batches of 2 to avoid rate limiting
+      for (let i = 0; i < searchTerms.length; i += 2) {
+        const batch = searchTerms.slice(i, i + 2)
         const batchResults = await Promise.all(
           batch.map(async (term) => {
             try {
@@ -898,6 +896,7 @@ class VenueSearcher {
   private getFoursquareCategories(criteria: SearchCriteria): string[] {
     const categories = []
     
+    // Keep only essential categories to avoid rate limiting
     if (criteria.time === 'early') {
       categories.push('4d4b7105d754a06374d80012') // Food
     } else if (criteria.time === 'prime') {
@@ -908,32 +907,21 @@ class VenueSearcher {
       categories.push('4d4b7105d754a06377d80012') // Arts & Entertainment
     }
 
-    // Always include entertainment/activity categories
+    // Add only top entertainment categories to avoid rate limiting
     categories.push('4d4b7105d754a06377d80012') // Arts & Entertainment
     categories.push('4bf58dd8d48988d1e1931735') // Bowling Alley
     categories.push('4bf58dd8d48988d1e4931735') // Movie Theater
     categories.push('56aa371be4b08b9a8d5734db') // Escape Room
-    categories.push('4bf58dd8d48988d18e941735') // Comedy Club
-    categories.push('4bf58dd8d48988d1e3931735') // Pool Hall
-    categories.push('52e81612bcbc57f1066b79e7') // Arcade
-    categories.push('4bf58dd8d48988d165941735') // Scenic Lookout
-    categories.push('4bf58dd8d48988d175941735') // Gym / Fitness
 
-    // Add activity-specific Foursquare categories
+    // Add activity-specific Foursquare categories (limited)
     const activity = criteria.customActivity || criteria.activity
     if (activity && activity !== 'none') {
       if (activity === 'live-music') {
         categories.push('4bf58dd8d48988d1e5931735') // Music Venue
-        categories.push('4bf58dd8d48988d1e7931735') // Concert Hall
       } else if (activity === 'art') {
-        categories.push('4bf58dd8d48988d1e2931735') // Art Gallery
         categories.push('4bf58dd8d48988d181941735') // Museum
       } else if (activity === 'outdoor') {
         categories.push('4bf58dd8d48988d163941735') // Park
-        categories.push('4bf58dd8d48988d166941735') // Plaza
-        categories.push('52e81612bcbc57f1066b7a21') // Mini Golf
-      } else {
-        categories.push('4bf58dd8d48988d17f941735') // General Entertainment
       }
     }
     
@@ -1415,18 +1403,18 @@ class VenueSearcher {
       types.push('bar', 'night_club', 'restaurant')
     }
 
-    // Always include entertainment/activity types to find fun venues
-    types.push('bowling_alley', 'movie_theater', 'amusement_park', 'spa', 'stadium')
+    // Add only top entertainment types to avoid rate limiting
+    types.push('bowling_alley', 'movie_theater', 'tourist_attraction')
 
-    // Add activity-specific types
+    // Add activity-specific types (limited)
     const activity = criteria.customActivity || criteria.activity
     if (activity && activity !== 'none') {
-      if (activity === 'live-music') types.push('night_club', 'bar', 'stadium')
+      if (activity === 'live-music') types.push('night_club', 'bar')
       else if (activity === 'art') types.push('art_gallery', 'museum')
-      else if (activity === 'outdoor') types.push('park', 'tourist_attraction', 'campground', 'zoo', 'aquarium')
+      else if (activity === 'outdoor') types.push('park', 'tourist_attraction')
       else {
-        // Broad search for custom activities (TopGolf, axe throwing, escape rooms, etc.)
-        types.push('point_of_interest', 'tourist_attraction', 'establishment')
+        // Broad search for custom activities
+        types.push('point_of_interest', 'tourist_attraction')
       }
     }
     
