@@ -1305,6 +1305,12 @@ class VenueSearcher {
   private getFallbackLocation(location: string): { lat: number; lng: number } | null {
     console.log(`🔍 Getting fallback location for: "${location}"`)
     
+    // Clean up the location string - remove special characters and normalize
+    let normalizedLocation = location.toLowerCase().trim()
+      .replace(/[\/\\]/g, ' ') // Replace slashes with spaces
+      .replace(/\s+/g, ' ') // Normalize multiple spaces
+      .trim()
+    
     // Specific city/area coordinates for better accuracy
     const cityCoordinates: Record<string, { lat: number; lng: number }> = {
       'severn': { lat: 39.2334, lng: -76.6954 },
@@ -1312,13 +1318,36 @@ class VenueSearcher {
       'glen burnie': { lat: 39.0262, lng: -76.6243 },
       'pasadena': { lat: 39.0996, lng: -76.5518 },
       'annapolis': { lat: 38.9784, lng: -76.4951 },
+      'baltimore': { lat: 39.2904, lng: -76.6122 },
+      'loyola notre dame': { lat: 39.2904, lng: -76.6122 }, // Loyola/Notre Dame area in Baltimore
+      'loyola': { lat: 39.2904, lng: -76.6122 }, // Loyola College area
+      'notre dame': { lat: 39.2904, lng: -76.6122 }, // Notre Dame area
+      'loyola notre dame baltimore': { lat: 39.2904, lng: -76.6122 },
+      'loyola baltimore': { lat: 39.2904, lng: -76.6122 },
+      'notre dame baltimore': { lat: 39.2904, lng: -76.6122 },
+      'baltimore maryland': { lat: 39.2904, lng: -76.6122 },
+      'downtown baltimore': { lat: 39.2867, lng: -76.6133 },
+      'inner harbor baltimore': { lat: 39.2843, lng: -76.6141 },
+      'fells point baltimore': { lat: 39.2825, lng: -76.5971 },
+      'mount vernon baltimore': { lat: 39.2982, lng: -76.6153 },
+      'federal hill baltimore': { lat: 39.2793, lng: -76.6225 },
+      'canton baltimore': { lat: 39.2841, lng: -76.5784 },
+      'hampden baltimore': { lat: 39.3319, lng: -76.6476 },
+      'charles village baltimore': { lat: 39.3269, lng: -76.6176 },
     }
     
     // Check for specific city first
-    const normalizedLocation = location.toLowerCase().trim()
     if (cityCoordinates[normalizedLocation]) {
       console.log(`✅ Found specific coordinates for ${location}`)
       return cityCoordinates[normalizedLocation]
+    }
+    
+    // Check if location contains Baltimore keywords
+    if (normalizedLocation.includes('baltimore') || 
+        normalizedLocation.includes('loyola') || 
+        normalizedLocation.includes('notre dame')) {
+      console.log(`✅ Found Baltimore area in ${location}, using Baltimore coordinates`)
+      return { lat: 39.2904, lng: -76.6122 }
     }
     
     // US state → largest/most popular city coordinates
@@ -1376,8 +1405,8 @@ class VenueSearcher {
     }
 
     // Check if location is in "city, state" format
-    if (location.includes(',')) {
-      const [city, state] = location.split(',').map(part => part.trim().toLowerCase())
+    if (normalizedLocation.includes(',')) {
+      const [city, state] = normalizedLocation.split(',').map(part => part.trim())
       if (cityCoordinates[city]) {
         console.log(`✅ Found city coordinates for ${city}, ${state}`)
         return cityCoordinates[city]
@@ -1386,6 +1415,12 @@ class VenueSearcher {
         console.log(`📍 Using state coordinates for ${city}, ${state} -> ${stateCoordinates[state].city}`)
         return { lat: stateCoordinates[state].lat, lng: stateCoordinates[state].lng }
       }
+    }
+
+    // Check for complex location patterns like "Loyola/Notre Dame, Baltimore, Maryland"
+    if (normalizedLocation.includes('loyola') && normalizedLocation.includes('notre dame')) {
+      console.log(`✅ Found Loyola/Notre Dame pattern, using Baltimore coordinates`)
+      return { lat: 39.2904, lng: -76.6122 }
     }
 
     // Check for direct city/state match
@@ -1412,13 +1447,18 @@ class VenueSearcher {
         return cached
       }
 
+      // Clean up location name for better matching
+      const cleanLocationName = locationName
+        .replace(/[\/\\]/g, ' ') // Replace slashes with spaces
+        .replace(/\s+/g, ' ') // Normalize multiple spaces
+        .trim()
+
       // First check if this is a known state/region name — resolve directly to city
-      const directMatch = this.getFallbackLocation(locationName)
+      const directMatch = this.getFallbackLocation(cleanLocationName)
       // Only use direct match for state-like inputs (short names without commas)
-      const looksLikeState = !locationName.includes(',') && locationName.trim().split(/\s+/).length <= 3
+      const looksLikeState = !cleanLocationName.includes(',') && cleanLocationName.trim().split(/\s+/).length <= 3
       if (directMatch && looksLikeState) {
         console.log(`📍 Direct match for "${locationName}": ${directMatch.lat}, ${directMatch.lng}`)
-        // Cache the result
         this.geocodeCache.set(locationName, { ...directMatch, timestamp: now })
         return directMatch
       }
