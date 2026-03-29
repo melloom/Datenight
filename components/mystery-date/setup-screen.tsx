@@ -140,8 +140,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
       }
     }
   }, [])
-  const [cuisine, setCuisine] = useState<string>("any")
-  const [activity, setActivity] = useState<string>("none")
+  
   const [customCuisine, setCustomCuisine] = useState("")
   const [showCustomCuisine, setShowCustomCuisine] = useState(false)
   const [customActivity, setCustomActivity] = useState("")
