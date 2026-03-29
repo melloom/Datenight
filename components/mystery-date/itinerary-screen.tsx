@@ -2081,18 +2081,83 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                 <div>
                   <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
                     <Star className="w-4 h-4" />
-                    Special Features in Your Plan
+                    Enhanced Features in Your Plan
                   </h4>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {steps.map((step, index) => (
-                      <div key={index} className="bg-muted/50 rounded-lg p-3">
-                        <div className="font-medium text-sm mb-1">{step.place}</div>
-                        <div className="flex flex-wrap gap-1">
-                          {(step.features || []).slice(0, 3).map((feature, i) => (
-                            <span key={i} className="text-xs px-2 py-1 rounded-full bg-purple-500/10 text-purple-600 border border-purple-500/20">
-                              {feature}
-                            </span>
-                          ))}
+                      <div key={index} className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-lg p-4 border border-purple-500/20">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-sm">{step.place}</span>
+                          <span className="text-xs text-purple-600 font-medium">
+                            {step.category === 'dinner' ? '🍽️ Dinner' : step.category === 'drinks' ? '🍷 Drinks' : '🎯 Activity'}
+                          </span>
+                        </div>
+                        
+                        {/* Show special occasion features */}
+                        {(step.features || []).length > 0 && (
+                          <div className="mb-2">
+                            <div className="text-xs font-medium text-purple-700 mb-1">Special Features:</div>
+                            <div className="flex flex-wrap gap-1">
+                              {(step.features || []).map((feature, i) => (
+                                <span key={i} className="text-xs px-2 py-1 rounded-full bg-purple-500/20 text-purple-700 border border-purple-500/30">
+                                  {feature}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Show AI insights if available */}
+                        {step.aiInsights && (
+                          <div className="space-y-2">
+                            {step.aiInsights.bestFor && step.aiInsights.bestFor.length > 0 && (
+                              <div>
+                                <div className="text-xs font-medium text-purple-700 mb-1">Perfect For:</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {step.aiInsights.bestFor.join(', ')}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {step.aiInsights.insiderTips && step.aiInsights.insiderTips.length > 0 && (
+                              <div>
+                                <div className="text-xs font-medium text-purple-700 mb-1">Insider Tips:</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {step.aiInsights.insiderTips.slice(0, 2).join(' • ')}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {step.aiInsights.photoSpots && step.aiInsights.photoSpots.length > 0 && (
+                              <div>
+                                <div className="text-xs font-medium text-purple-700 mb-1">Photo Spots:</div>
+                                <div className="text-xs text-muted-foreground">
+                                  📸 {step.aiInsights.photoSpots.slice(0, 2).join(', ')}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Show pricing if available */}
+                        {step.pricing && (
+                          <div className="mt-2 pt-2 border-t border-purple-500/20">
+                            <div className="text-xs font-medium text-purple-700 mb-1">Pricing Info:</div>
+                            <div className="text-xs text-muted-foreground">
+                              {step.pricing.tickets && `🎫 Tickets: $${step.pricing.tickets}`}
+                              {step.pricing.food && ` • 🍽️ Food: $${step.pricing.food}`}
+                              {step.pricing.drinks && ` • 🍷 Drinks: $${step.pricing.drinks}`}
+                              {step.pricing.activities && ` • 🎯 Activities: $${step.pricing.activities}`}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Show status */}
+                        <div className="mt-2 pt-2 border-t border-purple-500/20">
+                          <div className="flex items-center gap-2 text-xs text-green-600">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span>Currently Open</span>
+                          </div>
                         </div>
                       </div>
                     ))}
