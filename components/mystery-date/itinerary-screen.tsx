@@ -1418,7 +1418,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       {/* Swap Venue Dialog */}
       {showSwapDialog !== null && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <div className="bg-background rounded-2xl border p-6 max-w-md w-full">
             <h3 className="font-semibold text-lg mb-2">Swap {steps[showSwapDialog]?.label}</h3>
             <p className="text-sm text-muted-foreground mb-4">
@@ -1474,8 +1474,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       {/* Budget Calculator Modal */}
       {showBudgetCalculator && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-2xl border p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-background rounded-2xl border p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto my-4">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Calculator className="w-5 h-5 text-green-600" />
@@ -1660,8 +1660,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       {/* Calendar Integration Modal */}
       {showCalendarDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-2xl border p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-background rounded-2xl border p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto my-4">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-blue-600" />
@@ -1919,8 +1919,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       {/* Special Occasions Modal */}
       {showSpecialOccasions && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-2xl border p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-background rounded-2xl border p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto my-4">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Gift className="w-5 h-5 text-purple-600" />
