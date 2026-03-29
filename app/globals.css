@@ -160,33 +160,38 @@ html, body {
   margin: 0;
   padding: 0;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: auto; /* Changed from contain to auto */
+  overscroll-behavior: auto;
+  touch-action: manipulation; /* Add this for better touch response */
 }
 
 main {
   width: 100%;
-  height: auto; /* Changed from 100% to auto */
+  height: auto;
   min-height: 100vh;
   min-height: 100svh;
   -webkit-overflow-scrolling: touch;
   overflow-x: hidden;
+  overflow-y: auto; /* Ensure vertical scrolling works */
+  touch-action: pan-y; /* Allow vertical panning only */
 }
 
 /* Improve mobile touch scrolling */
 * {
   -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: default; /* Changed from none to default */
+  -webkit-touch-callout: default;
+  touch-action: manipulation; /* Better touch response */
 }
 
 /* Allow text selection and touch interactions */
 input, textarea, [contenteditable] {
   -webkit-user-select: text;
   user-select: text;
+  touch-action: auto; /* Allow normal touch for inputs */
 }
 
-/* Enable smooth scrolling but responsive */
+/* Remove smooth scrolling that causes delays */
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto; /* Changed from smooth to auto */
 }
 
 /* Fix modal scrolling on mobile */
@@ -206,12 +211,19 @@ html {
 
 /* Fix scroll lag and responsiveness */
 body {
-  -webkit-transform: translateZ(0); /* Enable hardware acceleration */
+  -webkit-transform: translateZ(0);
   transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* Remove scroll delays */
 * {
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
+}
+
+/* Prevent scroll chaining issues */
+* {
+  -webkit-overflow-scrolling: touch;
 }

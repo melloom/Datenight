@@ -86,10 +86,11 @@ export function TutorialOverlay() {
     if (!isActive) return
     const handler = () => measure()
     window.addEventListener("resize", handler)
-    window.addEventListener("scroll", handler, true)
+    // Remove scroll listener to prevent scrolling interference
+    // window.addEventListener("scroll", handler, true)
     return () => {
       window.removeEventListener("resize", handler)
-      window.removeEventListener("scroll", handler, true)
+      // window.removeEventListener("scroll", handler, true)
     }
   }, [isActive, measure])
 

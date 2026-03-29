@@ -1001,30 +1001,25 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
   // Scroll to center modal when it opens
   const scrollToModal = () => {
-    // Reduced delay for better responsiveness
-    setTimeout(() => {
-      const modal = document.querySelector('.fixed.inset-0.bg-black\\/50')
-      if (modal) {
-        // Get modal's position and size
-        const rect = modal.getBoundingClientRect()
-        const modalHeight = rect.height
-        const viewportHeight = window.innerHeight
-        
-        // Calculate scroll position to center modal
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-        const modalTop = rect.top + scrollTop
-        const desiredScrollTop = modalTop - (viewportHeight - modalHeight) / 2
-        
-        // Use instant scroll for better responsiveness
-        window.scrollTo({
-          top: Math.max(0, desiredScrollTop),
-          behavior: 'auto' // Changed from 'smooth' to 'auto'
-        })
-      } else {
-        // Fallback to top if modal not found
-        window.scrollTo({ top: 0, behavior: 'auto' }) // Changed from 'smooth' to 'auto'
-      }
-    }, 50) // Reduced from 100ms to 50ms
+    // Remove delay completely for instant response
+    const modal = document.querySelector('.fixed.inset-0.bg-black\\/50')
+    if (modal) {
+      // Get modal's position and size
+      const rect = modal.getBoundingClientRect()
+      const modalHeight = rect.height
+      const viewportHeight = window.innerHeight
+      
+      // Calculate scroll position to center modal
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+      const modalTop = rect.top + scrollTop
+      const desiredScrollTop = modalTop - (viewportHeight - modalHeight) / 2
+      
+      // Use instant scroll with no animation
+      window.scrollTo(0, Math.max(0, desiredScrollTop))
+    } else {
+      // Fallback to top if modal not found
+      window.scrollTo(0, 0)
+    }
   }
 
   // Load history from localStorage on mount
