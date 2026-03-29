@@ -139,16 +139,6 @@ class VenueSearcher {
         requestsPerMinute: 300,
         requestsPerDay: 5000
       }
-    },
-    {
-      name: 'Yelp Fusion API',
-      baseUrl: 'https://api.yelp.com/v3/businesses',
-      enabled: false, // Disabled - API key not configured
-      rateLimit: {
-        requestsPerSecond: 5,
-        requestsPerMinute: 300,
-        requestsPerDay: 5000
-      }
     }
   ]
 
@@ -667,13 +657,6 @@ class VenueSearcher {
       return venues
     }
 
-    if (source.name === 'Yelp Fusion API') {
-      console.log('⭐ Searching Yelp Fusion API...')
-      const venues = await this.searchYelp(criteria)
-      console.log(`   Yelp returned ${venues.length} venues`)
-      return venues
-    }
-    
     console.log(`❌ ${source.name} is not available`)
     return []
   }
@@ -845,56 +828,7 @@ class VenueSearcher {
     }
   }
 
-  private async searchYelp(criteria: SearchCriteria): Promise<Venue[]> {
-    try {
-      const location = await this.geocodeLocation(criteria.location)
-      if (!location) return []
-
-      const radius = TIME_FILTERS[criteria.time].searchRadius * 1609
-      const venues: Venue[] = []
-
-      // Search for different venue types via server-side API route
-      const categories = this.getYelpCategories(criteria)
-
-      for (const category of categories) {
-        try {
-          const response = await fetch('/api/venues/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'yelp',
-              lat: location.lat,
-              lng: location.lng,
-              radius: Math.min(radius, 40000),
-              query: category
-            })
-          })
-
-          if (!response.ok) {
-            console.error(`Yelp API error for ${category}: ${response.status}`)
-            continue
-          }
-
-          const data = await response.json()
-
-          if (data.businesses) {
-            const places = data.businesses.map((place: any) => this.convertYelpToVenue(place, criteria))
-            venues.push(...places)
-          }
-
-          await new Promise(resolve => setTimeout(resolve, 200))
-        } catch (error) {
-          console.error(`Yelp search failed for ${category}:`, error)
-        }
-      }
-
-      return venues
-    } catch (error) {
-      console.error('Yelp API search failed:', error)
-      return []
-    }
-  }
-
+  
   private getFoursquareCategories(criteria: SearchCriteria): string[] {
     const categories = []
     
@@ -927,39 +861,7 @@ class VenueSearcher {
     return [...new Set(categories)]
   }
 
-  private getYelpCategories(criteria: SearchCriteria): string[] {
-    const categories = []
-    
-    if (criteria.time === 'early') {
-      categories.push('restaurants')
-    } else if (criteria.time === 'prime') {
-      categories.push('bars', 'restaurants')
-    } else {
-      categories.push('bars', 'nightlife')
-    }
-
-    // Include only essential entertainment categories to avoid rate limiting
-    categories.push('bowling', 'arcades', 'movietheaters')
-    categories.push('karaoke', 'comedyclubs')
-
-    // Add cuisine-specific category for Yelp
-    const cuisine = criteria.customCuisine || criteria.cuisine
-    if (cuisine && cuisine !== 'any') {
-      categories.push(cuisine.toLowerCase().replace(/\s+/g, ''))
-    }
-
-    // Add activity-specific category for Yelp
-    const activity = criteria.customActivity || criteria.activity
-    if (activity && activity !== 'none') {
-      if (activity === 'live-music') categories.push('musicvenues')
-      else if (activity === 'art') categories.push('galleries', 'museums')
-      else if (activity === 'outdoor') categories.push('parks')
-      else categories.push(activity.toLowerCase().replace(/\s+/g, ''))
-    }
-    
-    return [...new Set(categories)]
-  }
-
+  
   private convertFoursquareToVenue(place: any, criteria: SearchCriteria): Venue {
     return {
       id: `foursquare-${place.fsq_id}`,
@@ -985,31 +887,6 @@ class VenueSearcher {
     }
   }
 
-  private convertYelpToVenue(place: any, criteria: SearchCriteria): Venue {
-    return {
-      id: `yelp-${place.id}`,
-      name: place.name,
-      category: this.categorizeYelpPlace(place),
-      rating: place.rating || 4.0,
-      reviewCount: place.review_count || 100,
-      priceRange: this.convertYelpPrice(place.price),
-      address: place.location?.address1 ? `${place.location.address1}, ${place.location.city}, ${place.location.state}` : 'Address not available',
-      phone: place.display_phone,
-      website: place.url,
-      imageUrl: place.image_url || `https://source.unsplash.com/400x300/?${encodeURIComponent(place.name)}`,
-      description: this.generateYelpDescription(place),
-      highlights: this.generateYelpHighlights(place),
-      coordinates: {
-        lat: place.coordinates?.latitude,
-        lng: place.coordinates?.longitude
-      },
-      hours: place.hours?.[0]?.open?.map((h: any) => `${h.day}: ${h.start}-${h.end}`).join(', '),
-      tags: place.categories?.map((c: any) => c.title) || [],
-      capacity: undefined,
-      features: this.extractYelpFeatures(place)
-    }
-  }
-
   private categorizeFoursquarePlace(place: any): 'drinks' | 'dinner' | 'activity' {
     const categories = place.categories || []
     
@@ -1023,37 +900,17 @@ class VenueSearcher {
     return 'activity'
   }
 
-  private categorizeYelpPlace(place: any): 'drinks' | 'dinner' | 'activity' {
-    const categories = place.categories || []
-    
-    if (categories.some((c: any) => c.title.toLowerCase().includes('bar') || c.title.toLowerCase().includes('pub'))) {
-      return 'drinks'
-    }
-    if (categories.some((c: any) => c.title.toLowerCase().includes('restaurant') || c.title.toLowerCase().includes('food'))) {
-      return 'dinner'
-    }
-    
-    return 'activity'
-  }
-
   private convertFoursquarePrice(price?: number): string {
     const levels = ['$', '$$', '$$$', '$$$$']
     return price ? levels[price - 1] || '$$' : '$$'
   }
 
-  private convertYelpPrice(price?: string): string {
-    return price || '$$'
-  }
 
   private generateFoursquareDescription(place: any): string {
     const categories = place.categories?.map((c: any) => c.name).join(', ') || 'venue'
     return `${place.name} is a ${categories} known for its quality service and atmosphere.`
   }
 
-  private generateYelpDescription(place: any): string {
-    const categories = place.categories?.map((c: any) => c.title).join(', ') || 'venue'
-    return `${place.name} is a ${categories} with ${place.review_count} reviews and a ${place.rating} star rating.`
-  }
 
   private generateFoursquareHighlights(place: any): string[] {
     const highlights = ['Popular with locals', 'Great atmosphere']
@@ -1061,16 +918,6 @@ class VenueSearcher {
     if (place.rating >= 4.5) highlights.push('Excellent ratings')
     if (place.stats?.total_ratings >= 1000) highlights.push('Popular spot')
     if (place.price) highlights.push(`${this.convertFoursquarePrice(place.price)} pricing`)
-    
-    return highlights.slice(0, 6)
-  }
-
-  private generateYelpHighlights(place: any): string[] {
-    const highlights = ['Popular with locals', 'Great atmosphere']
-    
-    if (place.rating >= 4.5) highlights.push('Excellent ratings')
-    if (place.review_count >= 1000) highlights.push('Popular spot')
-    if (place.price) highlights.push(`${place.price} pricing`)
     
     return highlights.slice(0, 6)
   }
@@ -1086,16 +933,6 @@ class VenueSearcher {
     return features
   }
 
-  private extractYelpFeatures(place: any): string[] {
-    const features = []
-    
-    if (place.transactions?.includes('delivery')) features.push('Delivery Available')
-    if (place.transactions?.includes('pickup')) features.push('Pickup Available')
-    if (place.transactions?.includes('restaurant_reservation')) features.push('Reservations')
-    
-    return features
-  }
-
   private getFoursquareClientId(): string {
     return process.env.FOURSQUARE_CLIENT_ID || 'demo-client-id'
   }
@@ -1104,9 +941,6 @@ class VenueSearcher {
     return process.env.FOURSQUARE_CLIENT_SECRET || 'demo-client-secret'
   }
 
-  private getYelpApiKey(): string {
-    return process.env.YELP_API_KEY || 'demo-yelp-key'
-  }
 
   private async searchGooglePlaces(criteria: SearchCriteria): Promise<Venue[]> {
     try {

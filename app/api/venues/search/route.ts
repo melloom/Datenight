@@ -6,10 +6,9 @@ import { sanitizeForSearch } from '@/lib/profanity-filter'
 const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || ''
 const FOURSQUARE_CLIENT_ID = process.env.FOURSQUARE_CLIENT_ID || ''
 const FOURSQUARE_CLIENT_SECRET = process.env.FOURSQUARE_CLIENT_SECRET || ''
-const YELP_API_KEY = process.env.YELP_API_KEY || ''
 
 const venueSearchSchema = z.object({
-  action: z.enum(['google-places', 'google-text-search', 'google-geocode', 'google-place-details', 'foursquare', 'yelp', 'overpass']),
+  action: z.enum(['google-places', 'google-text-search', 'google-geocode', 'google-place-details', 'foursquare', 'overpass']),
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
   radius: z.number().min(1).max(50000).optional(),
@@ -115,23 +114,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(data)
     }
 
-    if (action === 'yelp') {
-      if (!YELP_API_KEY || YELP_API_KEY === 'your_yelp_api_key_here') {
-        return NextResponse.json({ error: 'Yelp API not configured' }, { status: 503 })
-      }
-
-      if (radius === undefined) {
-        return NextResponse.json({ error: 'Radius is required for Yelp search' }, { status: 400 })
-      }
-
-      const url = `https://api.yelp.com/v3/businesses/search?latitude=${lat}&longitude=${lng}&radius=${Math.min(radius, 40000)}&term=${encodeURIComponent(query || '')}&limit=20`
-      const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${YELP_API_KEY}` }
-      })
-      const data = await response.json()
-      return NextResponse.json(data)
-    }
-
+    
     if (action === 'overpass') {
       const { query: overpassQuery } = body
       if (!overpassQuery) {
