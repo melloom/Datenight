@@ -160,12 +160,12 @@ html, body {
   margin: 0;
   padding: 0;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  overscroll-behavior: auto; /* Changed from contain to auto */
 }
 
 main {
   width: 100%;
-  height: 100%;
+  height: auto; /* Changed from 100% to auto */
   min-height: 100vh;
   min-height: 100svh;
   -webkit-overflow-scrolling: touch;
@@ -175,15 +175,16 @@ main {
 /* Improve mobile touch scrolling */
 * {
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: default; /* Changed from none to default */
 }
 
-/* Allow text selection for inputs and text areas */
+/* Allow text selection and touch interactions */
 input, textarea, [contenteditable] {
   -webkit-user-select: text;
   user-select: text;
 }
 
-/* Smooth scrolling for better mobile experience */
+/* Enable smooth scrolling but responsive */
 html {
   scroll-behavior: smooth;
 }
@@ -201,4 +202,16 @@ html {
   html {
     height: -webkit-fill-available;
   }
+}
+
+/* Fix scroll lag and responsiveness */
+body {
+  -webkit-transform: translateZ(0); /* Enable hardware acceleration */
+  transform: translateZ(0);
+}
+
+/* Remove scroll delays */
+* {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }

@@ -1001,7 +1001,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
   // Scroll to center modal when it opens
   const scrollToModal = () => {
-    // Small delay to ensure modal is rendered
+    // Reduced delay for better responsiveness
     setTimeout(() => {
       const modal = document.querySelector('.fixed.inset-0.bg-black\\/50')
       if (modal) {
@@ -1015,16 +1015,16 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         const modalTop = rect.top + scrollTop
         const desiredScrollTop = modalTop - (viewportHeight - modalHeight) / 2
         
-        // Smooth scroll to center the modal
+        // Use instant scroll for better responsiveness
         window.scrollTo({
           top: Math.max(0, desiredScrollTop),
-          behavior: 'smooth'
+          behavior: 'auto' // Changed from 'smooth' to 'auto'
         })
       } else {
         // Fallback to top if modal not found
-        window.scrollTo({ top: 0, behavior: 'smooth' })
+        window.scrollTo({ top: 0, behavior: 'auto' }) // Changed from 'smooth' to 'auto'
       }
-    }, 100)
+    }, 50) // Reduced from 100ms to 50ms
   }
 
   // Load history from localStorage on mount
