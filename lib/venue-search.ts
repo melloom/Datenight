@@ -1158,7 +1158,11 @@ class VenueSearcher {
           })
 
           if (!response.ok) {
-            console.error(`Google Places API error for ${placeType}: ${response.status}`)
+            if (response.status === 503) {
+              console.error(`⚠️ Google Places API unavailable (503) - service may be down or quota exceeded`)
+            } else {
+              console.error(`Google Places API error for ${placeType}: ${response.status}`)
+            }
             continue
           }
 
@@ -1925,6 +1929,10 @@ class VenueSearcher {
             continue
           } else if (response.status === 504) {
             console.error('⏰ Gateway timeout (504), skipping this query...')
+            continue
+          } else if (response.status === 400) {
+            console.error(`⚠️ Overpass API bad request (400) - query may be invalid for area "${criteria.location}"`)
+            console.log(`🔍 Query preview: ${query.substring(0, 200)}...`)
             continue
           } else {
             console.error(`Overpass API error: ${response.status}`)
