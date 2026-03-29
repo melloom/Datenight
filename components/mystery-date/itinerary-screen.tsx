@@ -1082,6 +1082,102 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     localStorage.setItem('datePlanHistory', JSON.stringify(updatedHistory))
   }
 
+  // Calendar export functions
+  const exportToGoogleCalendar = () => {
+    const events = generateCalendarEvents(steps, selectedDate, steps.map((step, index) => step.travelTimeToNext || 10), startTime, includeTravelTime, calendarNotes, reminders)
+    
+    events.forEach((event, index) => {
+      const startDate = new Date(event.startTime)
+      const endDate = new Date(event.endTime)
+      
+      // Format dates for Google Calendar URL
+      const formatDate = (date: Date) => {
+        return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+      }
+      
+      const startTimeStr = formatDate(startDate)
+      const endTimeStr = formatDate(endDate)
+      
+      // Create Google Calendar URL
+      const details = event.description.replace(/\n/g, '\\n')
+      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${startTimeStr}/${endTimeStr}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(event.location)}`
+      
+      // Open in new tab
+      window.open(googleCalendarUrl, '_blank')
+    })
+  }
+
+  const exportToICalendar = () => {
+    const events = generateCalendarEvents(steps, selectedDate, steps.map((step, index) => step.travelTimeToNext || 10), startTime, includeTravelTime, calendarNotes, reminders)
+    
+    // Generate iCalendar content
+    let icalContent = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Date Night Planner//Date Night//EN\nCALSCALE:GREGORIAN\n'
+    
+    events.forEach((event) => {
+      const startDate = new Date(event.startTime)
+      const endDate = new Date(event.endTime)
+      
+      // Format dates for iCalendar
+      const formatDate = (date: Date) => {
+        return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '') + 'Z'
+      }
+      
+      const startTimeStr = formatDate(startDate)
+      const endTimeStr = formatDate(endDate)
+      
+      // Escape special characters
+      const escapeText = (text: string) => {
+        return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
+      }
+      
+      icalContent += `BEGIN:VEVENT\n`
+      icalContent += `UID:${event.id}@datenight.app\n`
+      icalContent += `DTSTART:${startTimeStr}\n`
+      icalContent += `DTEND:${endTimeStr}\n`
+      icalContent += `SUMMARY:${escapeText(event.title)}\n`
+      icalContent += `DESCRIPTION:${escapeText(event.description)}\n`
+      icalContent += `LOCATION:${escapeText(event.location)}\n`
+      icalContent += `END:VEVENT\n`
+    })
+    
+    icalContent += 'END:VCALENDAR'
+    
+    // Create and download file
+    const blob = new Blob([icalContent], { type: 'text/calendar;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `date-night-${selectedDate.toISOString().split('T')[0]}.ics`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  const exportToOutlook = () => {
+    const events = generateCalendarEvents(steps, selectedDate, steps.map((step, index) => step.travelTimeToNext || 10), startTime, includeTravelTime, calendarNotes, reminders)
+    
+    events.forEach((event) => {
+      const startDate = new Date(event.startTime)
+      const endDate = new Date(event.endTime)
+      
+      // Format dates for Outlook URL
+      const formatDate = (date: Date) => {
+        return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+      }
+      
+      const startTimeStr = formatDate(startDate)
+      const endTimeStr = formatDate(endDate)
+      
+      // Create Outlook Calendar URL
+      const details = event.description.replace(/\n/g, '%0A')
+      const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(event.title)}&startdt=${startTimeStr}&enddt=${endTimeStr}&body=${encodeURIComponent(details)}&location=${encodeURIComponent(event.location)}`
+      
+      // Open in new tab
+      window.open(outlookUrl, '_blank')
+    })
+  }
+
   // Toggle favorite
   const toggleFavorite = (id: string) => {
     const updatedHistory = datePlanHistory.map(item =>
@@ -2000,23 +2096,40 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                   Add to Calendar
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
-                  <a
-                    href={createGoogleCalendarUrl(calendarEvents)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={exportToGoogleCalendar}
                     className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
                   >
                     <Calendar className="w-4 h-4" />
                     Google Calendar
-                  </a>
-                  <a
-                    href={createAppleCalendarUrl(calendarEvents)}
-                    download="date-night.ics"
+                  </button>
+                  <button
+                    onClick={exportToICalendar}
                     className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-gray-800 text-white text-sm font-medium hover:bg-gray-900 transition-colors"
                   >
                     <Calendar className="w-4 h-4" />
                     Apple Calendar
-                  </a>
+                  </button>
+                  <button
+                    onClick={exportToOutlook}
+                    className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-blue-700 text-white text-sm font-medium hover:bg-blue-800 transition-colors"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    Outlook
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Copy calendar events to clipboard
+                      const events = generateCalendarEvents(steps, selectedDate, steps.map((step, index) => step.travelTimeToNext || 10), startTime, includeTravelTime, calendarNotes, reminders)
+                      const text = events.map(event => `${event.title}\n${event.start.toLocaleString()} - ${event.end.toLocaleString()}\n${event.location}\n${event.description}`).join('\n\n')
+                      navigator.clipboard.writeText(text)
+                      alert('Calendar events copied to clipboard!')
+                    }}
+                    className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy to Clipboard
+                  </button>
                 </div>
                 
                 {/* Calendar Summary */}

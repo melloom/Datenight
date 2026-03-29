@@ -918,7 +918,6 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                     </div>
                   ))}
                 </div>
-              </div>
 
                 {/* History Stats */}
                 <div className="bg-blue-500/5 rounded-lg p-3 border border-blue-500/20">
