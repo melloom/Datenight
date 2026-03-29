@@ -16,13 +16,15 @@ interface LateNightAlertProps {
   onSuggestionSelect?: (suggestion: AlternativeSuggestion) => void
   onSameDaySelect?: (option: SameDayOption) => void
   onDismiss?: () => void
+  isGenerating?: boolean
 }
 
 export function LateNightAlert({ 
   response, 
   onSuggestionSelect, 
   onSameDaySelect, 
-  onDismiss 
+  onDismiss,
+  isGenerating = false 
 }: LateNightAlertProps) {
   const { detection, suggestions, sameDayOptions, message, urgency } = response
   
@@ -142,12 +144,13 @@ export function LateNightAlert({
                     </div>
                     {onSameDaySelect && (
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
                         onClick={() => onSameDaySelect(option)}
+                        disabled={isGenerating}
                         className="ml-2 h-8"
                       >
-                        Choose
+                        {isGenerating ? '...' : 'Choose'}
                       </Button>
                     )}
                   </div>
@@ -184,9 +187,10 @@ export function LateNightAlert({
                         variant="ghost"
                         size="sm"
                         onClick={() => onSuggestionSelect(suggestion)}
+                        disabled={isGenerating}
                         className="h-6 w-6 p-0"
                       >
-                        <ChevronRight className="h-4 w-4" />
+                        {isGenerating ? '...' : <ChevronRight className="h-4 w-4" />}
                       </Button>
                     )}
                   </div>
