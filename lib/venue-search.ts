@@ -345,11 +345,25 @@ class VenueSearcher {
       console.log('💡 Try: Check API keys, verify location name, or try a different location')
     }
 
+    console.log(`📊 Final venue counts:`)
+    console.log(`   • All venues found: ${allVenues.length}`)
+    console.log(`   • Optimized plan: ${finalPlan.length}`)
+    console.log(`   • Available for date: ${optimizedPlan.length}`)
+
     const endTime = Date.now()
     const searchTime = endTime - startTime
 
     // Check for late night scenario and generate alternatives
     const currentTime = new Date()
+    
+    // Use all available venues for late night detection, not just the final plan
+    const searchResultForDetection = {
+      venues: allVenues, // Use all found venues, not just the final plan
+      totalFound: allVenues.length,
+      searchTime,
+      sources: usedSources.length > 0 ? usedSources : ['Fallback']
+    }
+
     const searchResult = {
       venues: finalPlan,
       totalFound: Math.max(allVenues.length, finalPlan.length),
@@ -357,12 +371,13 @@ class VenueSearcher {
       sources: usedSources.length > 0 ? usedSources : ['Fallback']
     }
 
-    // Run late night detection
-    const detection = lateNightDetector.detectLateNightScenario(currentTime, searchResult, criteria)
+    // Run late night detection on all available venues
+    const detection = lateNightDetector.detectLateNightScenario(currentTime, searchResultForDetection, criteria)
     
     let lateNightResponse: LateNightResponse | undefined
     if (detection.isTooLate) {
       console.log('🌙 Late night scenario detected, generating alternatives...')
+      console.log(`📊 Detection based on ${allVenues.length} total venues found`)
       const suggestions = lateNightDetector.generateAlternativeSuggestions(detection, criteria)
       lateNightResponse = lateNightDetector.generateResponse(detection, suggestions, criteria)
       console.log(`💡 Generated ${lateNightResponse.suggestions.length} alternative suggestions`)
@@ -547,16 +562,27 @@ class VenueSearcher {
 
   private optimizeDatePlan(venues: Venue[], criteria: SearchCriteria): Venue[] {
     console.log('🗺️ Optimizing date plan with travel time and custom preferences...')
+    console.log(`📊 Input venues by category:`)
+    console.log(`   • Total venues: ${venues.length}`)
 
     // Group venues by category
     const drinks = venues.filter(v => v.category === 'drinks').slice(0, 5)
     const dinner = venues.filter(v => v.category === 'dinner').slice(0, 5)
     const activity = venues.filter(v => v.category === 'activity').slice(0, 5)
+    
+    console.log(`   • Drinks: ${drinks.length}`)
+    console.log(`   • Dinner: ${dinner.length}`)
+    console.log(`   • Activity: ${activity.length}`)
 
     // Apply custom preference filtering
     const filteredDrinks = this.applyCustomPreferencesFilter(drinks, criteria)
     const filteredDinner = this.applyCustomPreferencesFilter(dinner, criteria)
     const filteredActivity = this.applyCustomPreferencesFilter(activity, criteria)
+    
+    console.log(`📋 After custom filtering:`)
+    console.log(`   • Filtered drinks: ${filteredDrinks.length}`)
+    console.log(`   • Filtered dinner: ${filteredDinner.length}`)
+    console.log(`   • Filtered activity: ${filteredActivity.length}`)
 
     // Select best venues for each category
     const selectedVenues: Venue[] = []
@@ -594,7 +620,9 @@ class VenueSearcher {
       .slice(0, 3 - selectedVenues.length)
 
     selectedVenues.push(...remaining)
-
+    
+    console.log(`🎉 Final optimized plan: ${selectedVenues.length} venues`)
+    
     // Optimize order based on travel time (simplified)
     return this.optimizeVenueOrder(selectedVenues, criteria.location)
   }
