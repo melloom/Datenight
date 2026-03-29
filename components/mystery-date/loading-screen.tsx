@@ -76,21 +76,32 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
 
     const startSearch = async () => {
       try {
-        setSearchStatus("Searching your area...")
-        const result = await venueSearcher.searchVenues(searchCriteria)
+        setSearchStatus("🔍 Finding venues near you...")
+        
+        // Add timeout to prevent infinite loading
+        const searchPromise = venueSearcher.searchVenues(searchCriteria)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Search timeout')), 30000) // 30s max
+        )
+        
+        const result = await Promise.race([searchPromise, timeoutPromise]) as any
 
         if (result.venues.length === 0) {
-          setSearchStatus("No venues found. Trying alternatives...")
+          setSearchStatus("❌ No venues found. Try a different location?")
           finishLoading([])
           return
         }
 
-        setSearchStatus(`Found ${result.totalFound} venues!`)
+        setSearchStatus(`✅ Found ${result.totalFound} venues! Creating your date...`)
         const selectedVenues = selectVenuesForDate(result.venues)
         finishLoading(selectedVenues)
       } catch (error) {
         console.error("Venue search failed:", error)
-        setSearchStatus("Search failed. Please try again.")
+        if (error instanceof Error && error.message === 'Search timeout') {
+          setSearchStatus("⏰ Search taking too long. Please try again.")
+        } else {
+          setSearchStatus("❌ Search failed. Please try again.")
+        }
         finishLoading([])
       }
     }

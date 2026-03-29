@@ -200,18 +200,27 @@ class VenueSearcher {
     const constraints = this.calculateConstraints(criteria)
     console.log('📋 Search constraints:', constraints)
 
-    // Search from multiple sources in parallel (AI enhancement is optional)
+    // Search from multiple sources in parallel with timeout protection
+    console.log(`🚀 Starting parallel search from ${this.searchSources.filter(s => s.enabled).length} sources...`)
+    
     const searchPromises = this.searchSources
       .filter(source => source.enabled)
       .map(async source => {
         try {
           console.log(`🔍 Searching ${source.name}...`)
-          const venues = await this.searchSource(source, criteria)
+          // Add timeout to prevent hanging
+          const timeoutPromise = new Promise<Venue[]>((_, reject) => 
+            setTimeout(() => reject(new Error('Search timeout')), 15000) // 15s timeout
+          )
+          const venues = await Promise.race([
+            this.searchSource(source, criteria),
+            timeoutPromise
+          ]) as Venue[]
           console.log(`✅ ${source.name} returned ${venues.length} venues`)
           usedSources.push(source.name)
           return venues
         } catch (error) {
-          console.error(`❌ ${source.name} failed:`, error)
+          console.error(`❌ ${source.name} failed:`, error instanceof Error ? error.message : error)
           return []
         }
       })
@@ -219,8 +228,14 @@ class VenueSearcher {
     // Also search for entertainment/activity venues using AI search terms or defaults
     const activitySearchPromise = this.searchActivitiesWithTextSearch(criteria, aiEnhancement)
 
-    // Wait for all searches to complete
-    const searchResults = await Promise.all([...searchPromises, activitySearchPromise])
+    // Wait for all searches to complete with overall timeout
+    const searchResults = await Promise.all([
+      ...searchPromises, 
+      Promise.race([
+        activitySearchPromise,
+        new Promise<Venue[]>(resolve => setTimeout(() => resolve([]), 10000)) // 10s fallback
+      ])
+    ])
     allVenues.push(...searchResults.flat())
 
     console.log(`📈 Total venues found: ${allVenues.length}`)
@@ -233,21 +248,31 @@ class VenueSearcher {
     const filteredVenues = this.enhancedFilter(uniqueVenues, criteria)
     console.log(`🎯 After enhanced filtering: ${filteredVenues.length} venues`)
 
-    // Try AI-powered venue analysis for top results (optional)
+    // Try AI enhancement for venue insights (optional, doesn't fail if unavailable)
     let aiEnhancedVenues = filteredVenues
-    try {
-      console.log('🤖 Attempting AI venue analysis...')
-      aiEnhancedVenues = await this.enhanceVenuesWithAI(filteredVenues.slice(0, 10))
-      console.log(`✨ AI enhanced ${aiEnhancedVenues.filter(v => v.aiEnhanced).length} venues`)
-    } catch (error) {
-      console.log('⚠️ AI analysis unavailable, using venues without AI enhancement')
-      aiEnhancedVenues = filteredVenues.slice(0, 10).map(v => ({ ...v, aiEnhanced: false }))
+    // Only run AI enhancement if we have venues and it's not disabled
+    if (filteredVenues.length > 0 && filteredVenues.length <= 20) {
+      try {
+        console.log('🤖 Attempting AI venue analysis...')
+        // Reduce AI processing to only top 5 venues for speed
+        const aiPromise = this.enhanceVenuesWithAI(filteredVenues.slice(0, 5))
+        const timeoutPromise = new Promise<Venue[]>(resolve => 
+          setTimeout(() => resolve(filteredVenues.slice(0, 5)), 8000) // 8s timeout
+        )
+        aiEnhancedVenues = await Promise.race([aiPromise, timeoutPromise])
+        console.log(`✨ AI enhanced ${aiEnhancedVenues.filter(v => v.aiEnhanced).length} venues`)
+      } catch (error) {
+        console.log('⚠️ AI analysis unavailable, using venues without AI enhancement')
+        aiEnhancedVenues = filteredVenues
+      }
+    } else {
+      console.log(`⏩ Skipping AI enhancement (${filteredVenues.length} venues)`)
     }
 
     // Merge AI-enhanced venues back with the rest
     const finalVenues = [
       ...aiEnhancedVenues,
-      ...filteredVenues.slice(10).map(v => ({ ...v, aiEnhanced: false }))
+      ...filteredVenues.slice(5).map(v => ({ ...v, aiEnhanced: false }))
     ]
 
     // Smart ranking with travel time optimization and AI insights
@@ -1771,30 +1796,15 @@ out count;
 
   private buildOverpassQueries(criteria: SearchCriteria): string[] {
     const queries = []
-
-    // Simplified amenity types to reduce query complexity
-    const coreTypes = 'restaurant|bar|pub|cinema|theatre|bowling_alley|nightclub'
     
     // Extract location name for simpler queries
     const locationName = this.extractLocationName(criteria.location)
     const stateName = this.extractStateName(criteria.location)
 
-    // Query 1: Simple state-based search with reduced timeout (faster)
+    // Query 1: Ultra-fast - just restaurants and bars in state (8s timeout)
     if (stateName) {
       queries.push(`
-[out:json][timeout:15];
-area["name"="${stateName}"]->.searchArea;
-(
-  node["amenity"~"${coreTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis"](area.searchArea);
-);
-out geom;
-`)
-    }
-
-    // Query 2: Even simpler - just restaurants and bars
-    if (stateName) {
-      queries.push(`
-[out:json][timeout:15];
+[out:json][timeout:8];
 area["name"="${stateName}"]->.searchArea;
 (
   node["amenity"~"restaurant|bar|pub"](area.searchArea);
@@ -1803,13 +1813,25 @@ out geom;
 `)
     }
 
-    // Query 3: Minimal fallback - just state filter, nodes only
-    queries.push(`
-[out:json][timeout:10];
+    // Query 2: Even more minimal - just restaurants (5s timeout)
+    if (stateName) {
+      queries.push(`
+[out:json][timeout:5];
+area["name"="${stateName}"]->.searchArea;
 (
-  node["amenity"~"restaurant|bar"]["addr:state"="${stateName}"];
+  node["amenity"="restaurant"](area.searchArea);
 );
 out geom;
+`)
+    }
+
+    // Query 3: Last resort - just state filter, count only (3s timeout)
+    queries.push(`
+[out:json][timeout:3];
+(
+  node["amenity"="restaurant"]["addr:state"="${stateName}"];
+);
+out count;
 `)
 
     return queries
