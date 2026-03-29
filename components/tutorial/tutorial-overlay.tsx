@@ -1,12 +1,11 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
-import { X, ArrowRight, ArrowLeft, Sparkles, Hand } from "lucide-react"
+import { X, ArrowRight, ArrowLeft } from "lucide-react"
 import { useTutorial } from "@/lib/tutorial-context"
 import { cn } from "@/lib/utils"
 
 const PAD = 10
-const ARROW_SIZE = 10
 const TOOLTIP_GAP = 14
 
 interface Rect {
@@ -81,16 +80,13 @@ export function TutorialOverlay() {
     }
   }, [isActive, currentStep, step, measure])
 
-  // Re-measure on resize / scroll
+  // Re-measure on resize
   useEffect(() => {
     if (!isActive) return
     const handler = () => measure()
     window.addEventListener("resize", handler)
-    // Remove scroll listener to prevent scrolling interference
-    // window.addEventListener("scroll", handler, true)
     return () => {
       window.removeEventListener("resize", handler)
-      // window.removeEventListener("scroll", handler, true)
     }
   }, [isActive, measure])
 
@@ -175,12 +171,31 @@ export function TutorialOverlay() {
 
   return (
     <div className="fixed inset-0 z-100" style={{ pointerEvents: "none" }}>
-      {/* ── SVG overlay with cutout ── */}
-      <svg
-        className="absolute inset-0 w-full h-full"
+      {/* ── Box-shadow overlay with spotlight cutout ── */}
+      {cutout ? (
+        <div
+          className="absolute rounded-[14px] border-2 border-primary/40 pointer-events-none"
+          style={{
+            top: cutout.y,
+            left: cutout.x,
+            width: cutout.w,
+            height: cutout.h,
+            boxShadow: "0 0 0 9999px rgba(0,0,0,0.6)",
+            transition: "all 0.35s cubic-bezier(.4,0,.2,1)",
+          }}
+        />
+      ) : (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: "rgba(0,0,0,0.6)" }}
+        />
+      )}
+
+      {/* Backdrop click catcher */}
+      <div
+        className="absolute inset-0"
         style={{ pointerEvents: "auto" }}
         onClick={(e) => {
-          // Allow clicks to pass through the cutout area
           if (cutout) {
             const cx = e.clientX
             const cy = e.clientY
@@ -190,62 +205,12 @@ export function TutorialOverlay() {
               cy >= cutout.y &&
               cy <= cutout.y + cutout.h
             ) {
-              return // let it pass
+              return
             }
           }
-          // Otherwise swallow clicks on the backdrop
           e.stopPropagation()
         }}
-      >
-        <defs>
-          <mask id="tutorial-mask">
-            <rect width="100%" height="100%" fill="white" />
-            {cutout && (
-              <rect
-                x={cutout.x}
-                y={cutout.y}
-                width={cutout.w}
-                height={cutout.h}
-                rx={cutout.rx}
-                fill="black"
-              />
-            )}
-          </mask>
-        </defs>
-        <rect
-          width="100%"
-          height="100%"
-          fill="rgba(0,0,0,0.65)"
-          mask="url(#tutorial-mask)"
-        />
-      </svg>
-
-      {/* ── Pulse ring around target ── */}
-      {cutout && (
-        <>
-          <div
-            className="absolute rounded-[14px] border-2 border-primary/70 pointer-events-none"
-            style={{
-              top: cutout.y,
-              left: cutout.x,
-              width: cutout.w,
-              height: cutout.h,
-              transition: "all 0.35s cubic-bezier(.4,0,.2,1)",
-            }}
-          />
-          <div
-            className="absolute rounded-[14px] pointer-events-none animate-pulse"
-            style={{
-              top: cutout.y - 4,
-              left: cutout.x - 4,
-              width: cutout.w + 8,
-              height: cutout.h + 8,
-              border: "2px solid rgba(168,85,247,0.35)",
-              transition: "all 0.35s cubic-bezier(.4,0,.2,1)",
-            }}
-          />
-        </>
-      )}
+      />
 
       {/* ── Tooltip card ── */}
       <div
@@ -262,58 +227,43 @@ export function TutorialOverlay() {
           zIndex: 101,
         }}
       >
-        {/* Arrow */}
+        {/* Arrow — rotated square */}
         {rect && (
           <div
-            className="absolute w-0 h-0"
+            className="absolute w-3 h-3 bg-card/95 border-primary/25"
             style={{
               left: arrowLeft,
-              transform: "translateX(-50%)",
+              transform: "translateX(-50%) rotate(45deg)",
               ...(placement === "bottom"
                 ? {
-                    top: -ARROW_SIZE,
-                    borderLeft: `${ARROW_SIZE}px solid transparent`,
-                    borderRight: `${ARROW_SIZE}px solid transparent`,
-                    borderBottom: `${ARROW_SIZE}px solid hsl(var(--primary) / 0.25)`,
+                    top: -6,
+                    borderTop: "1px solid",
+                    borderLeft: "1px solid",
+                    borderColor: "inherit",
                   }
                 : {
-                    bottom: -ARROW_SIZE,
-                    borderLeft: `${ARROW_SIZE}px solid transparent`,
-                    borderRight: `${ARROW_SIZE}px solid transparent`,
-                    borderTop: `${ARROW_SIZE}px solid hsl(var(--primary) / 0.25)`,
+                    bottom: -6,
+                    borderBottom: "1px solid",
+                    borderRight: "1px solid",
+                    borderColor: "inherit",
                   }),
             }}
           />
         )}
 
-        <div className="p-5">
+        <div className="p-4">
           {/* Header row */}
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center">
-                <Sparkles className="w-3 h-3 text-primary" />
-              </div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
-                {currentStep + 1}/{steps.length}
-              </span>
-            </div>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
+              {currentStep + 1}/{steps.length}
+            </span>
             <button
               onClick={skipTutorial}
-              className="w-6 h-6 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               aria-label="Close tutorial"
             >
               <X className="w-3.5 h-3.5" />
             </button>
-          </div>
-
-          {/* Progress bar */}
-          <div className="w-full h-1 bg-muted rounded-full mb-4 overflow-hidden">
-            <div
-              className="h-full bg-linear-to-r from-primary to-primary/70 rounded-full transition-all duration-500 ease-out"
-              style={{
-                width: `${((currentStep + 1) / steps.length) * 100}%`,
-              }}
-            />
           </div>
 
           {/* Content */}
@@ -324,22 +274,13 @@ export function TutorialOverlay() {
             {step.content}
           </p>
 
-          {step.action && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/8 border border-primary/15 mb-4">
-              <Hand className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span className="text-xs font-medium text-primary">
-                {step.action}
-              </span>
-            </div>
-          )}
-
           {/* Navigation */}
           <div className="flex items-center justify-between gap-2">
             <button
               onClick={prevStep}
               disabled={currentStep === 0}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all",
+                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all min-h-[40px]",
                 currentStep === 0
                   ? "text-muted-foreground/40 cursor-not-allowed"
                   : "text-foreground hover:bg-accent border border-border"
@@ -354,6 +295,7 @@ export function TutorialOverlay() {
               {steps.map((_, index) => (
                 <div
                   key={index}
+                  data-compact
                   className={cn(
                     "h-1.5 rounded-full transition-all duration-300",
                     index === currentStep
@@ -368,19 +310,12 @@ export function TutorialOverlay() {
 
             <button
               onClick={nextStep}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 active:scale-[0.97] transition-all shadow-sm shadow-primary/25"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 active:scale-[0.97] transition-all shadow-sm shadow-primary/25 min-h-[40px]"
             >
               {currentStep === steps.length - 1 ? "Done!" : "Next"}
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
-
-          {/* Keyboard hint */}
-          <p className="text-[10px] text-muted-foreground/50 text-center mt-3">
-            Use <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">←</kbd>{" "}
-            <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">→</kbd> keys or{" "}
-            <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Esc</kbd> to skip
-          </p>
         </div>
       </div>
     </div>

@@ -15,6 +15,7 @@ import {
   Users,
   Shuffle,
   ChevronRight,
+  ChevronDown,
   Utensils,
   Music,
   Palette,
@@ -29,6 +30,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import { validateCustomInput } from "@/lib/profanity-filter"
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 
 const BUDGET_OPTIONS = [
   { value: "$", label: "Casual", price: "$30-50", emoji: "🍕" },
@@ -109,6 +111,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const [partySize, setPartySize] = useState(2)
   const [cuisine, setCuisine] = useState<string>("any")
   const [activity, setActivity] = useState<string>("none")
+  const [showMoreOptions, setShowMoreOptions] = useState(false)
 
   // Check for alternative search criteria from late night suggestions
   useEffect(() => {
@@ -116,7 +119,6 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
     if (alternativeCriteria) {
       try {
         const criteria = JSON.parse(alternativeCriteria)
-        console.log('🔄 Loading alternative search criteria:', criteria)
         
         // Apply the alternative criteria to the form
         if (criteria.budget) setBudget(criteria.budget)
@@ -132,10 +134,8 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
         
         // Show a brief notification that criteria was loaded
         setTimeout(() => {
-          console.log('✨ Alternative search criteria applied!')
         }, 100)
       } catch (error) {
-        console.error('Error parsing alternative search criteria:', error)
         sessionStorage.removeItem('alternativeSearchCriteria')
       }
     }
@@ -170,7 +170,6 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           date: new Date(item.date)
         })))
       } catch (e) {
-        console.error('Failed to load history:', e)
       }
     }
   }, [])
@@ -462,7 +461,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
         </button>
 
         {/* Form */}
-        <div className="flex flex-col gap-6 flex-1">
+        <div className="flex flex-col gap-7 sm:gap-6 flex-1">
           {/* Location */}
           <section data-tutorial="location">
             <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
@@ -543,7 +542,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </section>
 
           {/* Party Size + Time (side by side) */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <section data-tutorial="party-size">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
                 <Users className="w-3 h-3" />
@@ -588,6 +587,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                 ))}
               </div>
             </section>
+          </div>
 
           {/* Budget */}
           <section data-tutorial="budget">
@@ -595,7 +595,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
               <DollarSign className="w-3 h-3" />
               Budget
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {BUDGET_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -974,7 +974,6 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </div>
         </div>
       )}
-      </div>
     </div>
   )
 }

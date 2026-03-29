@@ -33,7 +33,6 @@ export class GeminiAIService {
 
   public async generateContent(prompt: string): Promise<string> {
     if (!this.model) {
-      console.warn('Gemini AI not available - using fallback')
       return this.getFallbackResponse(prompt)
     }
 
@@ -41,8 +40,7 @@ export class GeminiAIService {
       const result = await this.model.generateContent(prompt)
       const response = await result.response
       return response.text()
-    } catch (error) {
-      console.error('Gemini AI error:', error)
+    } catch {
       return this.getFallbackResponse(prompt)
     }
   }
@@ -106,8 +104,7 @@ Focus on romance, atmosphere, and date-worthiness. Be specific and helpful.
       const response = await this.generateContent(prompt)
       const cleaned = response.replace(/```json\n?|\n?```/g, '').trim()
       return JSON.parse(cleaned)
-    } catch (error) {
-      console.error('Failed to parse Gemini response:', error)
+    } catch {
       return this.getFallbackVenueAnalysis()
     }
   }
@@ -150,8 +147,7 @@ Make it sound exciting, romantic, and personalized. Focus on creating memories.
       const response = await this.generateContent(prompt)
       const cleaned = response.replace(/```json\n?|\n?```/g, '').trim()
       return JSON.parse(cleaned)
-    } catch (error) {
-      console.error('Failed to parse Gemini recommendation:', error)
+    } catch {
       return this.getFallbackRecommendation()
     }
   }
@@ -199,8 +195,7 @@ Focus on romantic, date-appropriate venues and hidden gems. Consider local cultu
       const response = await this.generateContent(prompt)
       const cleaned = response.replace(/```json\n?|\n?```/g, '').trim()
       return JSON.parse(cleaned)
-    } catch (error) {
-      console.error('Failed to parse Gemini search enhancement:', error)
+    } catch {
       return this.getFallbackSearchEnhancement()
     }
   }

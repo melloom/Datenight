@@ -33,10 +33,8 @@ export function MysteryDateApp() {
   }
   
   const handleLoadComplete = useCallback((foundVenues: Venue[], lateNightResponse?: LateNightResponse) => {
-    console.log('🎉 MysteryDateApp received venues:', foundVenues.length)
   
     if (!foundVenues || foundVenues.length === 0) {
-      console.warn('⚠️ No venues received - showing empty itinerary')
       setVenues([])
     } else {
       setVenues(foundVenues)
@@ -44,7 +42,6 @@ export function MysteryDateApp() {
     
     // Set late night response if provided
     if (lateNightResponse) {
-      console.log('🌙 Late night response received:', lateNightResponse.urgency)
       setLateNightResponse(lateNightResponse)
     }
     

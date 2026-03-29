@@ -61,7 +61,7 @@ const swapVenueSchema = z.object({
 function getModel() {
   if (!GEMINI_API_KEY) return null
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
-  return genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  return genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 }
 
 export async function POST(request: NextRequest) {
@@ -270,8 +270,7 @@ First venue should be a drinks/bar spot, second a dinner restaurant, third an ac
         const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
         const venues = JSON.parse(cleaned)
         return NextResponse.json({ venues: Array.isArray(venues) ? venues : [] })
-      } catch (e) {
-        console.error('AI venue generation failed:', e)
+      } catch {
         return NextResponse.json({ venues: [] })
       }
     }
@@ -314,8 +313,7 @@ Be specific with a real venue name and address.`
         const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
         const venue = JSON.parse(cleaned)
         return NextResponse.json({ venue })
-      } catch (e) {
-        console.error('AI alternative suggestion failed:', e)
+      } catch {
         return NextResponse.json({ venue: null })
       }
     }
@@ -360,8 +358,7 @@ Return JSON array:
         const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
         const venues = JSON.parse(cleaned)
         return NextResponse.json({ venues: Array.isArray(venues) ? venues : [] })
-      } catch (e) {
-        console.error('AI plan improvement failed:', e)
+      } catch {
         return NextResponse.json({ venues: [] })
       }
     } else if (action === 'swap-venue') {
@@ -430,8 +427,7 @@ Requirements:
         const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
         const response = JSON.parse(cleaned)
         return NextResponse.json(response)
-      } catch (e) {
-        console.error('AI venue swap failed:', e)
+      } catch {
         return NextResponse.json({
           venue: {
             id: `fallback-${Date.now()}`,
@@ -450,8 +446,7 @@ Requirements:
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
-  } catch (error) {
-    console.error('AI enhance error:', error)
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

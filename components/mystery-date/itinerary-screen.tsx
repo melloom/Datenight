@@ -869,7 +869,6 @@ async function fetchWeather(location: string): Promise<any> {
     }
     return mockWeather
   } catch (error) {
-    console.error('Weather fetch failed:', error)
     return null
   }
 }
@@ -1033,7 +1032,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
           date: new Date(item.date)
         })))
       } catch (e) {
-        console.error('Failed to load history:', e)
       }
     }
   }, [])
@@ -1067,11 +1065,9 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       // Update existing plan for the selected date
       updatedHistory = [...datePlanHistory]
       updatedHistory[existingPlanIndex] = newHistoryItem
-      console.log(`📝 Updated existing plan for ${planDateString}`)
     } else {
       // Add new plan for different date
       updatedHistory = [newHistoryItem, ...datePlanHistory].slice(0, 20) // Keep last 20 plans
-      console.log(`➕ Added new plan for ${planDateString}`)
     }
 
     setDatePlanHistory(updatedHistory)
@@ -1087,7 +1083,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
   // Late night alert handlers
   const handleSuggestionSelect = async (suggestion: AlternativeSuggestion) => {
-    console.log('🌙 Selected suggestion:', suggestion.title)
     
     try {
       setIsGeneratingAlternative(true)
@@ -1096,7 +1091,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       const newCriteria = generateCriteriaFromSuggestion(suggestion, searchCriteria)
       
       if (newCriteria) {
-        console.log('🔍 Starting new search with alternative criteria...')
         
         // Navigate back to setup with pre-filled criteria for a real search
         setShowLateNightAlert(false)
@@ -1113,7 +1107,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         }, 100)
       }
     } catch (error) {
-      console.error('Error generating alternative plan:', error)
       alert('Sorry, something went wrong generating that plan. Please try again.')
     } finally {
       setIsGeneratingAlternative(false)
@@ -1121,7 +1114,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   }
 
   const handleSameDaySelect = async (option: SameDayOption) => {
-    console.log('🎯 Selected same-day option:', option.title)
     
     try {
       setIsGeneratingAlternative(true)
@@ -1130,7 +1122,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       const sameDayCriteria = generateCriteriaFromSameDayOption(option, searchCriteria)
       
       if (sameDayCriteria) {
-        console.log('⚡ Starting real search for same-day option...')
         setShowLateNightAlert(false)
         
         // Store the new criteria for setup screen
@@ -1146,7 +1137,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         alert(`Sorry, couldn't generate search criteria for ${option.title}. Please try a different option.`)
       }
     } catch (error) {
-      console.error('Error creating same-day plan:', error)
       alert('Sorry, something went wrong creating that plan. Please try again.')
     } finally {
       setIsGeneratingAlternative(false)
@@ -1454,7 +1444,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         }
       }
     } catch (e) {
-      console.error('Failed to swap venue:', e)
     } finally {
       setIsSwapping(null)
       setShowSwapDialog(null)
@@ -1484,7 +1473,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         }
       }
     } catch (e) {
-      console.error('Failed to improve plan:', e)
     } finally {
       setIsImproving(false)
     }
@@ -1526,7 +1514,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         }
       }
     } catch (e) {
-      console.error('AI edit failed:', e)
     } finally {
       setIsAIEditing(false)
     }

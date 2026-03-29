@@ -25,8 +25,8 @@ export function AIRecommendation({ venues, criteria }: AIRecommendationProps) {
     try {
       const rec = await geminiAI.generateDateRecommendation(venues, criteria)
       setRecommendation(rec)
-    } catch (error) {
-      console.error('Failed to generate AI recommendation:', error)
+    } catch {
+      // AI recommendation unavailable
     } finally {
       setIsLoading(false)
     }

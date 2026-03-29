@@ -26,7 +26,6 @@ export async function POST(request: NextRequest) {
     })
 
     if (!response.ok) {
-      console.error(`Geocoding search API error: ${response.status}`)
       return NextResponse.json({ error: 'Search failed' }, { status: 500 })
     }
 
@@ -83,8 +82,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ results: unique })
 
-  } catch (error) {
-    console.error('Geocoding search error:', error)
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

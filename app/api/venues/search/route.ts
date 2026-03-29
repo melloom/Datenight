@@ -46,11 +46,6 @@ export async function POST(request: NextRequest) {
       const response = await fetch(url)
       const data = await response.json()
       
-      // Log Google API errors for debugging
-      if (data.status && data.status !== 'OK') {
-        console.error('Google Places API error:', data.status, data.error_message || '')
-      }
-      
       return NextResponse.json(data)
     }
 
@@ -67,11 +62,6 @@ export async function POST(request: NextRequest) {
       const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}${locationParam}&key=${GOOGLE_PLACES_API_KEY}`
       const response = await fetch(url)
       const data = await response.json()
-      
-      // Log Google API errors for debugging
-      if (data.status && data.status !== 'OK') {
-        console.error('Google Text Search API error:', data.status, data.error_message || '')
-      }
       
       return NextResponse.json(data)
     }
@@ -145,8 +135,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 
-  } catch (error) {
-    console.error('Venue search API error:', error)
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -71,10 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInWithPopup(auth, googleProvider)
     } catch (error: any) {
       if (error.code === "auth/popup-closed-by-user") {
-        console.log("Sign-in popup closed by user")
         return
       }
-      console.error("Google sign-in error:", error)
       throw error
     }
   }
@@ -86,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await firebaseSignOut(auth)
     } catch (error) {
-      console.error("Sign-out error:", error)
       throw error
     }
   }

@@ -97,7 +97,6 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
         const selectedVenues = selectVenuesForDate(result.venues)
         finishLoading(selectedVenues, result.lateNightResponse)
       } catch (error) {
-        console.error("Venue search failed:", error)
         if (error instanceof Error && error.message === 'Search timeout') {
           setSearchStatus("⏰ Search taking too long. Please try again.")
         } else {

@@ -210,25 +210,14 @@ class VenueSearcher {
       ).filter(v => v !== 'custom:') // Remove empty custom vibes
     }
 
-    console.log('🔍 Starting enhanced venue search with criteria:', criteria)
-    console.log(`⏰ Time of day: ${criteria.time} - ${TIME_FILTERS[criteria.time].timeRange.start} to ${TIME_FILTERS[criteria.time].timeRange.end}`)
-    console.log(`💰 Budget: $${criteria.budget} - Vibe: ${criteria.vibes}`)
-    console.log(`📍 Location: ${criteria.location}`)
     
     // Log date/time availability information
     if (criteria.plannedDate) {
-      console.log(`📅 Planned date: ${criteria.plannedDate.toDateString()}`)
-      console.log(`🗓️ Day of week: ${criteria.dayOfWeek || criteria.plannedDate.toLocaleDateString('en-US', { weekday: 'long' })}`)
-      console.log(`🕐 Planned time: ${criteria.plannedTime || 'based on time preference'}`)
-      console.log(`🔍 Filtering for venues open on ${criteria.dayOfWeek || criteria.plannedDate.toLocaleDateString('en-US', { weekday: 'long' })} at ${criteria.plannedTime || TIME_FILTERS[criteria.time].timeRange.start}`)
     }
-    console.log(`🍽️ Cuisine: ${criteria.cuisine || 'any'} ${criteria.customCuisine ? `(custom: ${criteria.customCuisine})` : ''}`)
-    console.log(`🎭 Activity: ${criteria.activity || 'none'} ${criteria.customActivity ? `(custom: ${criteria.customActivity})` : ''}`)
 
     // Try to get AI-powered search enhancement (optional)
     let aiEnhancement = null
     try {
-      console.log('🤖 Attempting AI search enhancement...')
       aiEnhancement = await geminiAI.enhanceVenueSearch(criteria.location, {
         budget: criteria.budget,
         vibes: criteria.vibes,
@@ -236,23 +225,18 @@ class VenueSearcher {
         cuisine: criteria.cuisine,
         activity: criteria.activity,
       })
-      console.log('✨ AI insights:', aiEnhancement.locationInsights)
     } catch (error) {
-      console.log('⚠️ AI enhancement unavailable, continuing with standard search')
     }
 
     // Calculate constraints from criteria
     const constraints = this.calculateConstraints(criteria)
-    console.log('📋 Search constraints:', constraints)
 
     // Search from multiple sources in parallel with timeout protection
-    console.log(`🚀 Starting parallel search from ${this.searchSources.filter(s => s.enabled).length} sources...`)
     
     const searchPromises = this.searchSources
       .filter(source => source.enabled)
       .map(async source => {
         try {
-          console.log(`🔍 Searching ${source.name}...`)
           // Add timeout to prevent hanging
           const timeoutPromise = new Promise<Venue[]>((_, reject) => 
             setTimeout(() => reject(new Error('Search timeout')), 15000) // 15s timeout
@@ -261,11 +245,9 @@ class VenueSearcher {
             this.searchSource(source, criteria),
             timeoutPromise
           ]) as Venue[]
-          console.log(`✅ ${source.name} returned ${venues.length} venues`)
           usedSources.push(source.name)
           return venues
         } catch (error) {
-          console.error(`❌ ${source.name} failed:`, error instanceof Error ? error.message : error)
           return []
         }
       })
@@ -283,35 +265,28 @@ class VenueSearcher {
     ])
     allVenues.push(...searchResults.flat())
 
-    console.log(`📈 Total venues found: ${allVenues.length}`)
 
     // Remove duplicates based on name and location
     const uniqueVenues = this.removeDuplicates(allVenues)
-    console.log(`🔄 After deduplication: ${uniqueVenues.length} venues`)
 
     // Enhanced filtering with travel time and account preferences
     const filteredVenues = this.enhancedFilter(uniqueVenues, criteria)
-    console.log(`🎯 After enhanced filtering: ${filteredVenues.length} venues`)
 
     // Try AI enhancement for venue insights (optional, doesn't fail if unavailable)
     let aiEnhancedVenues = filteredVenues
     // Only run AI enhancement if we have venues and it's not disabled
     if (filteredVenues.length > 0 && filteredVenues.length <= 20) {
       try {
-        console.log('🤖 Attempting AI venue analysis with custom preferences...')
         // Reduce AI processing to only top 5 venues for speed
         const aiPromise = this.enhanceVenuesWithAI(filteredVenues.slice(0, 5), criteria)
         const timeoutPromise = new Promise<Venue[]>(resolve => 
           setTimeout(() => resolve(filteredVenues.slice(0, 5)), 8000) // 8s timeout
         )
         aiEnhancedVenues = await Promise.race([aiPromise, timeoutPromise])
-        console.log(`✨ AI enhanced ${aiEnhancedVenues.filter(v => v.aiEnhanced).length} venues with custom preferences`)
       } catch (error) {
-        console.log('⚠️ AI analysis unavailable, using venues without AI enhancement')
         aiEnhancedVenues = filteredVenues
       }
     } else {
-      console.log(`⏩ Skipping AI enhancement (${filteredVenues.length} venues)`)
     }
 
     // Merge AI-enhanced venues back with the rest
@@ -322,33 +297,23 @@ class VenueSearcher {
 
     // Smart ranking with travel time optimization and AI insights
     const rankedVenues = this.smartRank(finalVenues, criteria)
-    console.log(`🏆 After smart ranking: ${rankedVenues.length} venues`)
 
     // Enhance venues for special occasions
     const occasionEnhancedVenues = this.enhanceVenuesForOccasion(rankedVenues, criteria)
-    console.log(`🎉 Enhanced ${occasionEnhancedVenues.length} venues for special occasions`)
 
     // Enhance venues with real pricing data
     const pricingEnhancedVenues = await Promise.all(
       occasionEnhancedVenues.map(venue => this.enhanceVenueWithPricing(venue))
     )
-    console.log(`💰 Enhanced ${pricingEnhancedVenues.length} venues with real pricing data`)
 
     // Optimize date plan with travel time
     const optimizedPlan = this.optimizeDatePlan(pricingEnhancedVenues, criteria)
-    console.log(`🗺️ Optimized date plan with ${optimizedPlan.length} venues`)
 
     // If no venues found, return empty array - NO FAKE FALLBACKS
     let finalPlan = optimizedPlan
     if (optimizedPlan.length === 0) {
-      console.log('⚠️ No venues found from any API source')
-      console.log('💡 Try: Check API keys, verify location name, or try a different location')
     }
 
-    console.log(`📊 Final venue counts:`)
-    console.log(`   • All venues found: ${allVenues.length}`)
-    console.log(`   • Optimized plan: ${finalPlan.length}`)
-    console.log(`   • Available for date: ${optimizedPlan.length}`)
 
     const endTime = Date.now()
     const searchTime = endTime - startTime
@@ -376,11 +341,8 @@ class VenueSearcher {
     
     let lateNightResponse: LateNightResponse | undefined
     if (detection.isTooLate) {
-      console.log('🌙 Late night scenario detected, generating alternatives...')
-      console.log(`📊 Detection based on ${allVenues.length} total venues found`)
       const suggestions = lateNightDetector.generateAlternativeSuggestions(detection, criteria)
       lateNightResponse = lateNightDetector.generateResponse(detection, suggestions, criteria)
-      console.log(`💡 Generated ${lateNightResponse.suggestions.length} alternative suggestions`)
     }
 
     return {
@@ -390,42 +352,34 @@ class VenueSearcher {
   }
 
   private enhancedFilter(venues: Venue[], criteria: SearchCriteria): Venue[] {
-    console.log('🎯 Applying enhanced filtering...')
 
     return venues.filter(venue => {
       // Basic filtering (existing logic)
       if (!this.meetsBudget(venue, criteria.budget)) {
-        console.log(`❌ ${venue.name}: Budget mismatch (${venue.priceRange} vs $${criteria.budget})`)
         return false
       }
 
       if (!this.matchesVibe(venue, criteria.vibes)) {
-        console.log(`❌ ${venue.name}: Vibe mismatch (${venue.vibe} vs ${criteria.vibes})`)
         return false
       }
 
       if (!this.isInTimeRange(venue, criteria)) {
-        console.log(`❌ ${venue.name}: Time/date mismatch (not open during planned time)`)
         return false
       }
 
       // Enhanced filtering
       if (!this.hasGoodRating(venue)) {
-        console.log(`❌ ${venue.name}: Low rating (${venue.rating}⭐)`)
         return false
       }
 
       if (!this.hasSufficientReviews(venue)) {
-        console.log(`❌ ${venue.name}: Insufficient reviews (${venue.reviewCount})`)
         return false
       }
 
       if (!this.isWithinDistance(venue, criteria.location, criteria.time)) {
-        console.log(`❌ ${venue.name}: Too far from ${criteria.location}`)
         return false
       }
 
-      console.log(`✅ ${venue.name}: Passed all filters`)
       return true
     })
   }
@@ -445,7 +399,6 @@ class VenueSearcher {
   }
 
   private smartRank(venues: Venue[], criteria: SearchCriteria): Venue[] {
-    console.log('🏆 Applying smart ranking with travel time optimization...')
 
     return venues
       .map(venue => ({
@@ -502,7 +455,6 @@ class VenueSearcher {
     // Random factor for variety (up to 0.1 points)
     score += Math.random() * 0.1
 
-    console.log(`📊 ${venue.name}: Score ${score.toFixed(2)} - ${reasons.join(', ')}`)
     return score
   }
 
@@ -561,28 +513,18 @@ class VenueSearcher {
   }
 
   private optimizeDatePlan(venues: Venue[], criteria: SearchCriteria): Venue[] {
-    console.log('🗺️ Optimizing date plan with travel time and custom preferences...')
-    console.log(`📊 Input venues by category:`)
-    console.log(`   • Total venues: ${venues.length}`)
 
     // Group venues by category
     const drinks = venues.filter(v => v.category === 'drinks').slice(0, 5)
     const dinner = venues.filter(v => v.category === 'dinner').slice(0, 5)
     const activity = venues.filter(v => v.category === 'activity').slice(0, 5)
     
-    console.log(`   • Drinks: ${drinks.length}`)
-    console.log(`   • Dinner: ${dinner.length}`)
-    console.log(`   • Activity: ${activity.length}`)
 
     // Apply custom preference filtering
     const filteredDrinks = this.applyCustomPreferencesFilter(drinks, criteria)
     const filteredDinner = this.applyCustomPreferencesFilter(dinner, criteria)
     const filteredActivity = this.applyCustomPreferencesFilter(activity, criteria)
     
-    console.log(`📋 After custom filtering:`)
-    console.log(`   • Filtered drinks: ${filteredDrinks.length}`)
-    console.log(`   • Filtered dinner: ${filteredDinner.length}`)
-    console.log(`   • Filtered activity: ${filteredActivity.length}`)
 
     // Select best venues for each category
     const selectedVenues: Venue[] = []
@@ -590,28 +532,22 @@ class VenueSearcher {
     // Add best drinks venue
     if (filteredDrinks.length > 0) {
       selectedVenues.push(filteredDrinks[0])
-      console.log(`🍷 Selected drinks: ${filteredDrinks[0].name} (custom preferences applied)`)
     } else if (drinks.length > 0) {
       selectedVenues.push(drinks[0])
-      console.log(`🍷 Selected drinks: ${drinks[0].name} (fallback)`)
     }
 
     // Add best dinner venue
     if (filteredDinner.length > 0) {
       selectedVenues.push(filteredDinner[0])
-      console.log(`🍽️ Selected dinner: ${filteredDinner[0].name} (custom preferences applied)`)
     } else if (dinner.length > 0) {
       selectedVenues.push(dinner[0])
-      console.log(`🍽️ Selected dinner: ${dinner[0].name} (fallback)`)
     }
 
     // Add best activity venue
     if (filteredActivity.length > 0) {
       selectedVenues.push(filteredActivity[0])
-      console.log(`🎯 Selected activity: ${filteredActivity[0].name} (custom preferences applied)`)
     } else if (activity.length > 0) {
       selectedVenues.push(activity[0])
-      console.log(`🎯 Selected activity: ${activity[0].name} (fallback)`)
     }
 
     // If we don't have enough venues, add the best remaining ones
@@ -621,7 +557,6 @@ class VenueSearcher {
 
     selectedVenues.push(...remaining)
     
-    console.log(`🎉 Final optimized plan: ${selectedVenues.length} venues`)
     
     // Optimize order based on travel time (simplified)
     return this.optimizeVenueOrder(selectedVenues, criteria.location)
@@ -696,7 +631,6 @@ class VenueSearcher {
       const isAvailable = isOpenDuringTime && isOpenOnDay && isOpenAtSpecificTime
       
       if (!isAvailable) {
-        console.log(`🕐 ${venue.name} not available on ${criteria.dayOfWeek} at ${criteria.plannedTime || timeFilter.timeRange.start}`)
       }
       
       return isAvailable
@@ -758,7 +692,6 @@ class VenueSearcher {
   }
 
   private async fetchDetailedInformation(venues: Venue[]): Promise<Venue[]> {
-    console.log(`🔍 Fetching detailed information for ${venues.length} venues...`)
     
     const detailedVenues = []
     const batchSize = 5 // Process in batches to avoid rate limits
@@ -771,7 +704,6 @@ class VenueSearcher {
         try {
           return await this.fetchDetailedVenueInfo(venue)
         } catch (error) {
-          console.error(`Failed to fetch details for ${venue.name}:`, error)
           return venue // Return original venue if details fetch fails
         }
       })
@@ -785,7 +717,6 @@ class VenueSearcher {
       }
     }
     
-    console.log(`✅ Fetched detailed information for ${detailedVenues.length} venues`)
     return detailedVenues
   }
 
@@ -862,27 +793,20 @@ class VenueSearcher {
 
   private async searchSource(source: any, criteria: SearchCriteria): Promise<Venue[]> {
     if (source.name === 'Google Places API') {
-      console.log('🔍 Searching Google Places API...')
       const venues = await this.searchGooglePlaces(criteria)
-      console.log(`   Google Places returned ${venues.length} venues`)
       return venues
     }
     
     if (source.name === 'OpenStreetMap Overpass') {
-      console.log('🗺️ Searching OpenStreetMap Overpass...')
       const venues = await this.searchOpenStreetMap(criteria)
-      console.log(`   OpenStreetMap returned ${venues.length} venues`)
       return venues
     }
 
     if (source.name === 'Foursquare API') {
-      console.log('🎯 Searching Foursquare API...')
       const venues = await this.searchFoursquare(criteria)
-      console.log(`   Foursquare returned ${venues.length} venues`)
       return venues
     }
 
-    console.log(`❌ ${source.name} is not available`)
     return []
   }
 
@@ -903,7 +827,6 @@ class VenueSearcher {
       const waitTime = 60000 - (now - oldestRequest)
       
       if (waitTime > 0) {
-        console.log(`⏱️ Rate limited for ${sourceName}, waiting ${waitTime}ms...`)
         await new Promise(resolve => setTimeout(resolve, waitTime))
         return this.checkRateLimit(sourceName)
       }
@@ -949,7 +872,6 @@ class VenueSearcher {
       // Dedupe and limit
       searchTerms = [...new Set(searchTerms)].slice(0, 6)
 
-      console.log(`🎮 Searching for activity venues with ${searchTerms.length} terms: ${searchTerms.slice(0, 5).join(', ')}...`)
 
       const venues: Venue[] = []
 
@@ -982,7 +904,6 @@ class VenueSearcher {
               }
               return []
             } catch (error) {
-              console.error(`Text search failed for "${term}":`, error)
               return []
             }
           })
@@ -995,10 +916,8 @@ class VenueSearcher {
         }
       }
 
-      console.log(`🎮 Activity text search found ${venues.length} venues`)
       return venues
     } catch (error) {
-      console.error('Activity text search failed:', error)
       return []
     }
   }
@@ -1029,7 +948,6 @@ class VenueSearcher {
           })
 
           if (!response.ok) {
-            console.error(`Foursquare API error for ${category}: ${response.status}`)
             continue
           }
 
@@ -1042,13 +960,11 @@ class VenueSearcher {
 
           await new Promise(resolve => setTimeout(resolve, 200))
         } catch (error) {
-          console.error(`Foursquare search failed for ${category}:`, error)
         }
       }
 
       return venues
     } catch (error) {
-      console.error('Foursquare API search failed:', error)
       return []
     }
   }
@@ -1256,22 +1172,18 @@ class VenueSearcher {
       // Get location coordinates for Google Places
       const location = await this.geocodeLocation(criteria.location)
       if (!location) {
-        console.warn('Could not geocode location for Google Places, using fallback coordinates')
         // Use fallback coordinates based on location name
         const fallbackLocation = this.getFallbackLocation(criteria.location)
         if (!fallbackLocation) {
-          console.warn('No fallback location available, returning empty venues')
           return []
         }
         
         // Continue with fallback location
-        console.log(`Using fallback coordinates: ${fallbackLocation.lat}, ${fallbackLocation.lng}`)
         return this.searchGooglePlacesWithLocation(criteria, fallbackLocation)
       }
 
       return this.searchGooglePlacesWithLocation(criteria, location)
     } catch (error) {
-      console.error('Google Places search failed:', error)
       return []
     }
   }
@@ -1302,9 +1214,7 @@ class VenueSearcher {
 
           if (!response.ok) {
             if (response.status === 503) {
-              console.error(`⚠️ Google Places API unavailable (503) - service may be down or quota exceeded`)
             } else {
-              console.error(`Google Places API error for ${placeType}: ${response.status}`)
             }
             continue
           }
@@ -1319,19 +1229,16 @@ class VenueSearcher {
           // Add delay to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 200))
         } catch (error) {
-          console.error(`Google Places search failed for ${placeType}:`, error)
         }
       }
 
       return venues
     } catch (error) {
-      console.error('Google Places search with location failed:', error)
       return []
     }
   }
 
   private getFallbackLocation(location: string): { lat: number; lng: number } | null {
-    console.log(`🔍 Getting fallback location for: "${location}"`)
     
     // Clean up the location string - remove special characters and normalize
     let normalizedLocation = location.toLowerCase().trim()
@@ -1366,7 +1273,6 @@ class VenueSearcher {
     
     // Check for specific city first
     if (cityCoordinates[normalizedLocation]) {
-      console.log(`✅ Found specific coordinates for ${location}`)
       return cityCoordinates[normalizedLocation]
     }
     
@@ -1374,7 +1280,6 @@ class VenueSearcher {
     if (normalizedLocation.includes('baltimore') || 
         normalizedLocation.includes('loyola') || 
         normalizedLocation.includes('notre dame')) {
-      console.log(`✅ Found Baltimore area in ${location}, using Baltimore coordinates`)
       return { lat: 39.2904, lng: -76.6122 }
     }
     
@@ -1436,32 +1341,26 @@ class VenueSearcher {
     if (normalizedLocation.includes(',')) {
       const [city, state] = normalizedLocation.split(',').map(part => part.trim())
       if (cityCoordinates[city]) {
-        console.log(`✅ Found city coordinates for ${city}, ${state}`)
         return cityCoordinates[city]
       }
       if (stateCoordinates[state]) {
-        console.log(`📍 Using state coordinates for ${city}, ${state} -> ${stateCoordinates[state].city}`)
         return { lat: stateCoordinates[state].lat, lng: stateCoordinates[state].lng }
       }
     }
 
     // Check for complex location patterns like "Loyola/Notre Dame, Baltimore, Maryland"
     if (normalizedLocation.includes('loyola') && normalizedLocation.includes('notre dame')) {
-      console.log(`✅ Found Loyola/Notre Dame pattern, using Baltimore coordinates`)
       return { lat: 39.2904, lng: -76.6122 }
     }
 
     // Check for direct city/state match
     if (cityCoordinates[normalizedLocation]) {
-      console.log(`✅ Found direct city match for ${location}`)
       return cityCoordinates[normalizedLocation]
     }
     if (stateCoordinates[normalizedLocation]) {
-      console.log(`📍 Using state coordinates for ${location} -> ${stateCoordinates[normalizedLocation].city}`)
       return { lat: stateCoordinates[normalizedLocation].lat, lng: stateCoordinates[normalizedLocation].lng }
     }
 
-    console.log(`❌ No coordinates found for ${location}`)
     return null
   }
 
@@ -1471,7 +1370,6 @@ class VenueSearcher {
       const cached = this.geocodeCache.get(locationName)
       const now = Date.now()
       if (cached && (now - cached.timestamp) < this.GEOCODE_CACHE_TTL) {
-        console.log(`📍 Using cached geocode for "${locationName}": ${cached.lat}, ${cached.lng}`)
         return cached
       }
 
@@ -1486,7 +1384,6 @@ class VenueSearcher {
       // Only use direct match for state-like inputs (short names without commas)
       const looksLikeState = !cleanLocationName.includes(',') && cleanLocationName.trim().split(/\s+/).length <= 3
       if (directMatch && looksLikeState) {
-        console.log(`📍 Direct match for "${locationName}": ${directMatch.lat}, ${directMatch.lng}`)
         this.geocodeCache.set(locationName, { ...directMatch, timestamp: now })
         return directMatch
       }
@@ -1499,7 +1396,6 @@ class VenueSearcher {
       })
 
       if (!response.ok) {
-        console.warn('Geocode API route failed, using fallback location')
         const fallback = this.getFallbackLocation(locationName)
         if (fallback) {
           this.geocodeCache.set(locationName, { ...fallback, timestamp: now })
@@ -1517,7 +1413,6 @@ class VenueSearcher {
         // If Google returns a state/country-level result, it's too broad
         // Resolve to the largest city in that area instead
         if (types.includes('administrative_area_level_1') || types.includes('country')) {
-          console.log(`📍 "${locationName}" geocoded as state/country (${types.join(', ')}), resolving to largest city...`)
           const cityCoords = this.getFallbackLocation(locationName)
           if (cityCoords) {
             this.geocodeCache.set(locationName, { ...cityCoords, timestamp: now })
@@ -1537,7 +1432,6 @@ class VenueSearcher {
       }
       return fallback
     } catch (error) {
-      console.error('Geocoding failed:', error)
       const fallback = this.getFallbackLocation(locationName)
       if (fallback) {
         this.geocodeCache.set(locationName, { ...fallback, timestamp: Date.now() })
@@ -1627,7 +1521,6 @@ class VenueSearcher {
       // For OpenStreetMap venues, try to fetch additional info
       return await this.enrichOSMVVenue(venue)
     } catch (error) {
-      console.error('Failed to fetch detailed venue info:', error)
       return venue
     }
   }
@@ -1729,7 +1622,6 @@ class VenueSearcher {
         highlights: this.enhanceHighlights(venue)
       }
     } catch (error) {
-      console.error('Failed to enrich OSM venue:', error)
       return venue
     }
   }
@@ -1815,7 +1707,6 @@ class VenueSearcher {
       // For other venues, try web-based pricing detection
       return await this.fetchWebPricing(venue)
     } catch (error) {
-      console.error('Failed to fetch real pricing:', error)
       return venue.priceRange // Fall back to current price range
     }
   }
@@ -1989,7 +1880,6 @@ class VenueSearcher {
     const timeFilter = TIME_FILTERS[timeOfDay]
     if (!timeFilter) return venues
 
-    console.log(`⏰ Applying ${timeOfDay} time filter...`)
     
     return venues.filter(venue => {
       // Check if venue meets minimum rating for this time
@@ -2076,7 +1966,6 @@ class VenueSearcher {
           await new Promise(resolve => setTimeout(resolve, queryDelay))
         }
         
-        console.log(`🗺️ Running OpenStreetMap query ${i + 1}/${queries.length}...`)
 
         // Use server-side API route to avoid CORS issues
         const response = await fetch('/api/venues/search', {
@@ -2087,11 +1976,9 @@ class VenueSearcher {
 
         if (!response.ok) {
           if (response.status === 429) {
-            console.error('⏱️ Rate limited, waiting before retry...')
             await new Promise(resolve => setTimeout(resolve, 5000))
             continue
           } else if (response.status === 504) {
-            console.error('⏰ Gateway timeout (504), retrying with shorter query...')
             // Retry with a simpler query on timeout
             if (query.includes('timeout:30') || query.includes('timeout:15')) {
               // Try a much simpler query
@@ -2109,21 +1996,15 @@ out count;
                   body: JSON.stringify({ action: 'overpass', query: simpleQuery })
                 })
                 if (retryResponse.ok) {
-                  console.log('✅ Retry with simple query succeeded')
                   continue
                 }
               } catch (retryError) {
-                console.log('❌ Retry also failed')
               }
             }
-            console.log('⏰ Skipping query due to timeout')
             continue
           } else if (response.status === 400) {
-            console.error(`⚠️ Overpass API bad request (400) - query may be invalid for area "${criteria.location}"`)
-            console.log(`🔍 Query preview: ${query.substring(0, 200)}...`)
             continue
           } else {
-            console.error(`Overpass API error: ${response.status}`)
             continue
           }
         }
@@ -2132,25 +2013,20 @@ out count;
         try {
           data = await response.json()
         } catch (parseError) {
-          console.error('JSON parse error:', parseError)
           continue
         }
 
         if (!data || typeof data !== 'object') {
-          console.error('Invalid data structure after parsing')
           continue
         }
 
         const parsedVenues = this.parseOverpassResponse(data, criteria)
         venues.push(...parsedVenues)
-        console.log(`✅ Query ${i + 1} found ${parsedVenues.length} venues`)
       } catch (error) {
-        console.error('Overpass query failed:', error)
         // Continue with next query instead of failing completely
       }
     }
 
-    console.log(`🎯 OpenStreetMap total: ${venues.length} venues from ${queries.length} queries`)
     return venues
   }
 
@@ -2267,7 +2143,6 @@ out count;
     // If the entire input is a state name, resolve to its largest city
     const cleaned = location.toLowerCase().replace(/,?\s*(united states|usa|us)$/i, '').trim()
     if (stateToCityName[cleaned]) {
-      console.log(`🗺️ Overpass: Resolved state "${location}" → city "${stateToCityName[cleaned]}"`)
       return stateToCityName[cleaned]
     }
 
@@ -2574,7 +2449,6 @@ out count;
   }
 
   private rankVenues(venues: Venue[], criteria: SearchCriteria): Venue[] {
-    console.log(`🧠 AI Algorithm scoring ${venues.length} venues for personalized date plan...`)
     
     return venues.sort((a, b) => {
       let scoreA = 0
@@ -2585,44 +2459,32 @@ out count;
       const budgetMatchB = this.getBudgetMatchScore(b.priceRange, criteria.budget)
       scoreA += budgetMatchA * 0.3
       scoreB += budgetMatchB * 0.3
-      console.log(`   ${a.name}: Budget score ${budgetMatchA.toFixed(2)} (${a.priceRange} vs ${criteria.budget})`)
-      console.log(`   ${b.name}: Budget score ${budgetMatchB.toFixed(2)} (${b.priceRange} vs ${criteria.budget})`)
 
       // 2. Rating Quality (25% weight) - Real Google ratings
       scoreA += (a.rating / 5) * 0.25
       scoreB += (b.rating / 5) * 0.25
-      console.log(`   ${a.name}: Rating score ${(a.rating / 5 * 0.25).toFixed(2)} (${a.rating}⭐)`)
-      console.log(`   ${b.name}: Rating score ${(b.rating / 5 * 0.25).toFixed(2)} (${b.rating}⭐)`)
 
       // 3. Time Compatibility (20% weight) - Real opening hours
       const timeScoreA = this.getTimeCompatibilityScore(a, criteria.time)
       const timeScoreB = this.getTimeCompatibilityScore(b, criteria.time)
       scoreA += timeScoreA * 0.2
       scoreB += timeScoreB * 0.2
-      console.log(`   ${a.name}: Time score ${timeScoreA.toFixed(2)} (${criteria.time})`)
-      console.log(`   ${b.name}: Time score ${timeScoreB.toFixed(2)} (${criteria.time})`)
 
       // 4. Vibe Match (15% weight) - Feature-based matching
       const vibeScoreA = this.getVibeMatchScore(a, criteria.vibes)
       const vibeScoreB = this.getVibeMatchScore(b, criteria.vibes)
       scoreA += vibeScoreA * 0.15
       scoreB += vibeScoreB * 0.15
-      console.log(`   ${a.name}: Vibe score ${vibeScoreA.toFixed(2)} (${criteria.vibes.join(', ')})`)
-      console.log(`   ${b.name}: Vibe score ${vibeScoreB.toFixed(2)} (${criteria.vibes.join(', ')})`)
 
       // 5. Popularity (10% weight) - Real review counts
       const popularityA = Math.min(a.reviewCount / 1000, 1) // Cap at 1000 reviews
       const popularityB = Math.min(b.reviewCount / 1000, 1)
       scoreA += popularityA * 0.1
       scoreB += popularityB * 0.1
-      console.log(`   ${a.name}: Popularity score ${(popularityA * 0.1).toFixed(2)} (${a.reviewCount} reviews)`)
-      console.log(`   ${b.name}: Popularity score ${(popularityB * 0.1).toFixed(2)} (${b.reviewCount} reviews)`)
 
       // 6. Category Balance (10% weight) - Ensure variety
       scoreA += this.getCategoryScore(a.category) * 0.1
       scoreB += this.getCategoryScore(b.category) * 0.1
-      console.log(`   ${a.name}: Category score ${(this.getCategoryScore(a.category) * 0.1).toFixed(2)} (${a.category})`)
-      console.log(`   ${b.name}: Category score ${(this.getCategoryScore(b.category) * 0.1).toFixed(2)} (${b.category})`)
 
       // 7. Random Factor (5% weight) - Add variety
       scoreA += Math.random() * 0.05
@@ -2631,9 +2493,6 @@ out count;
       const totalScoreA = scoreA
       const totalScoreB = scoreB
       
-      console.log(`   🎯 ${a.name}: Total score ${totalScoreA.toFixed(3)}`)
-      console.log(`   🎯 ${b.name}: Total score ${totalScoreB.toFixed(3)}`)
-      console.log(`   → Winner: ${totalScoreA > totalScoreB ? a.name : b.name}\n`)
 
       return totalScoreB - totalScoreA // Sort descending
     })
@@ -3067,11 +2926,9 @@ Be realistic and specific to ${venue.name} in ${venue.address}. Consider local p
           lastUpdated: new Date().toISOString()
         }
       } catch (e) {
-        console.error('Failed to parse pricing JSON:', e)
         return null
       }
     } catch (error) {
-      console.error('Pricing scrape failed:', error)
       return null
     }
   }
@@ -3109,7 +2966,6 @@ Be realistic and specific to ${venue.name} in ${venue.address}. Consider local p
       
       const batchPromises = batch.map(async (venue) => {
         try {
-          console.log(`🤖 Analyzing ${venue.name} with AI and custom preferences...`)
           const analysis = await geminiAI.analyzeVenue({
             name: venue.name,
             category: venue.category,
@@ -3134,7 +2990,6 @@ Be realistic and specific to ${venue.name} in ${venue.address}. Consider local p
             vibe: analysis.vibe_tags[0] || venue.vibe
           }
         } catch (error) {
-          console.error(`❌ AI analysis failed for ${venue.name}:`, error)
           return { ...venue, aiEnhanced: false }
         }
       })

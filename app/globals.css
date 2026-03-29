@@ -152,13 +152,26 @@
 }
 
 /* Full-screen view with improved mobile scrolling */
-html, body {
+html {
   width: 100%;
   height: 100%;
-  min-height: 100vh;
-  min-height: 100svh;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: auto;
+  touch-action: manipulation;
+}
+
+body {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  min-height: 100svh;
+  overflow: visible;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: auto;
   touch-action: manipulation;
@@ -166,30 +179,13 @@ html, body {
 
 main {
   width: 100%;
-  height: auto;
   min-height: 100vh;
   min-height: 100svh;
   -webkit-overflow-scrolling: touch;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: visible;
   touch-action: pan-y;
-}
-
-/* Prevent double scroll bars on nested containers */
-.min-h-screen {
-  overflow-x: hidden;
-  overflow-y: visible;
-}
-
-.min-h-svh {
-  overflow-x: hidden;
-  overflow-y: visible;
-}
-
-/* Ensure only one scrollable container */
-body {
-  overflow-x: hidden;
-  overflow-y: auto;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 /* Improve mobile touch scrolling */
@@ -204,11 +200,6 @@ input, textarea, [contenteditable] {
   -webkit-user-select: text;
   user-select: text;
   touch-action: auto;
-}
-
-/* Remove smooth scrolling that causes delays */
-html {
-  scroll-behavior: auto;
 }
 
 /* Fix modal scrolling on mobile */
@@ -226,16 +217,23 @@ html {
   }
 }
 
-/* Fix scroll lag and responsiveness */
-body {
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
+/* Safe-area insets */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
 }
 
-/* Remove scroll delays */
-* {
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
+/* Minimum 44px tap targets on touch devices */
+@media (pointer: coarse) {
+  button:not([data-compact]),
+  [role="button"]:not([data-compact]) {
+    min-height: 44px;
+  }
+
+  /* Prevent iOS input zoom */
+  input[type="text"],
+  input[type="date"],
+  textarea {
+    font-size: 16px;
+  }
 }

@@ -97,9 +97,7 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
       }
 
       setMessages(prev => [...prev, aiMessage])
-    } catch (error) {
-      console.error('AI response error:', error)
-      
+    } catch {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: "🤔 I'm having trouble responding right now. Please try again in a moment! In the meantime, you can ask me about:\n\n• Date outfit suggestions\n• Conversation starters\n• Restaurant etiquette\n• Backup activity ideas\n• Gift recommendations\n• Photo spot locations",

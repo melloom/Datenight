@@ -114,8 +114,7 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
         setIsActive(true)
         setCurrentStep(0)
       }
-    } catch (error) {
-      console.error("Error checking tutorial status:", error)
+    } catch {
       // Assume first time if we can't check
       setIsFirstTime(true)
       setIsActive(true)
@@ -147,8 +146,8 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       try {
         await savePreferences(user.uid, { hasCompletedTutorial: true })
         setIsFirstTime(false)
-      } catch (error) {
-        console.error("Error saving tutorial status:", error)
+      } catch {
+        // ignore
       }
     }
   }
@@ -159,8 +158,8 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       try {
         await savePreferences(user.uid, { hasCompletedTutorial: true })
         setIsFirstTime(false)
-      } catch (error) {
-        console.error("Error saving tutorial status:", error)
+      } catch {
+        // ignore
       }
     }
   }
