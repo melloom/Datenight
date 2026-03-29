@@ -31,7 +31,15 @@ import {
   X,
   MessageCircleHeart,
   Smartphone,
-  Link2
+  Link2,
+  DollarSign,
+  Calculator,
+  TrendingDown,
+  Users,
+  PiggyBank,
+  Receipt,
+  AlertCircle,
+  Info
 } from "lucide-react"
 import { Venue } from "@/lib/venue-search"
 import { useAuth } from "@/lib/auth-context"
@@ -599,6 +607,131 @@ interface ItineraryScreenProps {
   onVenuesUpdate?: (venues: Venue[]) => void
 }
 
+// Budget calculation interfaces
+interface VenueCost {
+  venue: Step
+  foodCost: number
+  drinkCost: number
+  activityCost: number
+  totalCost: number
+  costPerPerson: number
+}
+
+interface BudgetBreakdown {
+  totalCost: number
+  costPerPerson: number
+  venues: VenueCost[]
+  savings: string[]
+  alternatives: { venue: Step; savings: number; alternative: string }[]
+}
+
+// Budget calculation functions
+function calculateBudgetBreakdown(steps: Step[], partySize: number): BudgetBreakdown {
+  const venues: VenueCost[] = []
+  let totalCost = 0
+  
+  steps.forEach(step => {
+    let foodCost = 0
+    let drinkCost = 0
+    let activityCost = 0
+    
+    // Estimate costs based on venue category and price range
+    const priceMultiplier = getPriceMultiplier(step.priceRange)
+    
+    if (step.category === 'dinner') {
+      foodCost = 25 * priceMultiplier * partySize
+      drinkCost = 8 * priceMultiplier * partySize
+    } else if (step.category === 'drinks') {
+      drinkCost = 12 * priceMultiplier * partySize
+      foodCost = 10 * priceMultiplier * partySize // appetizers
+    } else if (step.category === 'activity') {
+      activityCost = 30 * priceMultiplier * partySize
+      drinkCost = 5 * priceMultiplier * partySize
+      foodCost = 8 * priceMultiplier * partySize // snacks
+    }
+    
+    const venueTotal = foodCost + drinkCost + activityCost
+    totalCost += venueTotal
+    
+    venues.push({
+      venue: step,
+      foodCost,
+      drinkCost,
+      activityCost,
+      totalCost: venueTotal,
+      costPerPerson: venueTotal / partySize
+    })
+  })
+  
+  return {
+    totalCost,
+    costPerPerson: totalCost / partySize,
+    venues,
+    savings: generateMoneySavingTips(steps),
+    alternatives: generateAlternatives(steps, partySize)
+  }
+}
+
+function getPriceMultiplier(priceRange: string): number {
+  const multipliers = { '$': 0.7, '$$': 1.0, '$$$': 1.8, '$$$$': 3.0 }
+  return multipliers[priceRange as keyof typeof multipliers] || 1.0
+}
+
+function generateMoneySavingTips(steps: Step[]): string[] {
+  const tips = []
+  
+  // Check for expensive venues
+  const expensiveVenues = steps.filter(s => s.priceRange === '$$$' || s.priceRange === '$$$$')
+  if (expensiveVenues.length > 0) {
+    tips.push(`Consider visiting ${expensiveVenues[0].place} during happy hour for 20-30% savings`)
+  }
+  
+  // Check for activities
+  const activities = steps.filter(s => s.category === 'activity')
+  if (activities.length > 0) {
+    tips.push(`Look for Groupon or LivingSocial deals for ${activities[0].place} to save 15-25%`)
+  }
+  
+  // General tips
+  tips.push('Split appetizers and desserts to reduce costs')
+  tips.push('Check for early bird specials (usually 5-6 PM)')
+  tips.push('Consider lunch dates for better prices at dinner venues')
+  
+  if (steps.length >= 2) {
+    tips.push('Walk between nearby venues to save on transportation costs')
+  }
+  
+  return tips.slice(0, 4) // Return top 4 tips
+}
+
+function generateAlternatives(steps: Step[], partySize: number): { venue: Step; savings: number; alternative: string }[] {
+  const alternatives = []
+  
+  steps.forEach(step => {
+    if (step.priceRange === '$$$$') {
+      alternatives.push({
+        venue: step,
+        savings: 30 * partySize,
+        alternative: 'Find a similar upscale venue with lunch pricing'
+      })
+    } else if (step.category === 'activity') {
+      alternatives.push({
+        venue: step,
+        savings: 15 * partySize,
+        alternative: 'Look for free outdoor activities or happy hour specials'
+      })
+    } else if (step.category === 'drinks') {
+      alternatives.push({
+        venue: step,
+        savings: 20 * partySize,
+        alternative: 'Try venues with happy hour specials or drink specials'
+      })
+    }
+  })
+  
+  return alternatives.slice(0, 3) // Return top 3 alternatives
+}
+
 export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdate }: ItineraryScreenProps) {
   const [revealedCount, setRevealedCount] = useState(0)
   const [copied, setCopied] = useState(false)
@@ -609,6 +742,9 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [swapRequest, setSwapRequest] = useState<string>('')
   const [showSwapDialog, setShowSwapDialog] = useState<number | null>(null)
+  const [showBudgetCalculator, setShowBudgetCalculator] = useState(false)
+  const [partySize, setPartySize] = useState(2)
+  const [splitType, setSplitType] = useState<'equal' | 'custom'>('equal')
   const { signOut } = useAuth()
 
   useEffect(() => {
@@ -814,6 +950,14 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             >
               <Share2 className="w-3.5 h-3.5" />
               Send
+            </button>
+            <button
+              onClick={() => setShowBudgetCalculator(true)}
+              disabled={steps.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-600 text-xs font-medium hover:bg-green-500/15 transition-all disabled:opacity-40"
+            >
+              <Calculator className="w-3.5 h-3.5" />
+              Budget
             </button>
             <button
               onClick={handleCopyItinerary}
@@ -1067,6 +1211,181 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                 💡 Leave empty for a random alternative, or describe what you want
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Budget Calculator Modal */}
+      {showBudgetCalculator && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-2xl border p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Calculator className="w-5 h-5 text-green-600" />
+                <h3 className="font-semibold text-lg">Budget Calculator</h3>
+              </div>
+              <button
+                onClick={() => setShowBudgetCalculator(false)}
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {(() => {
+              const budget = calculateBudgetBreakdown(steps, partySize)
+              return (
+                <div className="space-y-6">
+                  {/* Party Size */}
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground block mb-2">Party Size</label>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5, 6].map(size => (
+                        <button
+                          key={size}
+                          onClick={() => setPartySize(size)}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                            partySize === size
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          }`}
+                        >
+                          {size} {size === 1 ? 'Person' : 'People'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Total Cost Summary */}
+                  <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-xl p-4 border border-green-500/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-green-700">Total Estimated Cost</span>
+                      <PiggyBank className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div className="text-2xl font-bold text-green-700">${budget.totalCost.toFixed(2)}</div>
+                    <div className="text-sm text-green-600">
+                      ${budget.costPerPerson.toFixed(2)} per person
+                    </div>
+                  </div>
+
+                  {/* Venue Breakdown */}
+                  <div>
+                    <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                      <Receipt className="w-4 h-4" />
+                      Cost Breakdown by Venue
+                    </h4>
+                    <div className="space-y-3">
+                      {budget.venues.map((venue, index) => (
+                        <div key={index} className="bg-muted/50 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium text-sm">{venue.venue.place}</span>
+                            <span className="text-sm font-semibold">${venue.totalCost.toFixed(2)}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            {venue.foodCost > 0 && (
+                              <div className="flex items-center gap-1">
+                                <UtensilsCrossed className="w-3 h-3" />
+                                <span>Food: ${venue.foodCost.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {venue.drinkCost > 0 && (
+                              <div className="flex items-center gap-1">
+                                <Wine className="w-3 h-3" />
+                                <span>Drinks: ${venue.drinkCost.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {venue.activityCost > 0 && (
+                              <div className="flex items-center gap-1">
+                                <Sparkles className="w-3 h-3" />
+                                <span>Activity: ${venue.activityCost.toFixed(2)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Split Options */}
+                  <div>
+                    <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      Split Costs
+                    </h4>
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        onClick={() => setSplitType('equal')}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                          splitType === 'equal'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                        }`}
+                      >
+                        Equal Split
+                      </button>
+                      <button
+                        onClick={() => setSplitType('custom')}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                          splitType === 'custom'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                        }`}
+                      >
+                        Custom Split
+                      </button>
+                    </div>
+                    <div className="bg-blue-500/10 rounded-lg p-3 border border-blue-500/20">
+                      <div className="text-sm text-blue-700">
+                        {splitType === 'equal' ? (
+                          <div>Each person pays: <strong>${budget.costPerPerson.toFixed(2)}</strong></div>
+                        ) : (
+                          <div className="text-blue-600">Custom split: You can adjust amounts individually</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Money Saving Tips */}
+                  <div>
+                    <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                      <TrendingDown className="w-4 h-4" />
+                      Money-Saving Tips
+                    </h4>
+                    <div className="space-y-2">
+                      {budget.savings.map((tip, index) => (
+                        <div key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <AlertCircle className="w-3.5 h-3.5 mt-0.5 text-green-500 shrink-0" />
+                          <span>{tip}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Alternatives */}
+                  {budget.alternatives.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                        <Info className="w-4 h-4" />
+                        Cost-Saving Alternatives
+                      </h4>
+                      <div className="space-y-2">
+                        {budget.alternatives.map((alt, index) => (
+                          <div key={index} className="bg-amber-500/10 rounded-lg p-3 border border-amber-500/20">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium">{alt.venue.place}</span>
+                              <span className="text-xs font-semibold text-amber-600">
+                                Save ${alt.savings.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">{alt.alternative}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}
