@@ -1,20 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-// Get API key from user settings or environment
-function getAPIKey(): string | null {
-  if (typeof window !== 'undefined') {
-    try {
-      const settings = localStorage.getItem('ai-settings')
-      if (settings) {
-        const parsed = JSON.parse(settings)
-        if (parsed.geminiApiKey) return parsed.geminiApiKey
-      }
-    } catch (error) {
-      console.error('Failed to load AI settings:', error)
-    }
-  }
-  return process.env.NEXT_PUBLIC_GEMINI_API_KEY || null
-}
+// Initialize Gemini AI
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null
 
 export interface VenueAnalysis {
   description: string
@@ -36,29 +23,22 @@ export interface DateRecommendation {
 }
 
 export class GeminiAIService {
-  private getModel() {
-    const apiKey = getAPIKey()
-    if (!apiKey) return null
-    
-    try {
-      const genAI = new GoogleGenerativeAI(apiKey)
-      return genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
-    } catch (error) {
-      console.error('Failed to initialize Gemini:', error)
-      return null
+  private model: any = null
+
+  constructor() {
+    if (genAI) {
+      this.model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
     }
   }
 
   private async generateContent(prompt: string): Promise<string> {
-    const model = this.getModel()
-    
-    if (!model) {
+    if (!this.model) {
       console.warn('Gemini AI not available - using fallback')
       return this.getFallbackResponse(prompt)
     }
 
     try {
-      const result = await model.generateContent(prompt)
+      const result = await this.model.generateContent(prompt)
       const response = await result.response
       return response.text()
     } catch (error) {

@@ -9,10 +9,29 @@ import './globals.css'
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: 'cover',
+  themeColor: '#000000',
+}
+
 export const metadata: Metadata = {
-  title: 'Date Night App',
-  description: 'Plan your perfect date night experience',
+  title: 'Date Night Planner',
+  description: 'Plan your perfect date night experience with AI-powered recommendations',
   generator: 'Next.js',
+  applicationName: 'Date Night Planner',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Date Night',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  manifest: '/manifest.json',
   icons: {
     icon: [
       {
@@ -26,6 +45,16 @@ export const metadata: Metadata = {
       {
         url: '/icon.svg',
         type: 'image/svg+xml',
+      },
+      {
+        url: '/icon-192x192.png',
+        sizes: '192x192',
+        type: 'image/png',
+      },
+      {
+        url: '/icon-512x512.png',
+        sizes: '512x512',
+        type: 'image/png',
       },
     ],
     apple: '/apple-icon.png',

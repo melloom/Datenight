@@ -1,3 +1,5 @@
+import withPWA from 'next-pwa'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
@@ -6,6 +8,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  turbopack: {},
   async headers() {
     return [
       {
@@ -40,4 +43,56 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+export default withPWA({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
+  runtimeCaching: [
+    {
+      urlPattern: /^https:\/\/fonts\.(?:gstatic|googleapis)\.com\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'google-fonts',
+        expiration: {
+          maxEntries: 4,
+          maxAgeSeconds: 365 * 24 * 60 * 60
+        }
+      }
+    },
+    {
+      urlPattern: /^https:\/\/.*\.(?:googleapis|firebaseio|firebase)\.com\/.*/i,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'firebase-cache',
+        networkTimeoutSeconds: 10,
+        expiration: {
+          maxEntries: 32,
+          maxAgeSeconds: 24 * 60 * 60
+        }
+      }
+    },
+    {
+      urlPattern: /\.(?:jpg|jpeg|png|gif|webp|svg|ico)$/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'image-cache',
+        expiration: {
+          maxEntries: 64,
+          maxAgeSeconds: 30 * 24 * 60 * 60
+        }
+      }
+    },
+    {
+      urlPattern: /^https:\/\/.*\.(?:unsplash|ggpht)\.com\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'external-images',
+        expiration: {
+          maxEntries: 32,
+          maxAgeSeconds: 7 * 24 * 60 * 60
+        }
+      }
+    }
+  ]
+})(nextConfig)
