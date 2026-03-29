@@ -1801,9 +1801,6 @@ class VenueSearcher {
   }
 
   private buildOverpassQueries(criteria: SearchCriteria): string[] {
-    // Simplified query that's more likely to work
-    const locationName = this.extractLocationName(criteria.location)
-    
     const queries = []
 
     // Amenity types: restaurants, bars, entertainment
@@ -1813,10 +1810,32 @@ class VenueSearcher {
     // Tourism types: attractions, museums, galleries
     const tourismTypes = 'museum|gallery|aquarium|zoo|theme_park|attraction|viewpoint'
 
-    // Single comprehensive query to find all venue types at once
-    queries.push(`
+    // Extract location name for simpler queries
+    const locationName = this.extractLocationName(criteria.location)
+    const stateName = this.extractStateName(criteria.location)
+
+    // Query 1: Use state-based search with city filtering (more reliable)
+    if (stateName) {
+      queries.push(`
 [out:json][timeout:30];
-area["name"="${locationName}"]->.searchArea;
+area["name"="${stateName}"]->.searchArea;
+(
+  node["amenity"~"${amenityTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis|Glen Burnie|Pasadena"](area.searchArea);
+  way["amenity"~"${amenityTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis|Glen Burnie|Pasadena"](area.searchArea);
+  relation["amenity"~"${amenityTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis|Glen Burnie|Pasadena"](area.searchArea);
+  node["leisure"~"${leisureTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis|Glen Burnie|Pasadena"](area.searchArea);
+  way["leisure"~"${leisureTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis|Glen Burnie|Pasadena"](area.searchArea);
+  relation["leisure"~"${leisureTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis|Glen Burnie|Pasadena"](area.searchArea);
+);
+out geom;
+`)
+    }
+
+    // Query 2: Simple statewide search as fallback
+    if (stateName) {
+      queries.push(`
+[out:json][timeout:30];
+area["name"="${stateName}"]->.searchArea;
 (
   node["amenity"~"${amenityTypes}"](area.searchArea);
   way["amenity"~"${amenityTypes}"](area.searchArea);
@@ -1824,32 +1843,54 @@ area["name"="${locationName}"]->.searchArea;
   node["leisure"~"${leisureTypes}"](area.searchArea);
   way["leisure"~"${leisureTypes}"](area.searchArea);
   relation["leisure"~"${leisureTypes}"](area.searchArea);
-  node["tourism"~"${tourismTypes}"](area.searchArea);
-  way["tourism"~"${tourismTypes}"](area.searchArea);
-  relation["tourism"~"${tourismTypes}"](area.searchArea);
-  node["sport"~"bowling|climbing|skating"](area.searchArea);
-  way["sport"~"bowling|climbing|skating"](area.searchArea);
 );
 out geom;
 `)
+    }
 
-    // Fallback query with addr:city approach
+    // Query 3: Very simple fallback - just state filter without area
     queries.push(`
 [out:json][timeout:30];
 (
-  node["amenity"~"${amenityTypes}"]["addr:city"="${locationName}"];
-  way["amenity"~"${amenityTypes}"]["addr:city"="${locationName}"];
-  relation["amenity"~"${amenityTypes}"]["addr:city"="${locationName}"];
-  node["leisure"~"${leisureTypes}"]["addr:city"="${locationName}"];
-  way["leisure"~"${leisureTypes}"]["addr:city"="${locationName}"];
-  relation["leisure"~"${leisureTypes}"]["addr:city"="${locationName}"];
-  node["tourism"~"${tourismTypes}"]["addr:city"="${locationName}"];
-  way["tourism"~"${tourismTypes}"]["addr:city"="${locationName}"];
+  node["amenity"~"${amenityTypes}"]["addr:state"="${stateName}"];
+  way["amenity"~"${amenityTypes}"]["addr:state"="${stateName}"];
+  relation["amenity"~"${amenityTypes}"]["addr:state"="${stateName}"];
 );
 out geom;
 `)
 
     return queries
+  }
+
+  private extractStateName(location: string): string {
+    const parts = location.split(',').map(part => part.trim().toLowerCase())
+    
+    // Look for state in the location parts
+    for (const part of parts) {
+      if (part === 'maryland' || part === 'md') {
+        return 'Maryland'
+      }
+      if (part === 'virginia' || part === 'va') {
+        return 'Virginia'
+      }
+      // Add more states as needed
+    }
+    
+    return 'Maryland' // Default to Maryland for this area
+  }
+
+  private calculateBoundingBox(lat: number, lng: number, timeOfDay: string): string {
+    // Calculate bounding box based on time of day (larger for late night)
+    const radius = timeOfDay === 'late' ? 15 : 8 // miles
+    const latDelta = radius / 69 // Approximate miles per degree latitude
+    const lngDelta = radius / (Math.cos(lat * Math.PI / 180) * 69) // Adjust for longitude
+    
+    const south = lat - latDelta
+    const north = lat + latDelta
+    const west = lng - lngDelta
+    const east = lng + lngDelta
+    
+    return `${south},${west},${north},${east}`
   }
 
   private extractLocationName(location: string): string {
