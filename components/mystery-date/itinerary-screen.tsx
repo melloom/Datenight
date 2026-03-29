@@ -61,6 +61,27 @@ interface Step {
   tags: string[]
   coordinates: { lat: number; lng: number }
   reservationRecommended: boolean
+  travelTimeToNext?: number // in minutes
+  distanceToNext?: number // in miles
+}
+
+// Calculate travel time between two coordinates
+function calculateTravelTime(from: { lat: number; lng: number }, to: { lat: number; lng: number }): { minutes: number; miles: number } {
+  // Simple distance calculation (Haversine formula approximation)
+  const R = 3959 // Earth's radius in miles
+  const dLat = (to.lat - from.lat) * Math.PI / 180
+  const dLng = (to.lng - from.lng) * Math.PI / 180
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(from.lat * Math.PI / 180) * Math.cos(to.lat * Math.PI / 180) *
+    Math.sin(dLng/2) * Math.sin(dLng/2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+  const distance = R * c
+  
+  // Estimate travel time (average speed: 25 mph in city, 40 mph highway)
+  const avgSpeed = distance < 5 ? 25 : 40
+  const minutes = Math.round((distance / avgSpeed) * 60)
+  
+  return { minutes, miles: Math.round(distance * 10) / 10 }
 }
 
 function StarRating({ value, count }: { value: number; count: number }) {
@@ -363,7 +384,18 @@ function StepCard({
           {isRevealed ? step.id : <Lock className="w-3.5 h-3.5" />}
         </div>
         {index < totalSteps - 1 && (
-          <div className={`w-px flex-1 mt-2 ${isRevealed ? color.dot + "/30" : "bg-border"}`} style={{ minHeight: "2rem" }} />
+          <div className="relative flex-1 mt-2 flex flex-col items-center">
+            <div className={`w-px flex-1 ${isRevealed ? color.dot + "/30" : "bg-border"}`} style={{ minHeight: "2rem" }} />
+            {isRevealed && step.travelTimeToNext && (
+              <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 ${color.bg} ${color.text} text-[10px] font-medium px-2 py-1 rounded-full border ${color.border} flex items-center gap-1 shadow-sm`}>
+                <Navigation className="w-2.5 h-2.5" />
+                {step.travelTimeToNext} min
+                {step.distanceToNext && (
+                  <span className="opacity-75">· {step.distanceToNext} mi</span>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -583,35 +615,52 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       return
     }
 
-    const convertedSteps: Step[] = venues.map((venue, index) => ({
-      id: index + 1,
-      label: venue.category === "drinks" ? "Drinks" : venue.category === "dinner" ? "Dinner" : "Activity",
-      time: venue.category === "drinks" ? "7:00 PM" : venue.category === "dinner" ? "8:30 PM" : "10:00 PM",
-      icon: venue.category === "drinks" ? <Wine className="w-5 h-5" /> : venue.category === "dinner" ? <UtensilsCrossed className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />,
-      place: venue.name,
-      rating: venue.rating,
-      reviewCount: venue.reviewCount,
-      priceRange: venue.priceRange,
-      tag: venue.category === "drinks" ? "Cocktails" : venue.category === "dinner" ? "Dining" : "Experience",
-      description: venue.description,
-      highlights: venue.highlights,
-      address: venue.address,
-      phone: venue.phone || "Phone not available",
-      category: venue.category,
-      imageUrl: venue.imageUrl,
-      website: venue.website,
-      hours: venue.hours,
-      vibe: venue.vibe,
-      features: venue.features || [],
-      tags: venue.tags || [],
-      coordinates: venue.coordinates || { lat: 0, lng: 0 },
-      reservationRecommended:
-        venue.category === "dinner" && (venue.priceRange === "$$$" || venue.priceRange === "$$$$") ||
-        venue.category === "drinks" && venue.priceRange === "$$$$" ||
-        false,
-    }))
+    const convertedSteps: Step[] = venues.map((venue, index) => {
+      const step = {
+        id: index + 1,
+        label: venue.category === "drinks" ? "Drinks" : venue.category === "dinner" ? "Dinner" : "Activity",
+        time: venue.category === "drinks" ? "7:00 PM" : venue.category === "dinner" ? "8:30 PM" : "10:00 PM",
+        icon: venue.category === "drinks" ? <Wine className="w-5 h-5" /> : venue.category === "dinner" ? <UtensilsCrossed className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />,
+        place: venue.name,
+        rating: venue.rating,
+        reviewCount: venue.reviewCount,
+        priceRange: venue.priceRange,
+        tag: venue.category === "drinks" ? "Cocktails" : venue.category === "dinner" ? "Dining" : "Experience",
+        description: venue.description,
+        highlights: venue.highlights,
+        address: venue.address,
+        phone: venue.phone || "Phone not available",
+        category: venue.category,
+        imageUrl: venue.imageUrl,
+        website: venue.website,
+        hours: venue.hours,
+        vibe: venue.vibe,
+        features: venue.features || [],
+        tags: venue.tags || [],
+        coordinates: venue.coordinates || { lat: 0, lng: 0 },
+        reservationRecommended:
+          venue.category === "dinner" && (venue.priceRange === "$$$" || venue.priceRange === "$$$$") ||
+          venue.category === "drinks" && venue.priceRange === "$$$$" ||
+          false,
+      }
+      return step
+    })
 
-    setSteps(convertedSteps)
+    // Calculate travel times between consecutive venues
+    const stepsWithTravel = convertedSteps.map((step, index) => {
+      if (index < convertedSteps.length - 1) {
+        const nextStep = convertedSteps[index + 1]
+        const travel = calculateTravelTime(step.coordinates, nextStep.coordinates)
+        return {
+          ...step,
+          travelTimeToNext: travel.minutes,
+          distanceToNext: travel.miles
+        }
+      }
+      return step
+    })
+
+    setSteps(stepsWithTravel)
   }, [venues])
 
   const handleReveal = () => {
