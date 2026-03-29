@@ -171,21 +171,21 @@ function VenueImage({ src, alt, category }: { src?: string; alt: string; categor
 
   if (!src || imgError) {
     return (
-      <div className={`w-full aspect-[4/3] sm:aspect-[16/9] bg-gradient-to-br ${fallbackGradients[category] || fallbackGradients.activity} flex items-center justify-center`}>
+      <div className="w-full aspect-4/3 sm:aspect-video bg-linear-to-br from-primary/20 to-primary/5 rounded-xl overflow-hidden flex items-center justify-center">
         {fallbackIcons[category] || fallbackIcons.activity}
       </div>
     )
   }
 
   return (
-    <div className="relative w-full aspect-[4/3] sm:aspect-[16/9] overflow-hidden bg-gray-100">
+    <div className="relative w-full aspect-4/3 sm:aspect-video overflow-hidden bg-gray-100">
       <img
         src={src}
         alt={alt}
         className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
         onError={() => setImgError(true)}
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+      <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent" />
     </div>
   )
 }
@@ -1610,7 +1610,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                   </div>
 
                   {/* Total Cost Summary */}
-                  <div className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-xl p-4 border border-green-500/20">
+                  <div className="bg-linear-to-r from-green-500/10 to-emerald-500/10 rounded-xl p-4 border border-green-500/20">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-green-700">Total Estimated Cost</span>
                       <PiggyBank className="w-4 h-4 text-green-600" />
@@ -1852,7 +1852,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
               {/* Weather Information */}
               {weather && (
-                <div className="bg-gradient-to-r from-blue-500/10 to-sky-500/10 rounded-xl p-4 border border-blue-500/20">
+                <div className="bg-linear-to-r from-blue-500/10 to-sky-500/10 rounded-xl p-4 border border-blue-500/20">
                   <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
                     {weather.precipitation > 0 ? <CloudRain className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
                     Weather Forecast
@@ -2038,7 +2038,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                   Birthday & Anniversary Themes
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gradient-to-r from-pink-500/10 to-rose-500/10 rounded-lg p-4 border border-pink-500/20">
+                  <div className="bg-linear-to-r from-pink-500/10 to-rose-500/10 rounded-lg p-4 border border-pink-500/20">
                     <div className="flex items-center gap-2 mb-2">
                       <Cake className="w-4 h-4 text-pink-600" />
                       <span className="font-medium text-sm">Birthday Celebrations</span>
@@ -2050,7 +2050,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                       <div>🎁 Special birthday treatment</div>
                     </div>
                   </div>
-                  <div className="bg-gradient-to-r from-red-500/10 to-pink-500/10 rounded-lg p-4 border border-red-500/20">
+                  <div className="bg-linear-to-r from-red-500/10 to-pink-500/10 rounded-lg p-4 border border-red-500/20">
                     <div className="flex items-center gap-2 mb-2">
                       <Heart className="w-4 h-4 text-red-600" />
                       <span className="font-medium text-sm">Anniversary Romance</span>
@@ -2072,7 +2072,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                   Seasonal Activities
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg p-4 border border-blue-500/20">
+                  <div className="bg-linear-to-r from-blue-500/10 to-cyan-500/10 rounded-lg p-4 border border-blue-500/20">
                     <div className="flex items-center gap-2 mb-2">
                       <Snowflake className="w-4 h-4 text-blue-600" />
                       <span className="font-medium text-sm">Winter Wonderland</span>
@@ -2084,7 +2084,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                       <div>❄️ Winter festivals & events</div>
                     </div>
                   </div>
-                  <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 rounded-lg p-4 border border-orange-500/20">
+                  <div className="bg-linear-to-r from-orange-500/10 to-amber-500/10 rounded-lg p-4 border border-orange-500/20">
                     <div className="flex items-center gap-2 mb-2">
                       <Flower2 className="w-4 h-4 text-orange-600" />
                       <span className="font-medium text-sm">Fall Harvest</span>
@@ -2106,7 +2106,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                   Holiday Special Venues
                 </h4>
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-gradient-to-r from-red-500/10 to-green-500/10 rounded-lg p-3 border border-red-500/20">
+                  <div className="bg-linear-to-r from-red-500/10 to-green-500/10 rounded-lg p-3 border border-red-500/20">
                     <div className="flex items-center gap-2 mb-1">
                       <Heart className="w-3 h-3 text-red-600" />
                       <span className="font-medium text-xs">Valentine's Day</span>
@@ -2117,7 +2117,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                       <div>🍫 Chocolate tastings</div>
                     </div>
                   </div>
-                  <div className="bg-gradient-to-r from-red-500/10 to-green-500/10 rounded-lg p-3 border border-green-500/20">
+                  <div className="bg-linear-to-r from-red-500/10 to-green-500/10 rounded-lg p-3 border border-green-500/20">
                     <div className="flex items-center gap-2 mb-1">
                       <TreePine className="w-3 h-3 text-green-600" />
                       <span className="font-medium text-xs">Christmas</span>
@@ -2128,7 +2128,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                       <div>🎁 Gift shops</div>
                     </div>
                   </div>
-                  <div className="bg-gradient-to-r from-orange-500/10 to-black/10 rounded-lg p-3 border border-orange-500/20">
+                  <div className="bg-linear-to-r from-orange-500/10 to-black/10 rounded-lg p-3 border border-orange-500/20">
                     <div className="flex items-center gap-2 mb-1">
                       <Ghost className="w-3 h-3 text-orange-600" />
                       <span className="font-medium text-xs">Halloween</span>
@@ -2148,7 +2148,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                   <Sparkles className="w-4 h-4" />
                   Surprise Elements & Hidden Gems
                 </h4>
-                <div className="bg-gradient-to-r from-purple-500/10 to-indigo-500/10 rounded-lg p-4 border border-purple-500/20">
+                <div className="bg-linear-to-r from-purple-500/10 to-indigo-500/10 rounded-lg p-4 border border-purple-500/20">
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <div className="font-medium mb-2">🌟 Hidden Gems</div>
@@ -2181,7 +2181,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                   </h4>
                   <div className="space-y-3">
                     {steps.map((step, index) => (
-                      <div key={index} className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-lg p-4 border border-purple-500/20">
+                      <div key={index} className="bg-linear-to-r from-purple-500/10 to-pink-500/10 rounded-lg p-4 border border-purple-500/20">
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-medium text-sm">{step.place}</span>
                           <span className="text-xs text-purple-600 font-medium">
