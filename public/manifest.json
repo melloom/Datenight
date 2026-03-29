@@ -1,7 +1,7 @@
 {
-  "name": "Date Night Planner",
+  "name": "Date Night Planner - AI-Powered Date Ideas",
   "short_name": "Date Night",
-  "description": "Plan your perfect date night experience with AI-powered recommendations",
+  "description": "Discover the perfect date night with AI-powered recommendations. Find romantic restaurants, fun activities, and unique venues tailored to your preferences.",
   "start_url": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],

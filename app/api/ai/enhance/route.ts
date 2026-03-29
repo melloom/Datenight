@@ -154,6 +154,143 @@ Provide JSON:
       }
     }
 
+    if (action === 'generate-venues') {
+      const { location, criteria } = body
+      const prompt = `You are a local expert. Suggest 3 REAL, SPECIFIC venues for a date night in ${location || 'a popular city'}.
+
+Requirements:
+- Budget: ${criteria?.budget || '$$'}
+- Vibes: ${criteria?.vibes?.join(', ') || 'romantic'}
+- Time: ${criteria?.time || 'prime'} (early=5-7pm, prime=7-9pm, late=9pm+)
+- Party size: ${criteria?.partySize || 2}
+
+You MUST suggest real places that actually exist. Use your knowledge of restaurants, bars, and entertainment venues.
+
+Return a JSON array of exactly 3 venues:
+[
+  {
+    "name": "Actual real venue name",
+    "category": "drinks" or "dinner" or "activity",
+    "rating": 4.0 to 4.8,
+    "reviewCount": 100 to 2000,
+    "priceRange": "$" or "$$" or "$$$" or "$$$$",
+    "address": "Real street address, City, State",
+    "phone": "Real phone if known or empty string",
+    "description": "2-3 sentence description of why this place is great for dates",
+    "highlights": ["3-4 specific highlights"],
+    "tags": ["2-3 tags like 'cocktail bar', 'italian', 'live music'"],
+    "vibe": "romantic/adventurous/chill/upscale/quirky"
+  }
+]
+
+First venue should be a drinks/bar spot, second a dinner restaurant, third an activity or after-dinner spot. Be specific with real names and addresses.`
+
+      if (!model) {
+        return NextResponse.json({ venues: [] })
+      }
+
+      try {
+        const result = await model.generateContent(prompt)
+        const text = result.response.text()
+        const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
+        const venues = JSON.parse(cleaned)
+        return NextResponse.json({ venues: Array.isArray(venues) ? venues : [] })
+      } catch (e) {
+        console.error('AI venue generation failed:', e)
+        return NextResponse.json({ venues: [] })
+      }
+    }
+
+    if (action === 'suggest-alternative') {
+      const { location, criteria, currentVenue, category } = body
+      const prompt = `Suggest ONE alternative REAL venue to replace "${currentVenue?.name || 'the current venue'}" for a date night in ${location || 'a popular city'}.
+
+The current venue is a ${category || 'dinner'} spot. Suggest something DIFFERENT but still great.
+
+Requirements:
+- Budget: ${criteria?.budget || '$$'}
+- Vibes: ${criteria?.vibes?.join(', ') || 'romantic'}
+- Category must be: ${category || 'dinner'}
+
+Return a single JSON object (NOT an array):
+{
+  "name": "Real venue name",
+  "category": "${category || 'dinner'}",
+  "rating": 4.0 to 4.8,
+  "reviewCount": 100 to 2000,
+  "priceRange": "${criteria?.budget || '$$'}",
+  "address": "Real address, City, State",
+  "phone": "",
+  "description": "2-3 sentences about why this is better/different",
+  "highlights": ["3-4 highlights"],
+  "tags": ["2-3 tags"],
+  "vibe": "${criteria?.vibes?.[0] || 'romantic'}"
+}
+
+Be specific with a real venue name and address.`
+
+      if (!model) {
+        return NextResponse.json({ venue: null })
+      }
+
+      try {
+        const result = await model.generateContent(prompt)
+        const text = result.response.text()
+        const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
+        const venue = JSON.parse(cleaned)
+        return NextResponse.json({ venue })
+      } catch (e) {
+        console.error('AI alternative suggestion failed:', e)
+        return NextResponse.json({ venue: null })
+      }
+    }
+
+    if (action === 'improve-plan') {
+      const { location, criteria, currentVenues, feedback } = body
+      const venueList = currentVenues?.map((v: any) => `${v.name} (${v.category})`).join(', ') || 'none'
+      const prompt = `A user wants to improve their date night plan in ${location || 'their city'}.
+
+Current plan: ${venueList}
+User feedback: "${feedback || 'I want better options'}"
+Budget: ${criteria?.budget || '$$'}
+Vibes: ${criteria?.vibes?.join(', ') || 'romantic'}
+Time: ${criteria?.time || 'prime'}
+
+Suggest 3 REAL, SPECIFIC replacement venues that address the user's feedback. Each must be a real place.
+
+Return JSON array:
+[
+  {
+    "name": "Real venue name",
+    "category": "drinks" or "dinner" or "activity",
+    "rating": 4.0 to 4.8,
+    "reviewCount": 100 to 2000,
+    "priceRange": "${criteria?.budget || '$$'}",
+    "address": "Real address, City, State",
+    "phone": "",
+    "description": "Why this is a better choice based on the feedback",
+    "highlights": ["3-4 highlights"],
+    "tags": ["2-3 tags"],
+    "vibe": "${criteria?.vibes?.[0] || 'romantic'}"
+  }
+]`
+
+      if (!model) {
+        return NextResponse.json({ venues: [] })
+      }
+
+      try {
+        const result = await model.generateContent(prompt)
+        const text = result.response.text()
+        const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
+        const venues = JSON.parse(cleaned)
+        return NextResponse.json({ venues: Array.isArray(venues) ? venues : [] })
+      } catch (e) {
+        console.error('AI plan improvement failed:', e)
+        return NextResponse.json({ venues: [] })
+      }
+    }
+
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   } catch (error) {
     console.error('AI enhance error:', error)

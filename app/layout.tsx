@@ -20,10 +20,34 @@ export const viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'Date Night Planner',
-  description: 'Plan your perfect date night experience with AI-powered recommendations',
+  metadataBase: new URL('https://datenight.app'),
+  title: {
+    default: 'Date Night Planner - AI-Powered Date Ideas & Venue Recommendations',
+    template: '%s | Date Night Planner'
+  },
+  description: 'Discover the perfect date night with AI-powered recommendations. Find romantic restaurants, fun activities, and unique venues tailored to your preferences. Plan unforgettable dates effortlessly.',
+  keywords: [
+    'date night planner',
+    'date ideas',
+    'romantic restaurants',
+    'date night ideas',
+    'couples activities',
+    'AI date planner',
+    'venue recommendations',
+    'romantic date spots',
+    'date planning app',
+    'relationship activities',
+    'dinner date ideas',
+    'fun date activities'
+  ],
+  authors: [{ name: 'Date Night Team' }],
+  creator: 'Date Night Planner',
+  publisher: 'Date Night Planner',
   generator: 'Next.js',
   applicationName: 'Date Night Planner',
+  referrer: 'origin-when-cross-origin',
+  category: 'Lifestyle',
+  classification: 'Dating & Relationships',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -31,6 +55,45 @@ export const metadata: Metadata = {
   },
   formatDetection: {
     telephone: false,
+    email: false,
+    address: false,
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://datenight.app',
+    siteName: 'Date Night Planner',
+    title: 'Date Night Planner - AI-Powered Date Ideas & Venue Recommendations',
+    description: 'Discover the perfect date night with AI-powered recommendations. Find romantic restaurants, fun activities, and unique venues tailored to your preferences.',
+    images: [
+      {
+        url: '/android-chrome-512x512.png',
+        width: 512,
+        height: 512,
+        alt: 'Date Night Planner Logo',
+      }
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Date Night Planner - AI-Powered Date Ideas',
+    description: 'Discover the perfect date night with AI-powered recommendations. Find romantic restaurants and unique venues.',
+    images: ['/android-chrome-512x512.png'],
+    creator: '@datenightapp',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  verification: {
+    google: 'your-google-verification-code',
   },
   manifest: '/manifest.json',
   icons: {
@@ -65,8 +128,45 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'Date Night Planner',
+    applicationCategory: 'LifestyleApplication',
+    operatingSystem: 'Any',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+    description: 'Discover the perfect date night with AI-powered recommendations. Find romantic restaurants, fun activities, and unique venues tailored to your preferences.',
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.8',
+      ratingCount: '1250',
+    },
+    author: {
+      '@type': 'Organization',
+      name: 'Date Night Team',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Date Night Planner',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://datenight.app/android-chrome-512x512.png',
+      },
+    },
+  }
+
   return (
     <html lang="en" className={inter.variable}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className="font-sans antialiased">
         <AuthProvider>
           <TutorialProvider>

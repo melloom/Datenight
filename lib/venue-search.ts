@@ -227,10 +227,12 @@ class VenueSearcher {
     const optimizedPlan = this.optimizeDatePlan(rankedVenues, criteria)
     console.log(`🗺️ Optimized date plan with ${optimizedPlan.length} venues`)
 
-    // If no venues found from any source, use fallback venues
-    const finalPlan = optimizedPlan.length > 0 ? optimizedPlan : this.createFallbackVenues(criteria)
+    // If no venues found from any source, try AI generation then static fallback
+    let finalPlan = optimizedPlan
     if (optimizedPlan.length === 0) {
-      console.log('⚠️ No venues from APIs, using fallback venues')
+      console.log('⚠️ No venues from APIs, trying AI venue generation...')
+      const aiVenues = await this.generateAIVenues(criteria)
+      finalPlan = aiVenues.length > 0 ? aiVenues : this.createFallbackVenues(criteria)
     }
 
     const endTime = Date.now()
@@ -461,6 +463,50 @@ class VenueSearcher {
       // Within same category, sort by rating
       return b.rating - a.rating
     })
+  }
+
+  private async generateAIVenues(criteria: SearchCriteria): Promise<Venue[]> {
+    try {
+      const response = await fetch('/api/ai/enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate-venues',
+          location: criteria.location,
+          criteria: {
+            budget: criteria.budget,
+            vibes: criteria.vibes,
+            time: criteria.time,
+            partySize: criteria.partySize,
+          }
+        })
+      })
+
+      if (!response.ok) return []
+      const data = await response.json()
+      if (!data.venues || data.venues.length === 0) return []
+
+      return data.venues.map((v: any, i: number) => ({
+        id: `ai-${v.category}-${Date.now()}-${i}`,
+        name: v.name,
+        category: v.category || ['drinks', 'dinner', 'activity'][i] || 'dinner',
+        rating: v.rating || 4.2,
+        reviewCount: v.reviewCount || 200,
+        priceRange: v.priceRange || criteria.budget,
+        address: v.address || criteria.location,
+        phone: v.phone || '',
+        description: v.description || '',
+        highlights: v.highlights || [],
+        coordinates: { lat: 0, lng: 0 },
+        tags: v.tags || [],
+        features: [],
+        vibe: v.vibe || criteria.vibes[0] || 'romantic',
+        aiEnhanced: true,
+      })) as Venue[]
+    } catch (e) {
+      console.error('AI venue generation failed:', e)
+      return []
+    }
   }
 
   private createFallbackVenues(criteria: SearchCriteria): Venue[] {

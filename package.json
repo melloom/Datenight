@@ -1,7 +1,9 @@
 {
-  "name": "my-project",
-  "version": "0.1.0",
+  "name": "date-night-planner",
+  "version": "1.0.0",
   "private": true,
+  "description": "AI-powered date night planner with venue recommendations and activity suggestions",
+  "author": "Date Night Team",
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build",

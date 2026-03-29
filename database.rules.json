@@ -1,6 +1,10 @@
 {
   "rules": {
-    ".read": "now < 1777262400000",  // 2026-4-27
-    ".write": "now < 1777262400000",  // 2026-4-27
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    }
   }
 }
