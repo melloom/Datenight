@@ -933,7 +933,52 @@ class VenueSearcher {
 
   private generateFoursquareDescription(place: any): string {
     const categories = place.categories?.map((c: any) => c.name).join(', ') || 'venue'
-    return `${place.name} is a ${categories} known for its quality service and atmosphere.`
+    const priceLevel = place.price || 1 // 1-4 price scale from Foursquare
+    const priceDescriptions = {
+      1: 'budget-friendly',
+      2: 'moderately priced', 
+      3: 'upscale',
+      4: 'fine dining'
+    }
+    
+    let description = `${place.name} is a ${categories} offering ${priceDescriptions[priceLevel] || 'moderately priced'} dining and entertainment.`
+    
+    // Add specific details based on venue type
+    if (categories.toLowerCase().includes('cinema') || categories.toLowerCase().includes('movie theater')) {
+      description += ` Enjoy the latest blockbuster films with state-of-the-art digital projection and comfortable seating.`
+      if (priceLevel <= 2) {
+        description += ` Ticket prices typically range from $8-12 for matinee shows and $12-15 for evening screenings.`
+      } else {
+        description += ` Premium cinema experience with ticket prices around $15-20 for evening shows.`
+      }
+    } else if (categories.toLowerCase().includes('bowling')) {
+      description += ` Perfect for a fun and casual date night with bowling lanes, arcade games, and a full bar.`
+      description += ` Expect to spend $15-25 per person for bowling plus food and drinks.`
+    } else if (categories.toLowerCase().includes('escape room')) {
+      description += ` Challenge yourselves with immersive puzzle rooms and thrilling adventures.`
+      description += ` Prices typically run $25-40 per person for a 60-minute escape room experience.`
+    } else if (categories.toLowerCase().includes('restaurant') || categories.toLowerCase().includes('food')) {
+      description += ` Known for quality service and a welcoming atmosphere perfect for date nights.`
+      if (priceLevel === 1) {
+        description += ` Entrees range from $12-18, making it an affordable dining option.`
+      } else if (priceLevel === 2) {
+        description += ` Entrees typically cost $18-28, offering great value for the quality.`
+      } else if (priceLevel === 3) {
+        description += ` Expect upscale dining with entrees priced $28-45 and excellent service.`
+      } else {
+        description += ` Fine dining experience with entrees $45+ and premium ingredients.`
+      }
+    } else if (categories.toLowerCase().includes('bar') || categories.toLowerCase().includes('pub')) {
+      description += ` Great atmosphere for conversation with craft cocktails and quality beverages.`
+      description += ` Drinks typically range from $8-15 for cocktails and $5-8 for beer and wine.`
+    }
+    
+    // Add popular times or features
+    if (place.popular) {
+      description += ` This is a popular local spot that's often busy, especially on weekends.`
+    }
+    
+    return description
   }
 
 
@@ -1610,20 +1655,56 @@ class VenueSearcher {
 
   private generateGoogleDescription(place: any): string {
     const types = place.types || []
-    let description = place.name || 'A local venue'
-    
-    if (types.includes('restaurant')) {
-      description += ' is a restaurant'
-      if (place.cuisine_types?.length > 0) {
-        description += ` serving ${place.cuisine_types.join(', ')}`
-      }
-    } else if (types.includes('bar')) {
-      description += ' is a bar'
-    } else if (types.includes('night_club')) {
-      description += ' is a nightclub'
+    const priceLevel = place.price_level || 2 // 1-4 price scale from Google
+    const priceDescriptions = {
+      1: 'budget-friendly',
+      2: 'moderately priced',
+      3: 'upscale', 
+      4: 'fine dining'
     }
     
-    description += ' known for its quality service and atmosphere.'
+    let description = `${place.name || 'A local venue'} offers ${priceDescriptions[priceLevel]} dining and entertainment.`
+    
+    // Add specific details based on venue type
+    if (types.includes('movie_theater') || types.includes('cinema')) {
+      description += ` This cinema features the latest releases with modern projection and sound systems.`
+      if (priceLevel <= 2) {
+        description += ` Matinee tickets are typically $8-12, with evening shows $12-15.`
+      } else {
+        description += ` Premium theater experience with tickets $15-20 for evening showings.`
+      }
+    } else if (types.includes('bowling_alley')) {
+      description += ` Enjoy a fun date night with bowling, arcade games, and onsite dining.`
+      description += ` Bowling costs $15-25 per person, with food and drinks available.`
+    } else if (types.includes('restaurant') || types.includes('food')) {
+      description += ` Known for excellent service and a perfect atmosphere for date nights.`
+      if (priceLevel === 1) {
+        description += ` Budget-friendly entrees range from $12-18.`
+      } else if (priceLevel === 2) {
+        description += ` Mid-range pricing with entrees $18-28, offering great value.`
+      } else if (priceLevel === 3) {
+        description += ` Upscale dining experience with entrees $28-45 and premium service.`
+      } else {
+        description += ` Fine dining establishment with entrees $45+ and exceptional cuisine.`
+      }
+    } else if (types.includes('bar') || types.includes('night_club')) {
+      description += ` Perfect venue for conversation with craft cocktails and quality beverages.`
+      description += ` Cocktails range $8-15, with beer and wine $5-10.`
+    } else if (types.includes('amusement_park') || types.includes('park')) {
+      description += ` Great outdoor venue for activities and entertainment.`
+      description += ` Entry fees typically $10-25 per person depending on activities.`
+    } else {
+      description += ` A popular local venue perfect for date nights and entertainment.`
+    }
+    
+    // Add additional details
+    if (place.rating >= 4.5) {
+      description += ` Highly rated by customers for exceptional quality.`
+    }
+    
+    if (place.opening_hours?.open_now) {
+      description += ` Currently open and ready to welcome guests.`
+    }
     
     return description
   }
