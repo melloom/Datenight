@@ -105,7 +105,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const [budget, setBudget] = useState<Budget>("$$")
   const [location, setLocation] = useState("")
   const [vibes, setVibes] = useState<string[]>(["romantic"])
-  const [time, setTime] = useState("prime")
+  const [time, setTime] = useState<"early" | "prime" | "late">("prime")
   const [partySize, setPartySize] = useState(2)
   const [cuisine, setCuisine] = useState<string>("any")
   const [activity, setActivity] = useState<string>("none")
@@ -947,6 +947,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }
