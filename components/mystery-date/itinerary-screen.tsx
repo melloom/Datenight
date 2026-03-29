@@ -817,7 +817,7 @@ function generateAlternatives(steps: Step[], partySize: number): { venue: Step; 
 }
 
 // Calendar and Weather functions
-function generateCalendarEvents(steps: Step[], date: Date, travelTimes: any[], startTime: string = '19:00', includeTravelTime: boolean = true, notes: string = ''): any[] {
+function generateCalendarEvents(steps: Step[], date: Date, travelTimes: any[], startTime: string = '19:00', includeTravelTime: boolean = true, notes: string = '', reminders: boolean = true): any[] {
   const events = []
   let currentTime = new Date(date)
   
@@ -1082,10 +1082,10 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   useEffect(() => {
     if (steps.length > 0) {
       const travelTimes = steps.map((step, index) => step.travelTimeToNext || 10)
-      const events = generateCalendarEvents(steps, selectedDate, travelTimes, startTime, includeTravelTime, calendarNotes)
+      const events = generateCalendarEvents(steps, selectedDate, travelTimes, startTime, includeTravelTime, calendarNotes, reminders)
       setCalendarEvents(events)
     }
-  }, [steps, selectedDate, startTime, includeTravelTime, calendarNotes])
+  }, [steps, selectedDate, startTime, includeTravelTime, calendarNotes, reminders])
 
   useEffect(() => {
     if (!venues || venues.length === 0) {

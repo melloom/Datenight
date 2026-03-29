@@ -2846,9 +2846,6 @@ out count;
   private async scrapeVenuePricing(venue: Venue): Promise<VenuePricing | null> {
     try {
       // Use AI to extract pricing information from venue details
-      const model = geminiAI()
-      if (!model) return null
-
       const prompt = `Extract accurate pricing information for this venue:
 
 Venue: ${venue.name}
@@ -2883,8 +2880,7 @@ Return JSON with this exact structure:
 
 Be realistic and specific to ${venue.name} in ${venue.address}. Consider local pricing.`
 
-      const result = await model.generateContent(prompt)
-      const text = result.response.text()
+      const text = await geminiAI.generateContent(prompt)
       const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
       
       try {

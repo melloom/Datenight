@@ -31,7 +31,7 @@ export class GeminiAIService {
     }
   }
 
-  private async generateContent(prompt: string): Promise<string> {
+  public async generateContent(prompt: string): Promise<string> {
     if (!this.model) {
       console.warn('Gemini AI not available - using fallback')
       return this.getFallbackResponse(prompt)
