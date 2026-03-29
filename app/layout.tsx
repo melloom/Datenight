@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Inter, Geist_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/lib/auth-context'
 import { TutorialProvider } from '@/lib/tutorial-context'
 import { TutorialOverlay } from '@/components/tutorial/tutorial-overlay'
@@ -16,7 +15,7 @@ export const viewport = {
   maximumScale: 5,
   userScalable: true,
   viewportFit: 'cover',
-  themeColor: '#000000',
+  themeColor: '#ede9f6',
 }
 
 export const metadata: Metadata = {
@@ -175,7 +174,6 @@ export default function RootLayout({
           </TutorialProvider>
         </AuthProvider>
         <FullscreenToggle />
-        <Analytics />
       </body>
     </html>
   )

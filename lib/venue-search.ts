@@ -1,5 +1,6 @@
 // Venue search and scraping logic
 import { geminiAI } from './gemini'
+import { sanitizeForSearch } from './profanity-filter'
 
 export interface Venue {
   id: string
@@ -158,6 +159,27 @@ class VenueSearcher {
     const startTime = Date.now()
     const allVenues: Venue[] = []
     const usedSources: string[] = []
+
+    // Sanitize all custom user inputs before sending to APIs
+    if (criteria.customCuisine) {
+      criteria = { ...criteria, customCuisine: sanitizeForSearch(criteria.customCuisine) }
+    }
+    if (criteria.customActivity) {
+      criteria = { ...criteria, customActivity: sanitizeForSearch(criteria.customActivity) }
+    }
+    if (criteria.cuisine) {
+      criteria = { ...criteria, cuisine: sanitizeForSearch(criteria.cuisine) || 'any' }
+    }
+    if (criteria.activity) {
+      criteria = { ...criteria, activity: sanitizeForSearch(criteria.activity) || 'none' }
+    }
+    // Sanitize custom vibes (format: "custom:text")
+    criteria = {
+      ...criteria,
+      vibes: criteria.vibes.map(v =>
+        v.startsWith('custom:') ? `custom:${sanitizeForSearch(v.replace('custom:', ''))}` : v
+      ).filter(v => v !== 'custom:') // Remove empty custom vibes
+    }
 
     console.log('🔍 Starting enhanced venue search with criteria:', criteria)
     console.log(`⏰ Time of day: ${criteria.time} - ${TIME_FILTERS[criteria.time].timeRange.start} to ${TIME_FILTERS[criteria.time].timeRange.end}`)

@@ -20,9 +20,11 @@ import {
   Palette,
   TreePine,
   Plus,
-  X
+  X,
+  AlertCircle
 } from "lucide-react"
 import Image from "next/image"
+import { validateCustomInput } from "@/lib/profanity-filter"
 
 const BUDGET_OPTIONS = [
   { value: "$", label: "Casual", price: "$30-50", emoji: "🍕" },
@@ -90,14 +92,44 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const [showCustomCuisine, setShowCustomCuisine] = useState(false)
   const [customActivity, setCustomActivity] = useState("")
   const [showCustomActivity, setShowCustomActivity] = useState(false)
+  const [customVibe, setCustomVibe] = useState("")
+  const [showCustomVibe, setShowCustomVibe] = useState(false)
+  const [inputErrors, setInputErrors] = useState<Record<string, string | null>>({})
   const [isLocating, setIsLocating] = useState(false)
 
+  const handleCustomInput = (field: string, value: string, setter: (v: string) => void) => {
+    setter(value)
+    if (value.length > 0) {
+      const error = validateCustomInput(value)
+      setInputErrors(prev => ({ ...prev, [field]: error }))
+    } else {
+      setInputErrors(prev => ({ ...prev, [field]: null }))
+    }
+  }
+
   const toggleVibe = (id: string) => {
+    if (id === "custom") return // handled separately
     setVibes(prev =>
       prev.includes(id)
         ? prev.filter(v => v !== id)
         : prev.length < 3 ? [...prev, id] : prev
     )
+  }
+
+  const addCustomVibe = () => {
+    if (!customVibe.trim()) return
+    const error = validateCustomInput(customVibe)
+    if (error) {
+      setInputErrors(prev => ({ ...prev, vibe: error }))
+      return
+    }
+    const vibeId = `custom:${customVibe.trim().toLowerCase()}`
+    if (!vibes.includes(vibeId) && vibes.length < 3) {
+      setVibes(prev => [...prev, vibeId])
+    }
+    setCustomVibe("")
+    setShowCustomVibe(false)
+    setInputErrors(prev => ({ ...prev, vibe: null }))
   }
 
   const handleLocate = async () => {
@@ -161,7 +193,20 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
     setCuisine(CUISINE_OPTIONS[Math.floor(Math.random() * CUISINE_OPTIONS.length)].id)
   }
 
+  const hasInputErrors = () => {
+    if (cuisine === "custom" && customCuisine) {
+      const err = validateCustomInput(customCuisine)
+      if (err) return true
+    }
+    if (activity === "custom" && customActivity) {
+      const err = validateCustomInput(customActivity)
+      if (err) return true
+    }
+    return false
+  }
+
   const handleSubmit = () => {
+    if (hasInputErrors()) return
     onSubmit({
       budget,
       location: location || "",
@@ -336,7 +381,68 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                   </button>
                 )
               })}
+              {/* Custom vibe chips */}
+              {vibes.filter(v => v.startsWith("custom:")).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setVibes(prev => prev.filter(x => x !== v))}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-medium border transition-all bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
+                >
+                  {v.replace("custom:", "")}
+                  <X className="w-3 h-3" />
+                </button>
+              ))}
+              {vibes.length < 3 && (
+                <button
+                  onClick={() => setShowCustomVibe(true)}
+                  className={`flex items-center gap-1 px-3.5 py-2 rounded-full text-xs font-medium border transition-all ${
+                    showCustomVibe
+                      ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
+                      : "bg-card border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                  }`}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Custom
+                </button>
+              )}
             </div>
+            {showCustomVibe && (
+              <div className="mt-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customVibe}
+                    onChange={(e) => handleCustomInput('vibe', e.target.value, setCustomVibe)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') addCustomVibe() }}
+                    className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
+                      inputErrors.vibe ? 'border-destructive' : 'border-border'
+                    }`}
+                    placeholder="e.g. Cozy, Lively, Classy..."
+                    maxLength={30}
+                    autoFocus
+                  />
+                  <button
+                    onClick={addCustomVibe}
+                    disabled={!customVibe.trim() || !!inputErrors.vibe}
+                    className="px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-medium transition-all disabled:opacity-40"
+                  >
+                    Add
+                  </button>
+                  <button
+                    onClick={() => { setShowCustomVibe(false); setCustomVibe(""); setInputErrors(prev => ({ ...prev, vibe: null })) }}
+                    className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {inputErrors.vibe && (
+                  <p className="mt-1 text-[10px] text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {inputErrors.vibe}
+                  </p>
+                )}
+              </div>
+            )}
           </section>
 
           {/* Cuisine Preference */}
@@ -372,21 +478,32 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
               </button>
             </div>
             {showCustomCuisine && (
-              <div className="mt-2 flex gap-2">
-                <input
-                  type="text"
-                  value={customCuisine}
-                  onChange={(e) => setCustomCuisine(e.target.value)}
-                  className="flex-1 px-3 py-2 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all"
-                  placeholder="e.g. Korean BBQ, Peruvian, Sushi..."
-                  autoFocus
-                />
-                <button
-                  onClick={() => { setShowCustomCuisine(false); setCuisine("any"); setCustomCuisine("") }}
-                  className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+              <div className="mt-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customCuisine}
+                    onChange={(e) => handleCustomInput('cuisine', e.target.value, setCustomCuisine)}
+                    className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
+                      inputErrors.cuisine ? 'border-destructive' : 'border-border'
+                    }`}
+                    placeholder="e.g. Korean BBQ, Peruvian, Sushi..."
+                    maxLength={50}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => { setShowCustomCuisine(false); setCuisine("any"); setCustomCuisine(""); setInputErrors(prev => ({ ...prev, cuisine: null })) }}
+                    className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {inputErrors.cuisine && (
+                  <p className="mt-1 text-[10px] text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {inputErrors.cuisine}
+                  </p>
+                )}
               </div>
             )}
           </section>
@@ -428,21 +545,32 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
               </button>
             </div>
             {showCustomActivity && (
-              <div className="mt-2 flex gap-2">
-                <input
-                  type="text"
-                  value={customActivity}
-                  onChange={(e) => setCustomActivity(e.target.value)}
-                  className="flex-1 px-3 py-2 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all"
-                  placeholder="e.g. Bowling, Comedy show, Karaoke..."
-                  autoFocus
-                />
-                <button
-                  onClick={() => { setShowCustomActivity(false); setActivity("none"); setCustomActivity("") }}
-                  className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+              <div className="mt-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customActivity}
+                    onChange={(e) => handleCustomInput('activity', e.target.value, setCustomActivity)}
+                    className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
+                      inputErrors.activity ? 'border-destructive' : 'border-border'
+                    }`}
+                    placeholder="e.g. Bowling, Comedy show, Karaoke..."
+                    maxLength={50}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => { setShowCustomActivity(false); setActivity("none"); setCustomActivity(""); setInputErrors(prev => ({ ...prev, activity: null })) }}
+                    className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {inputErrors.activity && (
+                  <p className="mt-1 text-[10px] text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {inputErrors.activity}
+                  </p>
+                )}
               </div>
             )}
           </section>
@@ -452,7 +580,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
         <div className="mt-6 pt-4 border-t border-border/60">
           <button
             onClick={handleSubmit}
-            disabled={vibes.length === 0}
+            disabled={vibes.length === 0 || hasInputErrors()}
             className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/25 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Sparkles className="w-4 h-4" />

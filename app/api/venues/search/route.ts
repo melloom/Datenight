@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { sanitizeForSearch } from '@/lib/profanity-filter'
 
 // Server-side venue search endpoint — keeps API keys secret
 const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || ''
@@ -31,7 +32,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const { action, lat, lng, radius, type, query, keyword, location } = validationResult.data
+    const { action, lat, lng, radius, type, location } = validationResult.data
+    // Server-side sanitization of user-provided text fields
+    const query = sanitizeForSearch(validationResult.data.query || '') || validationResult.data.query
+    const keyword = validationResult.data.keyword ? sanitizeForSearch(validationResult.data.keyword) : undefined
 
     if (action === 'google-places') {
       if (!GOOGLE_PLACES_API_KEY || GOOGLE_PLACES_API_KEY === 'your_google_places_api_key_here') {
