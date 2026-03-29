@@ -123,7 +123,6 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const [showHistory, setShowHistory] = useState(false)
   const [datePlanHistory, setDatePlanHistory] = useState<DatePlanHistory[]>([])
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [preferredTime, setPreferredTime] = useState('19:00')
   const locationDropdownRef = useRef<HTMLDivElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -366,8 +365,19 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const handleSubmit = () => {
     if (hasInputErrors()) return
     
-    // Calculate day of week and time for availability checking
+    // Calculate day of week and time based on date
     const dayOfWeek = selectedDate.toLocaleDateString('en-US', { weekday: 'long' })
+    const isWeekend = selectedDate.getDay() === 0 || selectedDate.getDay() === 6 // Sunday or Saturday
+    
+    // Calculate time based on whether it's weekday or weekend
+    let plannedTime: string
+    if (isWeekend) {
+      // Weekend: Later times (8-10 PM)
+      plannedTime = time === 'early' ? '20:00' : time === 'prime' ? '21:00' : '22:00'
+    } else {
+      // Weekday: Earlier times (6-9 PM)  
+      plannedTime = time === 'early' ? '18:00' : time === 'prime' ? '19:00' : '21:00'
+    }
     
     onSubmit({
       budget,
@@ -381,7 +391,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
       customActivity: activity === "custom" ? customActivity : undefined,
       plannedDate: selectedDate,
       dayOfWeek,
-      plannedTime: preferredTime,
+      plannedTime,
     })
   }
 
@@ -483,25 +493,6 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                 )}
               </button>
             </div>
-          </section>
-
-          {/* Time Input */}
-          <section data-tutorial="time-input">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
-              <Clock className="w-3 h-3" />
-              Preferred Time
-            </label>
-            <div className="px-3 py-2 rounded-xl bg-card border border-border">
-              <input
-                type="time"
-                value={preferredTime}
-                onChange={(e) => setPreferredTime(e.target.value)}
-                className="w-full bg-transparent text-foreground text-sm focus:outline-none"
-              />
-            </div>
-            <p className="mt-1.5 text-[10px] text-muted-foreground">
-              Set your preferred time for venue availability
-            </p>
           </section>
 
           {/* Party Size + Time (side by side) */}
