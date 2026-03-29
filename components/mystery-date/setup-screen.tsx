@@ -495,6 +495,26 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
             </div>
           </section>
 
+          {/* Date Selection */}
+          <section data-tutorial="date">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+              <CalendarDays className="w-3 h-3" />
+              Date Night
+            </label>
+            <div className="px-3 py-2 rounded-xl bg-card border border-border">
+              <input
+                type="date"
+                value={selectedDate.toISOString().split('T')[0]}
+                onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full bg-transparent text-foreground text-sm focus:outline-none"
+              />
+            </div>
+            <p className="mt-1.5 text-[10px] text-muted-foreground">
+              {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            </p>
+          </section>
+
           {/* Party Size + Time (side by side) */}
           <div className="grid grid-cols-2 gap-4">
             <section data-tutorial="party-size">
@@ -541,27 +561,6 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                 ))}
               </div>
             </section>
-
-          {/* Date Selection */}
-          <section data-tutorial="date">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
-              <CalendarDays className="w-3 h-3" />
-              Date Night
-            </label>
-            <div className="px-3 py-2 rounded-xl bg-card border border-border">
-              <input
-                type="date"
-                value={selectedDate.toISOString().split('T')[0]}
-                onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full bg-transparent text-foreground text-sm focus:outline-none"
-              />
-            </div>
-            <p className="mt-1.5 text-[10px] text-muted-foreground">
-              {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-            </p>
-          </section>
-          </div>
 
           {/* Budget */}
           <section data-tutorial="budget">
@@ -919,6 +918,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                     </div>
                   ))}
                 </div>
+              </div>
 
                 {/* History Stats */}
                 <div className="bg-blue-500/5 rounded-lg p-3 border border-blue-500/20">
