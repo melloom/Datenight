@@ -895,7 +895,7 @@ class VenueSearcher {
       rating: place.rating || 4.0,
       reviewCount: place.stats?.total_ratings || 100,
       priceRange: this.convertFoursquarePrice(place.price),
-      address: place.location?.formatted_address || 'Address not available',
+      address: this.buildFoursquareAddress(place.location) || 'Address not available',
       phone: place.tel,
       website: place.website,
       imageUrl: place.photos?.[0] ? `https://igx.4sqi.net/img/general/300x300${place.photos[0].suffix}` : `https://source.unsplash.com/400x300/?${encodeURIComponent(place.name)}`,
@@ -945,6 +945,44 @@ class VenueSearcher {
     if (place.price) highlights.push(`${this.convertFoursquarePrice(place.price)} pricing`)
     
     return highlights.slice(0, 6)
+  }
+
+  private buildFoursquareAddress(location: any): string {
+    if (!location) return null
+    
+    const parts = []
+    if (location.address) parts.push(location.address)
+    if (location.cross_street) parts.push(location.cross_street)
+    if (location.locality) parts.push(location.locality)
+    if (location.region) parts.push(location.region)
+    if (location.postcode) parts.push(location.postcode)
+    
+    return parts.length > 0 ? parts.join(', ') : null
+  }
+
+  private buildGoogleAddress(place: any): string {
+    // Try multiple address fields from Google Places API
+    if (place.formatted_address) return place.formatted_address
+    if (place.vicinity) return place.vicinity
+    
+    // Build from components if available
+    const components = place.address_components || []
+    const parts = []
+    
+    const streetNumber = components.find((c: any) => c.types.includes('street_number'))?.short_name
+    const street = components.find((c: any) => c.types.includes('route'))?.short_name
+    const neighborhood = components.find((c: any) => c.types.includes('neighborhood'))?.short_name
+    const city = components.find((c: any) => c.types.includes('locality'))?.short_name
+    const state = components.find((c: any) => c.types.includes('administrative_area_level_1'))?.short_name
+    
+    if (streetNumber && street) parts.push(`${streetNumber} ${street}`)
+    else if (street) parts.push(street)
+    
+    if (neighborhood && !parts.includes(neighborhood)) parts.push(neighborhood)
+    if (city && !parts.includes(city)) parts.push(city)
+    if (state && !parts.includes(state)) parts.push(state)
+    
+    return parts.length > 0 ? parts.join(', ') : null
   }
 
   private extractFoursquareFeatures(place: any): string[] {
@@ -1260,7 +1298,7 @@ class VenueSearcher {
       rating: place.rating || 4.0,
       reviewCount: place.user_ratings_total || 100,
       priceRange: this.convertGooglePriceLevel(place.price_level),
-      address: place.vicinity || 'Address not available',
+      address: this.buildGoogleAddress(place) || 'Address not available',
       phone: place.formatted_phone_number,
       website: place.website,
       imageUrl: place.photos ? 
