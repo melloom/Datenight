@@ -47,9 +47,9 @@ const VIBE_OPTIONS = [
 ] as const
 
 const TIME_OPTIONS = [
-  { value: "early", label: "Early", time: "5-7 PM", icon: "🌅" },
-  { value: "prime", label: "Prime", time: "7-9 PM", icon: "🌙" },
-  { value: "late", label: "Late", time: "9 PM+", icon: "✨" },
+  { value: "early", label: "Early", time: "5-7 PM", icon: "🌅", startTime: "17:00" },
+  { value: "prime", label: "Prime", time: "7-9 PM", icon: "🌙", startTime: "19:00" },
+  { value: "late", label: "Late", time: "9 PM+", icon: "✨", startTime: "21:00" },
 ] as const
 
 const CUISINE_OPTIONS = [
@@ -69,15 +69,18 @@ const ACTIVITY_OPTIONS = [
 ] as const
 
 interface DateConfig {
-  budget: Budget
+  budget: '$' | '$$' | '$$$' | '$$$$'
   location: string
   vibes: string[]
-  time: string
+  time: 'early' | 'prime' | 'late'
   partySize: number
   cuisine?: string
   customCuisine?: string
   activity?: string
   customActivity?: string
+  plannedDate?: Date
+  dayOfWeek?: string
+  plannedTime?: string
 }
 
 interface DatePlanHistory {
@@ -119,6 +122,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const [showLocationDropdown, setShowLocationDropdown] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [datePlanHistory, setDatePlanHistory] = useState<DatePlanHistory[]>([])
+  const [selectedDate, setSelectedDate] = useState(new Date())
   const locationDropdownRef = useRef<HTMLDivElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -360,6 +364,11 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
 
   const handleSubmit = () => {
     if (hasInputErrors()) return
+    
+    // Calculate day of week and time for availability checking
+    const dayOfWeek = selectedDate.toLocaleDateString('en-US', { weekday: 'long' })
+    const plannedTime = TIME_OPTIONS.find(opt => opt.value === time)?.startTime || '19:00'
+    
     onSubmit({
       budget,
       location: location || "",
@@ -370,6 +379,9 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
       customCuisine: cuisine === "custom" ? customCuisine : undefined,
       activity: activity === "custom" ? customActivity : activity,
       customActivity: activity === "custom" ? customActivity : undefined,
+      plannedDate: selectedDate,
+      dayOfWeek,
+      plannedTime,
     })
   }
 
@@ -519,6 +531,26 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                 ))}
               </div>
             </section>
+
+          {/* Date Selection */}
+          <section data-tutorial="date">
+            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+              <CalendarDays className="w-3 h-3" />
+              Date Night
+            </label>
+            <div className="px-3 py-2 rounded-xl bg-card border border-border">
+              <input
+                type="date"
+                value={selectedDate.toISOString().split('T')[0]}
+                onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full bg-transparent text-foreground text-sm focus:outline-none"
+              />
+            </div>
+            <p className="mt-1.5 text-[10px] text-muted-foreground">
+              {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            </p>
+          </section>
           </div>
 
           {/* Budget */}

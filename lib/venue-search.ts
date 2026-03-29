@@ -64,6 +64,10 @@ export interface SearchCriteria {
   customCuisine?: string
   activity?: string
   customActivity?: string
+  // Date and time for availability checking
+  plannedDate?: Date // The actual date of the date night
+  dayOfWeek?: string // Day of week for availability checking
+  plannedTime?: string // Specific time in HH:MM format
   // Custom preferences for AI and venue selection
   timeGapPreference?: 'short' | 'medium' | 'long' // Preference for travel time between venues
   maxTravelTime?: number // Maximum travel time in minutes between venues
@@ -208,6 +212,14 @@ class VenueSearcher {
     console.log(`⏰ Time of day: ${criteria.time} - ${TIME_FILTERS[criteria.time].timeRange.start} to ${TIME_FILTERS[criteria.time].timeRange.end}`)
     console.log(`💰 Budget: $${criteria.budget} - Vibe: ${criteria.vibes}`)
     console.log(`📍 Location: ${criteria.location}`)
+    
+    // Log date/time availability information
+    if (criteria.plannedDate) {
+      console.log(`📅 Planned date: ${criteria.plannedDate.toDateString()}`)
+      console.log(`🗓️ Day of week: ${criteria.dayOfWeek || criteria.plannedDate.toLocaleDateString('en-US', { weekday: 'long' })}`)
+      console.log(`🕐 Planned time: ${criteria.plannedTime || 'based on time preference'}`)
+      console.log(`🔍 Filtering for venues open on ${criteria.dayOfWeek || criteria.plannedDate.toLocaleDateString('en-US', { weekday: 'long' })} at ${criteria.plannedTime || TIME_FILTERS[criteria.time].timeRange.start}`)
+    }
     console.log(`🍽️ Cuisine: ${criteria.cuisine || 'any'} ${criteria.customCuisine ? `(custom: ${criteria.customCuisine})` : ''}`)
     console.log(`🎭 Activity: ${criteria.activity || 'none'} ${criteria.customActivity ? `(custom: ${criteria.customActivity})` : ''}`)
 
@@ -357,8 +369,8 @@ class VenueSearcher {
         return false
       }
 
-      if (!this.isInTimeRange(venue, criteria.time)) {
-        console.log(`❌ ${venue.name}: Time mismatch (not open during ${criteria.time})`)
+      if (!this.isInTimeRange(venue, criteria)) {
+        console.log(`❌ ${venue.name}: Time/date mismatch (not open during planned time)`)
         return false
       }
 
@@ -614,11 +626,87 @@ class VenueSearcher {
     )
   }
 
-  private isInTimeRange(venue: Venue, timeOfDay: string): boolean {
+  private isInTimeRange(venue: Venue, criteria: SearchCriteria): boolean {
     if (!venue.hours) return true // Assume open if no hours specified
     
-    const timeFilter = TIME_FILTERS[timeOfDay]
-    return this.checkIfOpen(venue.hours, timeFilter.timeRange)
+    const timeFilter = TIME_FILTERS[criteria.time]
+    
+    // Check if venue is open during the planned time
+    const isOpenDuringTime = this.checkIfOpen(venue.hours, timeFilter.timeRange)
+    
+    // If we have specific date/time information, do additional checks
+    if (criteria.plannedDate && criteria.dayOfWeek) {
+      // Check if venue is open on the specific day of week
+      const isOpenOnDay = this.checkIfOpenOnDay(venue.hours, criteria.dayOfWeek)
+      
+      // If we have a specific time, check availability at that time
+      let isOpenAtSpecificTime = true
+      if (criteria.plannedTime) {
+        isOpenAtSpecificTime = this.checkIfOpenAtTime(venue.hours, criteria.plannedTime)
+      }
+      
+      const isAvailable = isOpenDuringTime && isOpenOnDay && isOpenAtSpecificTime
+      
+      if (!isAvailable) {
+        console.log(`🕐 ${venue.name} not available on ${criteria.dayOfWeek} at ${criteria.plannedTime || timeFilter.timeRange.start}`)
+      }
+      
+      return isAvailable
+    }
+    
+    return isOpenDuringTime
+  }
+
+  private checkIfOpenOnDay(hours: string, dayOfWeek: string): boolean {
+    // Check if venue is open on specific day of week
+    // This is a simplified check - in real implementation, you'd parse actual opening hours
+    const dayAbbreviations = {
+      'Monday': 'Mon',
+      'Tuesday': 'Tue', 
+      'Wednesday': 'Wed',
+      'Thursday': 'Thu',
+      'Friday': 'Fri',
+      'Saturday': 'Sat',
+      'Sunday': 'Sun'
+    }
+    
+    const dayAbbr = dayAbbreviations[dayOfWeek as keyof typeof dayAbbreviations] || dayOfWeek.substring(0, 3)
+    
+    // Simple check - if hours contain the day abbreviation, assume it's open
+    return hours.toLowerCase().includes(dayAbbr.toLowerCase()) || 
+           hours.toLowerCase().includes('daily') ||
+           hours.toLowerCase().includes('all days')
+  }
+
+  private checkIfOpenAtTime(hours: string, specificTime: string): boolean {
+    // Check if venue is open at specific time (HH:MM format)
+    // This is a simplified implementation
+    const [targetHour] = specificTime.split(':').map(Number)
+    
+    // Look for time patterns in hours string
+    const timeMatches = hours.match(/(\d{1,2}):(\d{2})\s*(?:AM|PM|am|pm)?\s*-\s*(\d{1,2}):(\d{2})\s*(?:AM|PM|am|pm)?/g)
+    
+    if (!timeMatches) return true // Assume open if no specific hours found
+    
+    for (const match of timeMatches) {
+      const timeRange = match.match(/(\d{1,2}):(\d{2})\s*(?:AM|PM|am|pm)?\s*-\s*(\d{1,2}):(\d{2})\s*(?:AM|PM|am|pm)?/)
+      if (timeRange) {
+        let [, openHour, , closeHour] = timeRange.map(Number)
+        
+        // Convert to 24-hour format if needed
+        if (hours.toLowerCase().includes('pm') && openHour < 12) openHour += 12
+        if (hours.toLowerCase().includes('pm') && closeHour < 12) closeHour += 12
+        if (hours.toLowerCase().includes('am') && openHour === 12) openHour = 0
+        if (hours.toLowerCase().includes('am') && closeHour === 12) closeHour = 0
+        
+        // Check if target time is within range
+        if (targetHour >= openHour && targetHour < closeHour) {
+          return true
+        }
+      }
+    }
+    
+    return false
   }
 
   private async fetchDetailedInformation(venues: Venue[]): Promise<Venue[]> {
@@ -979,10 +1067,10 @@ class VenueSearcher {
   private categorizeFoursquarePlace(place: any): 'drinks' | 'dinner' | 'activity' {
     const categories = place.categories || []
     
-    if (categories.some((c: any) => c.name.toLowerCase().includes('bar') || c.name.toLowerCase().includes('pub'))) {
+    if (categories.some((c: any) => c.name?.toLowerCase().includes('bar') || c.name?.toLowerCase().includes('pub'))) {
       return 'drinks'
     }
-    if (categories.some((c: any) => c.name.toLowerCase().includes('restaurant') || c.name.toLowerCase().includes('food'))) {
+    if (categories.some((c: any) => c.name?.toLowerCase().includes('restaurant') || c.name?.toLowerCase().includes('food'))) {
       return 'dinner'
     }
     
@@ -991,7 +1079,8 @@ class VenueSearcher {
 
   private convertFoursquarePrice(price?: number): string {
     const levels = ['$', '$$', '$$$', '$$$$']
-    return price ? levels[price - 1] || '$$' : '$$'
+    if (!price || price < 1 || price > 4) return '$$'
+    return levels[price - 1] || '$$'
   }
 
 
@@ -1005,23 +1094,23 @@ class VenueSearcher {
       4: 'fine dining'
     }
     
-    let description = `${place.name} is a ${categories} offering ${priceDescriptions[priceLevel] || 'moderately priced'} dining and entertainment.`
+    let description = `${place.name} is a ${categories} offering ${priceDescriptions[priceLevel as keyof typeof priceDescriptions] || 'moderately priced'} dining and entertainment.`
     
     // Add specific details based on venue type
-    if (categories.toLowerCase().includes('cinema') || categories.toLowerCase().includes('movie theater')) {
+    if (categories?.toLowerCase().includes('cinema') || categories?.toLowerCase().includes('movie theater')) {
       description += ` Enjoy the latest blockbuster films with state-of-the-art digital projection and comfortable seating.`
       if (priceLevel <= 2) {
         description += ` Ticket prices typically range from $8-12 for matinee shows and $12-15 for evening screenings.`
       } else {
         description += ` Premium cinema experience with ticket prices around $15-20 for evening shows.`
       }
-    } else if (categories.toLowerCase().includes('bowling')) {
+    } else if (categories?.toLowerCase().includes('bowling')) {
       description += ` Perfect for a fun and casual date night with bowling lanes, arcade games, and a full bar.`
       description += ` Expect to spend $15-25 per person for bowling plus food and drinks.`
-    } else if (categories.toLowerCase().includes('escape room')) {
+    } else if (categories?.toLowerCase().includes('escape room')) {
       description += ` Challenge yourselves with immersive puzzle rooms and thrilling adventures.`
       description += ` Prices typically run $25-40 per person for a 60-minute escape room experience.`
-    } else if (categories.toLowerCase().includes('restaurant') || categories.toLowerCase().includes('food')) {
+    } else if (categories?.toLowerCase().includes('restaurant') || categories?.toLowerCase().includes('food')) {
       description += ` Known for quality service and a welcoming atmosphere perfect for date nights.`
       if (priceLevel === 1) {
         description += ` Entrees range from $12-18, making it an affordable dining option.`
@@ -1056,7 +1145,7 @@ class VenueSearcher {
     return highlights.slice(0, 6)
   }
 
-  private buildFoursquareAddress(location: any): string {
+  private buildFoursquareAddress(location: any): string | null {
     if (!location) return null
     
     const parts = []
@@ -1066,10 +1155,10 @@ class VenueSearcher {
     if (location.region) parts.push(location.region)
     if (location.postcode) parts.push(location.postcode)
     
-    return parts.length > 0 ? parts.join(', ') : null
+    return parts.length > 0 ? parts.join(', ') : ''
   }
 
-  private buildGoogleAddress(place: any): string {
+  private buildGoogleAddress(place: any): string | null {
     // Try multiple address fields from Google Places API
     if (place.formatted_address) return place.formatted_address
     if (place.vicinity) return place.vicinity
@@ -1091,7 +1180,7 @@ class VenueSearcher {
     if (city && !parts.includes(city)) parts.push(city)
     if (state && !parts.includes(state)) parts.push(state)
     
-    return parts.length > 0 ? parts.join(', ') : null
+    return parts.length > 0 ? parts.join(', ') : ''
   }
 
   private extractFoursquareFeatures(place: any): string[] {
@@ -1647,7 +1736,7 @@ class VenueSearcher {
     const priceKeywords: string[] = []
     
     reviews.forEach(review => {
-      const text = review.text.toLowerCase()
+      const text = review.text?.toLowerCase() || ''
       
       // Look for price mentions in reviews
       const priceMatches = text.match(/\$\d+/g) // $15, $25, etc.
@@ -1727,7 +1816,7 @@ class VenueSearcher {
       4: 'fine dining'
     }
     
-    let description = `${place.name || 'A local venue'} offers ${priceDescriptions[priceLevel]} dining and entertainment.`
+    let description = `${place.name || 'A local venue'} offers ${priceDescriptions[priceLevel as keyof typeof priceDescriptions]} dining and entertainment.`
     
     // Add specific details based on venue type
     if (types.includes('movie_theater') || types.includes('cinema')) {
@@ -2939,8 +3028,7 @@ Be realistic and specific to ${venue.name} in ${venue.address}. Consider local p
             address: venue.address,
             rating: venue.rating,
             priceRange: venue.priceRange,
-            existingDescription: venue.description,
-            customPreferences: customPreferences // Pass custom preferences to AI
+            existingDescription: venue.description
           })
 
           return {
