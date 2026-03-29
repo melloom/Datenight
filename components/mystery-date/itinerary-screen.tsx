@@ -43,13 +43,13 @@ import {
   Calendar,
   Cloud,
   CloudRain,
+  Sun,
   Map,
   PhoneCall,
   Gift,
   Cake,
   TreePine,
   Ghost,
-  Fireworks,
   Snowflake,
   Flower2,
   Ticket,
@@ -62,6 +62,8 @@ import { Venue } from "@/lib/venue-search"
 import { useAuth } from "@/lib/auth-context"
 import { AIAssistant } from "@/components/ai/ai-assistant"
 import { AIRecommendation } from "@/components/ai/ai-recommendation"
+import { LateNightAlert } from "@/components/ui/late-night-alert"
+import { AlternativeSuggestion, SameDayOption } from "@/lib/late-night-detector"
 
 interface Step {
   id: number
@@ -97,6 +99,9 @@ interface Step {
   }
   travelTimeToNext?: number
   travelDistanceToNext?: number
+  category?: 'drinks' | 'dinner' | 'activity'
+  reservationRecommended?: boolean
+  distanceToNext?: number
   pricing?: {
     tickets?: number
     food?: number
@@ -458,7 +463,7 @@ function StepCard({
           <div>
             {/* Venue Photo */}
             <div className="relative">
-              <VenueImage src={step.imageUrl} alt={step.place} category={step.category} />
+              <VenueImage src={step.imageUrl} alt={step.place} category={step.category || 'activity'} />
               {/* Overlay badges */}
               <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg backdrop-blur-md bg-black/50 text-white`}>
@@ -486,7 +491,7 @@ function StepCard({
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="font-bold text-base text-foreground leading-tight">{step.place}</h3>
                   <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${color.bg} ${color.text}`}>
-                    {step.tag}
+                    {step.tags?.[0]}
                   </span>
                 </div>
                 {step.vibe && (
@@ -646,6 +651,7 @@ interface ItineraryScreenProps {
   venues: Venue[]
   searchCriteria?: any
   onVenuesUpdate?: (venues: Venue[]) => void
+  lateNightResponse?: any
 }
 
 // Budget calculation interfaces
@@ -789,7 +795,7 @@ function generateMoneySavingTips(steps: Step[]): string[] {
 }
 
 function generateAlternatives(steps: Step[], partySize: number): { venue: Step; savings: number; alternative: string }[] {
-  const alternatives = []
+  const alternatives: { venue: Step; savings: number; alternative: string }[] = []
   
   steps.forEach(step => {
     if (step.priceRange === '$$$$') {
@@ -818,7 +824,7 @@ function generateAlternatives(steps: Step[], partySize: number): { venue: Step; 
 
 // Calendar and Weather functions
 function generateCalendarEvents(steps: Step[], date: Date, travelTimes: any[], startTime: string = '19:00', includeTravelTime: boolean = true, notes: string = '', reminders: boolean = true): any[] {
-  const events = []
+  const events: any[] = []
   let currentTime = new Date(date)
   
   // Parse start time (format: "19:00")
@@ -899,7 +905,7 @@ function getWeatherRecommendation(weather: any, steps: Step[]): string[] {
 }
 
 function generateReservationLinks(steps: Step[]): { venue: Step; link: string; type: string }[] {
-  const reservationLinks = []
+  const reservationLinks: { venue: Step; link: string; type: string }[] = []
 
   steps.forEach(step => {
     let link = ''
@@ -965,7 +971,7 @@ END:VCALENDAR`
   return `data:text/calendar;charset=utf8,${encodeURIComponent(fullIcs)}`
 }
 
-export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdate }: ItineraryScreenProps) {
+export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdate, lateNightResponse }: ItineraryScreenProps) {
   const [revealedCount, setRevealedCount] = useState(0)
   const [copied, setCopied] = useState(false)
   const [steps, setSteps] = useState<Step[]>([])
@@ -989,6 +995,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [calendarNotes, setCalendarNotes] = useState('')
   const [showHistory, setShowHistory] = useState(false)
   const [datePlanHistory, setDatePlanHistory] = useState<DatePlanHistory[]>([])
+  const [showLateNightAlert, setShowLateNightAlert] = useState(true)
   const { signOut } = useAuth()
 
   // Scroll to center modal when it opens
@@ -1080,6 +1087,25 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     const updatedHistory = datePlanHistory.filter(item => item.id !== id)
     setDatePlanHistory(updatedHistory)
     localStorage.setItem('datePlanHistory', JSON.stringify(updatedHistory))
+  }
+
+  // Late night alert handlers
+  const handleSuggestionSelect = (suggestion: AlternativeSuggestion) => {
+    console.log('🌙 Selected suggestion:', suggestion.title)
+    // Here you could implement logic to handle the suggestion
+    // For now, just close the alert
+    setShowLateNightAlert(false)
+  }
+
+  const handleSameDaySelect = (option: SameDayOption) => {
+    console.log('🎯 Selected same-day option:', option.title)
+    // Here you could implement logic to handle the same-day option
+    // For now, just close the alert
+    setShowLateNightAlert(false)
+  }
+
+  const handleDismissAlert = () => {
+    setShowLateNightAlert(false)
   }
 
   // Calendar export functions
@@ -1468,6 +1494,18 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
           </div>
         </div>
       </div>
+
+      {/* Late Night Alert */}
+      {lateNightResponse && showLateNightAlert && (
+        <div className="mx-auto px-4 md:px-12 py-4">
+          <LateNightAlert
+            response={lateNightResponse}
+            onSuggestionSelect={handleSuggestionSelect}
+            onSameDaySelect={handleSameDaySelect}
+            onDismiss={handleDismissAlert}
+          />
+        </div>
+      )}
 
       <div className="mx-auto px-4 md:px-12 py-6 w-full">
         {/* Progress */}

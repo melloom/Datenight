@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { Wine, UtensilsCrossed, Sparkles, Music, Check, MapPin } from "lucide-react"
 import { venueSearcher, Venue, SearchCriteria } from "@/lib/venue-search"
+import { LateNightResponse } from "@/lib/late-night-detector"
 
 const STEPS = [
   { icon: MapPin, label: "Finding venues nearby", delay: 0 },
@@ -12,7 +13,7 @@ const STEPS = [
 ]
 
 interface LoadingScreenProps {
-  onComplete: (venues: Venue[]) => void
+  onComplete: (venues: Venue[], lateNightResponse?: LateNightResponse) => void
   searchCriteria: SearchCriteria
 }
 
@@ -52,7 +53,7 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
       }, step.delay + 800)
     )
 
-    const finishLoading = (venues: Venue[]) => {
+    const finishLoading = (venues: Venue[], lateNightResponse?: LateNightResponse) => {
       if (cancelled) return
       searchDone = true
       searchResult = venues
@@ -69,7 +70,7 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
           if (cancelled) return
           clearInterval(progressInterval)
           timers.forEach(clearTimeout)
-          stableOnComplete(searchResult)
+          stableOnComplete(searchResult, lateNightResponse)
         }, 400)
       }, remaining)
     }
@@ -88,13 +89,13 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
 
         if (result.venues.length === 0) {
           setSearchStatus("❌ No venues found. Try a different location?")
-          finishLoading([])
+          finishLoading([], result.lateNightResponse)
           return
         }
 
         setSearchStatus(`✅ Found ${result.totalFound} venues! Creating your date...`)
         const selectedVenues = selectVenuesForDate(result.venues)
-        finishLoading(selectedVenues)
+        finishLoading(selectedVenues, result.lateNightResponse)
       } catch (error) {
         console.error("Venue search failed:", error)
         if (error instanceof Error && error.message === 'Search timeout') {

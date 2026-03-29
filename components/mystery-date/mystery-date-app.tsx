@@ -5,6 +5,7 @@ import { SetupScreen } from "@/components/mystery-date/setup-screen"
 import { LoadingScreen } from "@/components/mystery-date/loading-screen"
 import { ItineraryScreen } from "@/components/mystery-date/itinerary-screen"
 import { Venue, SearchCriteria } from "@/lib/venue-search"
+import { LateNightResponse } from "@/lib/late-night-detector"
 
 type Screen = "setup" | "loading" | "itinerary"
 
@@ -24,13 +25,14 @@ export function MysteryDateApp() {
   const [screen, setScreen] = useState<Screen>("setup")
   const [config, setConfig] = useState<DateConfig | null>(null)
   const [venues, setVenues] = useState<Venue[]>([])
+  const [lateNightResponse, setLateNightResponse] = useState<LateNightResponse | null>(null)
 
   const handleSubmit = (dateConfig: DateConfig) => {
     setConfig(dateConfig)
     setScreen("loading")
   }
   
-  const handleLoadComplete = useCallback((foundVenues: Venue[]) => {
+  const handleLoadComplete = useCallback((foundVenues: Venue[], lateNightResponse?: LateNightResponse) => {
     console.log('🎉 MysteryDateApp received venues:', foundVenues.length)
   
     if (!foundVenues || foundVenues.length === 0) {
@@ -40,12 +42,19 @@ export function MysteryDateApp() {
       setVenues(foundVenues)
     }
     
+    // Set late night response if provided
+    if (lateNightResponse) {
+      console.log('🌙 Late night response received:', lateNightResponse.urgency)
+      setLateNightResponse(lateNightResponse)
+    }
+    
     setScreen("itinerary")
   }, [])
   
   const handleReset = () => {
     setConfig(null)
     setVenues([])
+    setLateNightResponse(null)
     setScreen("setup")
   }
 
@@ -111,6 +120,7 @@ export function MysteryDateApp() {
             venues={venues}
             searchCriteria={getSearchCriteria()}
             onVenuesUpdate={handleVenuesUpdate}
+            lateNightResponse={lateNightResponse}
           />
         )}
       </div>

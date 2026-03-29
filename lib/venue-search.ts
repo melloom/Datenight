@@ -1,6 +1,7 @@
 // Venue search and scraping logic
 import { geminiAI } from './gemini'
 import { sanitizeForSearch } from './profanity-filter'
+import { lateNightDetector, LateNightResponse } from './late-night-detector'
 
 export interface Venue {
   id: string
@@ -141,6 +142,7 @@ export interface SearchResult {
   totalFound: number
   searchTime: number
   sources: string[]
+  lateNightResponse?: LateNightResponse
 }
 
 class VenueSearcher {
@@ -346,11 +348,29 @@ class VenueSearcher {
     const endTime = Date.now()
     const searchTime = endTime - startTime
 
-    return {
+    // Check for late night scenario and generate alternatives
+    const currentTime = new Date()
+    const searchResult = {
       venues: finalPlan,
       totalFound: Math.max(allVenues.length, finalPlan.length),
       searchTime,
       sources: usedSources.length > 0 ? usedSources : ['Fallback']
+    }
+
+    // Run late night detection
+    const detection = lateNightDetector.detectLateNightScenario(currentTime, searchResult, criteria)
+    
+    let lateNightResponse: LateNightResponse | undefined
+    if (detection.isTooLate) {
+      console.log('🌙 Late night scenario detected, generating alternatives...')
+      const suggestions = lateNightDetector.generateAlternativeSuggestions(detection, criteria)
+      lateNightResponse = lateNightDetector.generateResponse(detection, suggestions, criteria)
+      console.log(`💡 Generated ${lateNightResponse.suggestions.length} alternative suggestions`)
+    }
+
+    return {
+      ...searchResult,
+      lateNightResponse
     }
   }
 
