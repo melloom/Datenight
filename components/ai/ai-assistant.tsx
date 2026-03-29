@@ -23,7 +23,7 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "🌟 Welcome to your Date Night AI! I'm your personal date planning assistant. I can help you:\n\n💝 **Plan the perfect date** - venue suggestions, timing, and logistics\n🎯 **Answer date questions** - what to wear, conversation starters, gift ideas\n📍 **Local recommendations** - nearby attractions, backup plans, hidden gems\n🍽️ **Dining advice** - menu suggestions, dietary needs, reservation tips\n🎭 **Activity ideas** - conversation topics, photo spots, romantic gestures\n\nWhat's on your mind? Ask me anything about your date night!",
+      text: "🌟 Hi! I'm your Date Night AI. I can help with:\n\n• Date planning & venue tips\n• Outfit & conversation advice\n• Restaurant etiquette & gift ideas\n• Photo spots & romantic gestures\n\nWhat would you like to know?",
       sender: 'ai',
       timestamp: Date.now()
     }
@@ -35,18 +35,12 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
   const inputRef = useRef<HTMLInputElement>(null)
 
   const quickSuggestions = [
-    "What should I wear on this date?",
-    "Help me with conversation starters",
-    "Suggest backup indoor activities",
-    "What's a good gift idea?",
-    "How should I tip at restaurants?",
-    "Photo spot recommendations?",
-    "What if we're running late?",
-    "Dietary restriction options?",
-    "What makes this venue special?",
-    "Romantic gesture ideas?",
-    "How to impress on first date?",
-    "Conversation topics for dinner?"
+    "What should I wear?",
+    "Conversation starters?",
+    "Gift ideas?",
+    "Restaurant tips?",
+    "Photo spots?",
+    "Backup plans?"
   ]
 
   useEffect(() => {
@@ -207,24 +201,12 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
             <Lightbulb className="w-4 h-4 text-primary" />
             <span className="text-xs font-medium text-foreground">Popular questions:</span>
           </div>
-          <div className="grid grid-cols-2 gap-1">
-            {quickSuggestions.slice(0, 6).map((suggestion, index) => (
+          <div className="flex flex-wrap gap-1">
+            {quickSuggestions.map((suggestion, index) => (
               <button
                 key={index}
                 onClick={() => handleSuggestionClick(suggestion)}
-                className="px-2 py-1.5 text-xs bg-secondary hover:bg-secondary/80 rounded-lg transition-colors text-left leading-tight h-8"
-                disabled={isTyping}
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 gap-1 mt-1">
-            {quickSuggestions.slice(6, 12).map((suggestion, index) => (
-              <button
-                key={index + 6}
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="px-2 py-1.5 text-xs bg-muted hover:bg-muted/80 rounded-lg transition-colors text-left leading-tight h-8"
+                className="px-2 py-1 text-xs bg-secondary hover:bg-secondary/80 rounded-full transition-colors"
                 disabled={isTyping}
               >
                 {suggestion}
