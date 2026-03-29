@@ -172,9 +172,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${geistMono.variable}`}>
       <head>
-        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="renderer" content="webkit" />
-        <meta name="format-detection" content="telephone=no" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
