@@ -383,7 +383,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
       budget,
       location: location || "",
       vibes,
-      time,
+      time, // This works with the scraper (early/prime/late)
       partySize,
       cuisine: cuisine === "custom" ? customCuisine : cuisine,
       customCuisine: cuisine === "custom" ? customCuisine : undefined,
@@ -391,7 +391,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
       customActivity: activity === "custom" ? customActivity : undefined,
       plannedDate: selectedDate,
       dayOfWeek,
-      plannedTime,
+      plannedTime, // This is used for specific availability checking
     })
   }
 
