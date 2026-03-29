@@ -49,6 +49,12 @@ export interface SearchCriteria {
   maxTravelTime?: number // Maximum travel time in minutes between venues
   customRequests?: string // Any other custom requirements like "closer time gaps"
   venueDensity?: 'concentrated' | 'spread_out' // Prefer venues close together or spread out
+  // Special occasion preferences
+  occasion?: 'birthday' | 'anniversary' | 'holiday' | 'date-night' | 'celebration' | 'surprise'
+  season?: 'spring' | 'summer' | 'fall' | 'winter' | 'any'
+  holiday?: 'valentine' | 'christmas' | 'new-year' | 'halloween' | 'thanksgiving' | 'easter' | 'fourth-july'
+  surpriseElements?: boolean // Include surprise elements and hidden gems
+  theme?: string // Custom theme like "romantic", "adventurous", "cozy", "elegant"
 }
 
 export interface VenueConstraints {
@@ -284,8 +290,12 @@ class VenueSearcher {
     const rankedVenues = this.smartRank(finalVenues, criteria)
     console.log(`🏆 After smart ranking: ${rankedVenues.length} venues`)
 
+    // Enhance venues for special occasions
+    const occasionEnhancedVenues = this.enhanceVenuesForOccasion(rankedVenues, criteria)
+    console.log(`🎉 Enhanced ${occasionEnhancedVenues.length} venues for special occasions`)
+
     // Optimize date plan with travel time
-    const optimizedPlan = this.optimizeDatePlan(rankedVenues, criteria)
+    const optimizedPlan = this.optimizeDatePlan(occasionEnhancedVenues, criteria)
     console.log(`🗺️ Optimized date plan with ${optimizedPlan.length} venues`)
 
     // If no venues found, return empty array - NO FAKE FALLBACKS
@@ -2641,6 +2651,57 @@ out count;
       preferences.push('User prefers venues spread out across different areas for variety')
     }
     
+    // Special occasion preferences
+    if (criteria.occasion) {
+      if (criteria.occasion === 'birthday') {
+        preferences.push('User is planning a birthday celebration - look for venues with celebration atmosphere, birthday packages, or special birthday treatment')
+      } else if (criteria.occasion === 'anniversary') {
+        preferences.push('User is celebrating an anniversary - prioritize romantic, intimate venues with special touches for couples')
+      } else if (criteria.occasion === 'holiday') {
+        preferences.push('User wants holiday-themed venues with seasonal decorations and festive atmosphere')
+      } else if (criteria.occasion === 'celebration') {
+        preferences.push('User is planning a celebration - look for venues with party atmosphere, group accommodations, and celebratory features')
+      } else if (criteria.occasion === 'surprise') {
+        preferences.push('User wants surprise elements - include hidden gems, unique experiences, and unexpected delights')
+      }
+    }
+    
+    // Seasonal preferences
+    if (criteria.season && criteria.season !== 'any') {
+      if (criteria.season === 'winter') {
+        preferences.push('User wants winter activities - ice skating, cozy indoor venues, holiday markets, warm and romantic spots')
+      } else if (criteria.season === 'summer') {
+        preferences.push('User wants summer activities - outdoor dining, rooftop bars, patios, seasonal festivals, water activities')
+      } else if (criteria.season === 'fall') {
+        preferences.push('User wants fall activities - pumpkin patches, apple orchards, fall foliage spots, cozy autumn venues')
+      } else if (criteria.season === 'spring') {
+        preferences.push('User wants spring activities - botanical gardens, outdoor brunch, flower festivals, patio dining')
+      }
+    }
+    
+    // Holiday-specific preferences
+    if (criteria.holiday) {
+      if (criteria.holiday === 'valentine') {
+        preferences.push('User wants Valentine\'s Day venues - romantic restaurants, flower shops, chocolate tastings, intimate settings')
+      } else if (criteria.holiday === 'christmas') {
+        preferences.push('User wants Christmas venues - holiday markets, festive restaurants, decorated venues, seasonal events')
+      } else if (criteria.holiday === 'halloween') {
+        preferences.push('User wants Halloween venues - haunted houses, themed bars, costume parties, spooky activities')
+      } else if (criteria.holiday === 'new-year') {
+        preferences.push('User wants New Year\'s Eve venues - countdown events, party venues, celebration spots, late-night venues')
+      }
+    }
+    
+    // Surprise elements
+    if (criteria.surpriseElements) {
+      preferences.push('User wants surprise elements and hidden gems - include unique, lesser-known venues with special features or unexpected delights')
+    }
+    
+    // Custom theme
+    if (criteria.theme) {
+      preferences.push(`User wants a ${criteria.theme} theme - select venues that match this atmosphere and style`)
+    }
+    
     // Custom requests
     if (criteria.customRequests) {
       // Parse common phrases from custom requests
@@ -2678,6 +2739,81 @@ out count;
     }
     
     return preferences.length > 0 ? preferences.join('. ') + '.' : 'No specific custom preferences provided.'
+  }
+
+  // Special occasion venue enhancement
+  private enhanceVenuesForOccasion(venues: Venue[], criteria: SearchCriteria): Venue[] {
+    return venues.map(venue => {
+      const enhanced = { ...venue }
+      
+      // Add special occasion features
+      if (criteria.occasion === 'birthday') {
+        enhanced.features = [...(enhanced.features || []), 'Birthday packages available', 'Celebration friendly']
+        enhanced.highlights = [...(enhanced.highlights || []), 'Great for birthdays', 'Celebration atmosphere']
+      } else if (criteria.occasion === 'anniversary') {
+        enhanced.features = [...(enhanced.features || []), 'Romantic setting', 'Intimate atmosphere', 'Special occasion dining']
+        enhanced.highlights = [...(enhanced.highlights || []), 'Perfect for anniversaries', 'Romantic ambiance']
+      } else if (criteria.occasion === 'holiday') {
+        enhanced.features = [...(enhanced.features || []), 'Seasonal decorations', 'Holiday specials', 'Festive atmosphere']
+        enhanced.highlights = [...(enhanced.highlights || []), 'Holiday themed', 'Seasonal celebrations']
+      }
+      
+      // Add seasonal features
+      if (criteria.season === 'winter') {
+        enhanced.features = [...(enhanced.features || []), 'Cozy winter atmosphere', 'Warm and inviting']
+        if (venue.category === 'activity') {
+          enhanced.highlights = [...(enhanced.highlights || []), 'Winter activity', 'Seasonal fun']
+        }
+      } else if (criteria.season === 'summer') {
+        enhanced.features = [...(enhanced.features || []), 'Outdoor seating', 'Summer specials', 'Patio dining']
+        enhanced.highlights = [...(enhanced.highlights || []), 'Perfect for summer', 'Outdoor atmosphere']
+      } else if (criteria.season === 'fall') {
+        enhanced.features = [...(enhanced.features || []), 'Autumn ambiance', 'Seasonal decorations']
+        enhanced.highlights = [...(enhanced.highlights || []), 'Fall atmosphere', 'Seasonal charm']
+      }
+      
+      // Add surprise elements
+      if (criteria.surpriseElements) {
+        enhanced.features = [...(enhanced.features || []), 'Hidden gem', 'Unique experience', 'Surprise element']
+        enhanced.highlights = [...(enhanced.highlights || []), 'Unexpected delight', 'Hidden treasure']
+      }
+      
+      return enhanced
+    })
+  }
+
+  // Get seasonal activity suggestions
+  private getSeasonalActivities(criteria: SearchCriteria): string[] {
+    const activities: string[] = []
+    
+    if (criteria.season === 'winter') {
+      activities.push('ice skating', 'holiday markets', 'cozy fireplaces', 'winter festivals', 'hot chocolate tours')
+    } else if (criteria.season === 'summer') {
+      activities.push('rooftop bars', 'outdoor concerts', 'patio dining', 'beach activities', 'summer festivals')
+    } else if (criteria.season === 'fall') {
+      activities.push('pumpkin patches', 'apple orchards', 'fall foliage tours', 'harvest festivals', 'hayrides')
+    } else if (criteria.season === 'spring') {
+      activities.push('botanical gardens', 'flower festivals', 'outdoor brunch', 'spring markets', 'picnic spots')
+    }
+    
+    return activities
+  }
+
+  // Get holiday-specific venue types
+  private getHolidayVenueTypes(criteria: SearchCriteria): string[] {
+    const venueTypes: string[] = []
+    
+    if (criteria.holiday === 'valentine') {
+      venueTypes.push('romantic restaurants', 'chocolate shops', 'flower gardens', 'wine bars', 'intimate cafes')
+    } else if (criteria.holiday === 'christmas') {
+      venueTypes.push('holiday markets', 'festive restaurants', 'decorated venues', 'christmas tree farms', 'winter wonderlands')
+    } else if (criteria.holiday === 'halloween') {
+      venueTypes.push('haunted houses', 'themed bars', 'costume parties', 'pumpkin patches', 'spooky restaurants')
+    } else if (criteria.holiday === 'new-year') {
+      venueTypes.push('party venues', 'countdown events', 'late-night restaurants', 'celebration spots', 'firework viewing areas')
+    }
+    
+    return venueTypes
   }
 
   // AI-powered venue enhancement
