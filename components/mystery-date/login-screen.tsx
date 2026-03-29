@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Sparkles, Heart, Wine, MapPin } from "lucide-react"
+import { Heart, Sparkles, MapPin, Wine } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
 export function LoginScreen() {
@@ -14,8 +14,7 @@ export function LoginScreen() {
       setIsLoading(true)
       setError(null)
       await signInWithGoogle()
-    } catch (err: any) {
-      console.error("Sign-in failed:", err)
+    } catch {
       setError("Sign-in failed. Please try again.")
     } finally {
       setIsLoading(false)
@@ -24,72 +23,57 @@ export function LoginScreen() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-svh bg-background px-6 relative overflow-hidden">
-      {/* Ambient glow effects */}
+      {/* Background glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-80 h-80 bg-primary/20 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute bottom-1/4 left-1/3 w-64 h-64 bg-accent/15 rounded-full blur-[80px] animate-pulse [animation-delay:1s]" />
-        <div className="absolute top-1/3 right-1/4 w-48 h-48 bg-primary/10 rounded-full blur-[60px] animate-pulse [animation-delay:2s]" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-72 h-72 bg-primary/8 rounded-full blur-[100px]" />
+        <div className="absolute bottom-1/3 left-1/3 w-56 h-56 bg-accent/6 rounded-full blur-[80px]" />
       </div>
 
       <div className="relative z-10 flex flex-col items-center gap-8 w-full max-w-sm">
-        {/* Logo / Brand */}
-        <div className="flex flex-col items-center gap-4">
-          {/* Animated icon cluster */}
-          <div className="relative w-24 h-24 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-linear-to-br from-primary/30 to-accent/30 animate-pulse" />
-            <div className="absolute inset-1 rounded-full bg-background/80 backdrop-blur-sm" />
-            <Heart className="relative w-10 h-10 text-primary fill-primary/30" />
-            
-            {/* Orbiting icons */}
-            <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center shadow-lg shadow-primary/20">
-              <Wine className="w-4 h-4 text-primary" />
+        {/* Brand */}
+        <div className="flex flex-col items-center gap-5">
+          <div className="relative">
+            <div className="w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Heart className="w-9 h-9 text-primary" />
             </div>
-            <div className="absolute -bottom-1 -left-1 w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center shadow-lg shadow-accent/20">
-              <MapPin className="w-4 h-4 text-accent" />
+            <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-card border border-border flex items-center justify-center shadow-sm">
+              <Wine className="w-3 h-3 text-primary" />
             </div>
-            <div className="absolute -bottom-2 right-0 w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center shadow-lg shadow-primary/20">
-              <Sparkles className="w-4 h-4 text-primary" />
+            <div className="absolute -bottom-1 -left-1 w-6 h-6 rounded-full bg-card border border-border flex items-center justify-center shadow-sm">
+              <Sparkles className="w-3 h-3 text-accent" />
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-2">
-            <h1 className="text-3xl font-bold tracking-tight bg-linear-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              Date Night
-            </h1>
-            <p className="text-muted-foreground text-center text-sm leading-relaxed max-w-[260px]">
-              Plan the perfect evening with curated venues, smart suggestions, and a touch of mystery
+          <div className="text-center">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground mb-1">Date Night</h1>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-[240px]">
+              Curated venues, smart plans, and a touch of mystery
             </p>
           </div>
         </div>
 
-        {/* Feature highlights */}
-        <div className="flex gap-6 text-center">
-          <div className="flex flex-col items-center gap-1.5">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-primary" />
+        {/* Features */}
+        <div className="flex gap-8 text-center">
+          {[
+            { icon: MapPin, label: "Local Spots" },
+            { icon: Sparkles, label: "AI Plans" },
+            { icon: Heart, label: "Save Faves" },
+          ].map(({ icon: Icon, label }) => (
+            <div key={label} className="flex flex-col items-center gap-1.5">
+              <div className="w-9 h-9 rounded-xl bg-primary/8 border border-primary/15 flex items-center justify-center">
+                <Icon className="w-4 h-4 text-primary" />
+              </div>
+              <span className="text-[10px] text-muted-foreground font-medium">{label}</span>
             </div>
-            <span className="text-xs text-muted-foreground">Local Spots</span>
-          </div>
-          <div className="flex flex-col items-center gap-1.5">
-            <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-accent" />
-            </div>
-            <span className="text-xs text-muted-foreground">Smart Plans</span>
-          </div>
-          <div className="flex flex-col items-center gap-1.5">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <Heart className="w-5 h-5 text-primary" />
-            </div>
-            <span className="text-xs text-muted-foreground">Save Faves</span>
-          </div>
+          ))}
         </div>
 
-        {/* Sign in section */}
-        <div className="flex flex-col gap-3 w-full">
+        {/* Sign in */}
+        <div className="w-full space-y-3">
           <button
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-3 px-6 py-3.5 rounded-xl bg-card border border-border hover:border-primary/50 hover:bg-card/80 transition-all duration-300 shadow-lg shadow-primary/5 hover:shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed group"
+            className="w-full flex items-center justify-center gap-3 px-6 py-3.5 rounded-xl bg-card border border-border hover:border-primary/30 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -101,21 +85,18 @@ export function LoginScreen() {
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
               </svg>
             )}
-            <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+            <span className="text-sm font-medium text-foreground">
               {isLoading ? "Signing in..." : "Continue with Google"}
             </span>
           </button>
 
           {error && (
-            <p className="text-xs text-destructive text-center animate-in fade-in">
-              {error}
-            </p>
+            <p className="text-xs text-destructive text-center">{error}</p>
           )}
         </div>
 
-        {/* Terms */}
-        <p className="text-[10px] text-muted-foreground/60 text-center leading-relaxed max-w-[280px]">
-          By continuing, you agree to our Terms of Service and Privacy Policy
+        <p className="text-[10px] text-muted-foreground/50 text-center">
+          By continuing, you agree to our Terms &amp; Privacy Policy
         </p>
       </div>
     </div>
