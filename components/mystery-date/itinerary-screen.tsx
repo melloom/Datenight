@@ -1039,17 +1039,17 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const saveToHistory = () => {
     if (!searchCriteria || !venues || venues.length === 0) return
 
-    const currentDate = new Date()
-    const currentDateString = currentDate.toDateString() // e.g., "Mon Mar 29 2026"
+    const planDate = selectedDate // Use the selected date from calendar
+    const planDateString = planDate.toDateString() // e.g., "Mon Mar 29 2026"
     
-    // Check if there's already a plan for today
+    // Check if there's already a plan for the selected date
     const existingPlanIndex = datePlanHistory.findIndex(item => 
-      new Date(item.date).toDateString() === currentDateString
+      new Date(item.date).toDateString() === planDateString
     )
 
     const newHistoryItem: DatePlanHistory = {
       id: existingPlanIndex !== -1 ? datePlanHistory[existingPlanIndex].id : Date.now().toString(),
-      date: currentDate,
+      date: planDate,
       location: searchCriteria.location,
       budget: searchCriteria.budget,
       vibes: searchCriteria.vibes,
@@ -1061,14 +1061,14 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     let updatedHistory: DatePlanHistory[]
     
     if (existingPlanIndex !== -1) {
-      // Update existing plan for today
+      // Update existing plan for the selected date
       updatedHistory = [...datePlanHistory]
       updatedHistory[existingPlanIndex] = newHistoryItem
-      console.log(`📝 Updated existing plan for ${currentDateString}`)
+      console.log(`📝 Updated existing plan for ${planDateString}`)
     } else {
       // Add new plan for different date
       updatedHistory = [newHistoryItem, ...datePlanHistory].slice(0, 20) // Keep last 20 plans
-      console.log(`➕ Added new plan for ${currentDateString}`)
+      console.log(`➕ Added new plan for ${planDateString}`)
     }
 
     setDatePlanHistory(updatedHistory)
@@ -1342,7 +1342,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 text-xs font-medium hover:bg-blue-500/15 transition-all disabled:opacity-40"
             >
               <Calendar className="w-3.5 h-3.5" />
-              Calendar
+              {selectedDate.toDateString() === new Date().toDateString() ? 'Calendar' : selectedDate.toLocaleDateString()}
             </button>
             <button
               onClick={() => {
