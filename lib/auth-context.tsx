@@ -29,11 +29,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Don't initialize Firebase auth if services are not available
+    if (!auth || !rtdb) {
+      setLoading(false)
+      return
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
       setLoading(false)
 
-      if (firebaseUser) {
+      if (firebaseUser && rtdb) {
         // Update user profile in RTDB on login
         const userRef = ref(rtdb, `users/${firebaseUser.uid}/profile`)
         const snapshot = await get(userRef)
@@ -58,6 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signInWithGoogle = async () => {
+    if (!auth || !googleProvider) {
+      throw new Error("Firebase authentication not available")
+    }
     try {
       await signInWithPopup(auth, googleProvider)
     } catch (error: any) {
@@ -71,6 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
+    if (!auth) {
+      throw new Error("Firebase authentication not available")
+    }
     try {
       await firebaseSignOut(auth)
     } catch (error) {

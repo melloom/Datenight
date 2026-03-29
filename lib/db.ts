@@ -26,6 +26,10 @@ export interface UserPreferences {
 // --- Saved Dates ---
 
 export async function saveDate(userId: string, dateData: Omit<SavedDate, 'id' | 'createdAt' | 'status'>): Promise<string> {
+  if (!rtdb) {
+    throw new Error("Database not available")
+  }
+  
   const datesRef = ref(rtdb, `users/${userId}/dates`)
   const newDateRef = push(datesRef)
   
@@ -39,6 +43,10 @@ export async function saveDate(userId: string, dateData: Omit<SavedDate, 'id' | 
 }
 
 export async function getUserDates(userId: string): Promise<SavedDate[]> {
+  if (!rtdb) {
+    return []
+  }
+  
   const datesRef = query(
     ref(rtdb, `users/${userId}/dates`),
     orderByChild('createdAt'),
@@ -57,16 +65,28 @@ export async function getUserDates(userId: string): Promise<SavedDate[]> {
 }
 
 export async function updateDateStatus(userId: string, dateId: string, status: SavedDate['status']): Promise<void> {
+  if (!rtdb) {
+    throw new Error("Database not available")
+  }
+  
   await update(ref(rtdb, `users/${userId}/dates/${dateId}`), { status })
 }
 
 export async function deleteDate(userId: string, dateId: string): Promise<void> {
+  if (!rtdb) {
+    throw new Error("Database not available")
+  }
+  
   await remove(ref(rtdb, `users/${userId}/dates/${dateId}`))
 }
 
 // --- Favorites ---
 
 export async function saveFavorite(userId: string, venue: Venue): Promise<void> {
+  if (!rtdb) {
+    throw new Error("Database not available")
+  }
+  
   const venueKey = venue.id.replace(/[.#$[\]]/g, '_') // Sanitize key for RTDB
   await set(ref(rtdb, `users/${userId}/favorites/${venueKey}`), {
     name: venue.name,
@@ -80,11 +100,19 @@ export async function saveFavorite(userId: string, venue: Venue): Promise<void> 
 }
 
 export async function removeFavorite(userId: string, venueId: string): Promise<void> {
+  if (!rtdb) {
+    throw new Error("Database not available")
+  }
+  
   const venueKey = venueId.replace(/[.#$[\]]/g, '_')
   await remove(ref(rtdb, `users/${userId}/favorites/${venueKey}`))
 }
 
 export async function getUserFavorites(userId: string): Promise<any[]> {
+  if (!rtdb) {
+    return []
+  }
+  
   const snapshot = await get(ref(rtdb, `users/${userId}/favorites`))
   if (!snapshot.exists()) return []
 
@@ -97,6 +125,10 @@ export async function getUserFavorites(userId: string): Promise<any[]> {
 }
 
 export async function isFavorite(userId: string, venueId: string): Promise<boolean> {
+  if (!rtdb) {
+    return false
+  }
+  
   const venueKey = venueId.replace(/[.#$[\]]/g, '_')
   const snapshot = await get(ref(rtdb, `users/${userId}/favorites/${venueKey}`))
   return snapshot.exists()
@@ -105,10 +137,18 @@ export async function isFavorite(userId: string, venueId: string): Promise<boole
 // --- User Preferences ---
 
 export async function savePreferences(userId: string, prefs: UserPreferences): Promise<void> {
+  if (!rtdb) {
+    throw new Error("Database not available")
+  }
+  
   await set(ref(rtdb, `users/${userId}/preferences`), prefs)
 }
 
 export async function getPreferences(userId: string): Promise<UserPreferences | null> {
+  if (!rtdb) {
+    return null
+  }
+  
   const snapshot = await get(ref(rtdb, `users/${userId}/preferences`))
   if (!snapshot.exists()) return null
   return snapshot.val()
@@ -117,6 +157,10 @@ export async function getPreferences(userId: string): Promise<UserPreferences | 
 // --- Shared Itineraries ---
 
 export async function shareItinerary(userId: string, dateData: SavedDate): Promise<string> {
+  if (!rtdb) {
+    throw new Error("Database not available")
+  }
+  
   const sharedRef = push(ref(rtdb, 'shared'))
   
   await set(sharedRef, {
@@ -130,6 +174,10 @@ export async function shareItinerary(userId: string, dateData: SavedDate): Promi
 }
 
 export async function getSharedItinerary(shareId: string): Promise<SavedDate | null> {
+  if (!rtdb) {
+    return null
+  }
+  
   const snapshot = await get(ref(rtdb, `shared/${shareId}`))
   if (!snapshot.exists()) return null
 

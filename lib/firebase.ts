@@ -14,17 +14,25 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 }
 
+// Check if all required Firebase config is available
+const isFirebaseConfigValid = () => {
+  return firebaseConfig.apiKey && 
+         firebaseConfig.authDomain && 
+         firebaseConfig.projectId && 
+         firebaseConfig.appId
+}
+
 // Initialize Firebase (prevent duplicate initialization)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
+const app = isFirebaseConfigValid() && getApps().length === 0 ? initializeApp(firebaseConfig) : (getApps().length > 0 ? getApp() : null)
 
 // Initialize services
-const auth = getAuth(app)
-const rtdb = getDatabase(app)
-const googleProvider = new GoogleAuthProvider()
+const auth = app ? getAuth(app) : null
+const rtdb = app ? getDatabase(app) : null
+const googleProvider = app ? new GoogleAuthProvider() : null
 
 // Analytics only in browser
 let analytics: ReturnType<typeof getAnalytics> | null = null
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && app) {
   isSupported().then(supported => {
     if (supported) {
       analytics = getAnalytics(app)
