@@ -48,7 +48,7 @@ export class GeminiAIService {
   }
 
   private getFallbackResponse(prompt: string): string {
-    if (prompt.includes('venue analysis')) {
+    if (prompt.includes('venue analysis') || prompt.includes('Analyze this venue')) {
       return JSON.stringify({
         description: "A charming venue perfect for romantic evenings",
         highlights: ["Cozy atmosphere", "Great service", "Beautiful decor"],
@@ -60,7 +60,13 @@ export class GeminiAIService {
         photo_spots: ["Entrance", "Dining area", "Bar section"]
       })
     }
-    return "AI service temporarily unavailable"
+    if (prompt.includes('Enhance venue search') || prompt.includes('search terms')) {
+      return JSON.stringify(this.getFallbackSearchEnhancement())
+    }
+    if (prompt.includes('date night recommendation') || prompt.includes('Create a perfect date')) {
+      return JSON.stringify(this.getFallbackRecommendation())
+    }
+    return JSON.stringify({ message: "AI service temporarily unavailable" })
   }
 
   async analyzeVenue(venue: {

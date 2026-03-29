@@ -7,7 +7,7 @@ import { FullscreenToggle } from '@/components/fullscreen-toggle'
 import './globals.css'
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", preload: false });
 
 export const viewport = {
   width: 'device-width',
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
   publisher: 'Date Night Planner',
   generator: 'Next.js',
   applicationName: 'Date Night Planner',
-  referrer: 'origin-when-cross-origin',
+  referrer: 'strict-origin-when-cross-origin',
   category: 'Lifestyle',
   classification: 'Dating & Relationships',
   appleWebApp: {

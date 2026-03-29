@@ -154,6 +154,8 @@ class VenueSearcher {
 
   private requestQueue: Map<string, number[]> = new Map()
   private lastRequestTime: Map<string, number> = new Map()
+  private geocodeCache: Map<string, { lat: number; lng: number; timestamp: number }> = new Map()
+  private readonly GEOCODE_CACHE_TTL = 30 * 60 * 1000 // 30 minutes
 
   async searchVenues(criteria: SearchCriteria): Promise<SearchResult> {
     const startTime = Date.now()
@@ -904,14 +906,11 @@ class VenueSearcher {
       categories.push('4d4b7105d754a06374d80012') // Food
     } else {
       categories.push('4d4b7105d754a06376d80012') // Nightlife
-      categories.push('4d4b7105d754a06377d80012') // Arts & Entertainment
     }
 
     // Add only top entertainment categories to avoid rate limiting
     categories.push('4d4b7105d754a06377d80012') // Arts & Entertainment
     categories.push('4bf58dd8d48988d1e1931735') // Bowling Alley
-    categories.push('4bf58dd8d48988d1e4931735') // Movie Theater
-    categories.push('56aa371be4b08b9a8d5734db') // Escape Room
 
     // Add activity-specific Foursquare categories (limited)
     const activity = criteria.customActivity || criteria.activity
@@ -939,11 +938,9 @@ class VenueSearcher {
       categories.push('bars', 'nightlife')
     }
 
-    // Always include entertainment/activity categories
-    categories.push('bowling', 'escapegames', 'arcades', 'mini_golf', 'gokarts')
-    categories.push('karaoke', 'comedyclubs', 'movietheaters', 'poolhalls')
-    categories.push('topgolf', 'axethrowing', 'trampoline', 'laser_tag')
-    categories.push('amusementparks', 'active', 'entertainment')
+    // Include only essential entertainment categories to avoid rate limiting
+    categories.push('bowling', 'arcades', 'movietheaters')
+    categories.push('karaoke', 'comedyclubs')
 
     // Add cuisine-specific category for Yelp
     const cuisine = criteria.customCuisine || criteria.cuisine
@@ -954,9 +951,9 @@ class VenueSearcher {
     // Add activity-specific category for Yelp
     const activity = criteria.customActivity || criteria.activity
     if (activity && activity !== 'none') {
-      if (activity === 'live-music') categories.push('musicvenues', 'jazzandblues', 'concerthalls')
-      else if (activity === 'art') categories.push('galleries', 'museums', 'artmuseums')
-      else if (activity === 'outdoor') categories.push('parks', 'hiking', 'beaches', 'boating')
+      if (activity === 'live-music') categories.push('musicvenues')
+      else if (activity === 'art') categories.push('galleries', 'museums')
+      else if (activity === 'outdoor') categories.push('parks')
       else categories.push(activity.toLowerCase().replace(/\s+/g, ''))
     }
     
@@ -1344,12 +1341,22 @@ class VenueSearcher {
 
   private async geocodeLocation(locationName: string): Promise<{lat: number, lng: number} | null> {
     try {
+      // Check cache first
+      const cached = this.geocodeCache.get(locationName)
+      const now = Date.now()
+      if (cached && (now - cached.timestamp) < this.GEOCODE_CACHE_TTL) {
+        console.log(`📍 Using cached geocode for "${locationName}": ${cached.lat}, ${cached.lng}`)
+        return cached
+      }
+
       // First check if this is a known state/region name — resolve directly to city
       const directMatch = this.getFallbackLocation(locationName)
       // Only use direct match for state-like inputs (short names without commas)
       const looksLikeState = !locationName.includes(',') && locationName.trim().split(/\s+/).length <= 3
       if (directMatch && looksLikeState) {
         console.log(`📍 Direct match for "${locationName}": ${directMatch.lat}, ${directMatch.lng}`)
+        // Cache the result
+        this.geocodeCache.set(locationName, { ...directMatch, timestamp: now })
         return directMatch
       }
 
@@ -1362,7 +1369,11 @@ class VenueSearcher {
 
       if (!response.ok) {
         console.warn('Geocode API route failed, using fallback location')
-        return this.getFallbackLocation(locationName)
+        const fallback = this.getFallbackLocation(locationName)
+        if (fallback) {
+          this.geocodeCache.set(locationName, { ...fallback, timestamp: now })
+        }
+        return fallback
       }
 
       const data = await response.json()
@@ -1377,17 +1388,30 @@ class VenueSearcher {
         if (types.includes('administrative_area_level_1') || types.includes('country')) {
           console.log(`📍 "${locationName}" geocoded as state/country (${types.join(', ')}), resolving to largest city...`)
           const cityCoords = this.getFallbackLocation(locationName)
-          if (cityCoords) return cityCoords
+          if (cityCoords) {
+            this.geocodeCache.set(locationName, { ...cityCoords, timestamp: now })
+            return cityCoords
+          }
           // If no fallback, use Google's coords as last resort
         }
 
-        return { lat, lng }
+        const coords = { lat, lng }
+        this.geocodeCache.set(locationName, { ...coords, timestamp: now })
+        return coords
       }
 
-      return this.getFallbackLocation(locationName)
+      const fallback = this.getFallbackLocation(locationName)
+      if (fallback) {
+        this.geocodeCache.set(locationName, { ...fallback, timestamp: now })
+      }
+      return fallback
     } catch (error) {
       console.error('Geocoding failed:', error)
-      return this.getFallbackLocation(locationName)
+      const fallback = this.getFallbackLocation(locationName)
+      if (fallback) {
+        this.geocodeCache.set(locationName, { ...fallback, timestamp: Date.now() })
+      }
+      return fallback
     }
   }
 
@@ -1404,17 +1428,17 @@ class VenueSearcher {
     }
 
     // Add only top entertainment types to avoid rate limiting
-    types.push('bowling_alley', 'movie_theater', 'tourist_attraction')
+    types.push('bowling_alley', 'movie_theater')
 
     // Add activity-specific types (limited)
     const activity = criteria.customActivity || criteria.activity
     if (activity && activity !== 'none') {
       if (activity === 'live-music') types.push('night_club', 'bar')
       else if (activity === 'art') types.push('art_gallery', 'museum')
-      else if (activity === 'outdoor') types.push('park', 'tourist_attraction')
+      else if (activity === 'outdoor') types.push('park')
       else {
         // Broad search for custom activities
-        types.push('point_of_interest', 'tourist_attraction')
+        types.push('point_of_interest')
       }
     }
     
@@ -1949,38 +1973,39 @@ class VenueSearcher {
 
     // Single comprehensive query to find all venue types at once
     queries.push(`
-      [out:json][timeout:30];
-      area["name"="${locationName}"]->.searchArea;
-      (
-        node["amenity"~"${amenityTypes}"](area.searchArea);
-        way["amenity"~"${amenityTypes}"](area.searchArea);
-        relation["amenity"~"${amenityTypes}"](area.searchArea);
-        node["leisure"~"${leisureTypes}"](area.searchArea);
-        way["leisure"~"${leisureTypes}"](area.searchArea);
-        relation["leisure"~"${leisureTypes}"](area.searchArea);
-        node["tourism"~"${tourismTypes}"](area.searchArea);
-        way["tourism"~"${tourismTypes}"](area.searchArea);
-        node["sport"~"bowling|climbing|skating"](area.searchArea);
-        way["sport"~"bowling|climbing|skating"](area.searchArea);
-      );
-      out geom;
-    `)
+[out:json][timeout:30];
+area["name"="${locationName}"]->.searchArea;
+(
+  node["amenity"~"${amenityTypes}"](area.searchArea);
+  way["amenity"~"${amenityTypes}"](area.searchArea);
+  relation["amenity"~"${amenityTypes}"](area.searchArea);
+  node["leisure"~"${leisureTypes}"](area.searchArea);
+  way["leisure"~"${leisureTypes}"](area.searchArea);
+  relation["leisure"~"${leisureTypes}"](area.searchArea);
+  node["tourism"~"${tourismTypes}"](area.searchArea);
+  way["tourism"~"${tourismTypes}"](area.searchArea);
+  relation["tourism"~"${tourismTypes}"](area.searchArea);
+  node["sport"~"bowling|climbing|skating"](area.searchArea);
+  way["sport"~"bowling|climbing|skating"](area.searchArea);
+);
+out geom;
+`)
 
     // Fallback query with addr:city approach
     queries.push(`
-      [out:json][timeout:30];
-      (
-        node["amenity"~"${amenityTypes}"]["addr:city"="${locationName}"];
-        way["amenity"~"${amenityTypes}"]["addr:city"="${locationName}"];
-        relation["amenity"~"${amenityTypes}"]["addr:city"="${locationName}"];
-        node["leisure"~"${leisureTypes}"]["addr:city"="${locationName}"];
-        way["leisure"~"${leisureTypes}"]["addr:city"="${locationName}"];
-        relation["leisure"~"${leisureTypes}"]["addr:city"="${locationName}"];
-        node["tourism"~"${tourismTypes}"]["addr:city"="${locationName}"];
-        way["tourism"~"${tourismTypes}"]["addr:city"="${locationName}"];
-      );
-      out geom;
-    `)
+[out:json][timeout:30];
+(
+  node["amenity"~"${amenityTypes}"]["addr:city"="${locationName}"];
+  way["amenity"~"${amenityTypes}"]["addr:city"="${locationName}"];
+  relation["amenity"~"${amenityTypes}"]["addr:city"="${locationName}"];
+  node["leisure"~"${leisureTypes}"]["addr:city"="${locationName}"];
+  way["leisure"~"${leisureTypes}"]["addr:city"="${locationName}"];
+  relation["leisure"~"${leisureTypes}"]["addr:city"="${locationName}"];
+  node["tourism"~"${tourismTypes}"]["addr:city"="${locationName}"];
+  way["tourism"~"${tourismTypes}"]["addr:city"="${locationName}"];
+);
+out geom;
+`)
 
     return queries
   }

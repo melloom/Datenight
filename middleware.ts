@@ -6,8 +6,8 @@ const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
 
 const RATE_LIMIT = {
   windowMs: 60 * 1000,       // 1 minute window
-  maxRequests: 15,            // 15 requests per minute for API routes (reduced from 30)
-  maxPageRequests: 60,        // 60 page requests per minute (reduced from 100)
+  maxRequests: 120,           // 120 requests per minute for API routes (venue search needs many internal calls)
+  maxPageRequests: 60,        // 60 page requests per minute
 }
 
 function getRateLimitKey(req: NextRequest): string {
