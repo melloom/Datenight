@@ -6,8 +6,19 @@ import { TutorialOverlay } from '@/components/tutorial/tutorial-overlay'
 import { FullscreenToggle } from '@/components/fullscreen-toggle'
 import './globals.css'
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", preload: false });
+const inter = Inter({ 
+  subsets: ["latin"], 
+  variable: "--font-inter",
+  display: 'swap',
+  preload: true
+});
+
+const geistMono = Geist_Mono({ 
+  subsets: ["latin"], 
+  variable: "--font-geist-mono", 
+  preload: false,
+  display: 'swap'
+});
 
 export const viewport = {
   width: 'device-width',
@@ -161,6 +172,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${geistMono.variable}`}>
       <head>
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="renderer" content="webkit" />
+        <meta name="format-detection" content="telephone=no" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
