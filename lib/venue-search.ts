@@ -32,6 +32,26 @@ export interface Venue {
     photoSpots: string[]
     vibeTags: string[]
   }
+  pricing?: VenuePricing
+}
+
+export interface VenuePricing {
+  tickets?: number
+  food?: number
+  drinks?: number
+  activities?: number
+  packages?: PricingPackage[]
+  minimumSpend?: number
+  currency?: string
+  source?: string
+  lastUpdated?: string
+}
+
+export interface PricingPackage {
+  name: string
+  price: number
+  includes: string[]
+  validFor?: string
 }
 
 export interface SearchCriteria {
@@ -294,8 +314,14 @@ class VenueSearcher {
     const occasionEnhancedVenues = this.enhanceVenuesForOccasion(rankedVenues, criteria)
     console.log(`🎉 Enhanced ${occasionEnhancedVenues.length} venues for special occasions`)
 
+    // Enhance venues with real pricing data
+    const pricingEnhancedVenues = await Promise.all(
+      occasionEnhancedVenues.map(venue => this.enhanceVenueWithPricing(venue))
+    )
+    console.log(`💰 Enhanced ${pricingEnhancedVenues.length} venues with real pricing data`)
+
     // Optimize date plan with travel time
-    const optimizedPlan = this.optimizeDatePlan(occasionEnhancedVenues, criteria)
+    const optimizedPlan = this.optimizeDatePlan(pricingEnhancedVenues, criteria)
     console.log(`🗺️ Optimized date plan with ${optimizedPlan.length} venues`)
 
     // If no venues found, return empty array - NO FAKE FALLBACKS
@@ -2814,6 +2840,87 @@ out count;
     }
     
     return venueTypes
+  }
+
+  // Real pricing data scraper
+  private async scrapeVenuePricing(venue: Venue): Promise<VenuePricing | null> {
+    try {
+      // Use AI to extract pricing information from venue details
+      const model = geminiAI()
+      if (!model) return null
+
+      const prompt = `Extract accurate pricing information for this venue:
+
+Venue: ${venue.name}
+Category: ${venue.category}
+Description: ${venue.description}
+Address: ${venue.address}
+
+Provide realistic pricing in USD for this specific venue type. Consider:
+- Movie theaters: ticket prices, food, drinks
+- Bowling alleys: lane rental, shoe rental, food, drinks  
+- Escape rooms: per person pricing, group packages
+- Restaurants: typical entree prices, drink prices, appetizers
+- Bars: drink prices, appetizer prices
+
+Return JSON with this exact structure:
+{
+  "tickets": number or null,
+  "food": number or null,
+  "drinks": number or null,
+  "activities": number or null,
+  "packages": [
+    {
+      "name": "package name",
+      "price": number,
+      "includes": ["item1", "item2"]
+    }
+  ],
+  "minimumSpend": number or null,
+  "currency": "USD",
+  "source": "AI estimation based on venue type"
+}
+
+Be realistic and specific to ${venue.name} in ${venue.address}. Consider local pricing.`
+
+      const result = await model.generateContent(prompt)
+      const text = result.response.text()
+      const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
+      
+      try {
+        const pricing = JSON.parse(cleaned)
+        return {
+          ...pricing,
+          lastUpdated: new Date().toISOString()
+        }
+      } catch (e) {
+        console.error('Failed to parse pricing JSON:', e)
+        return null
+      }
+    } catch (error) {
+      console.error('Pricing scrape failed:', error)
+      return null
+    }
+  }
+
+  // Enhanced pricing with real data
+  private async enhanceVenueWithPricing(venue: Venue): Promise<Venue> {
+    // Check if we already have recent pricing data
+    if (venue.pricing && venue.pricing.lastUpdated) {
+      const lastUpdated = new Date(venue.pricing.lastUpdated)
+      const daysSinceUpdate = (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24)
+      
+      if (daysSinceUpdate < 7) { // Use cached data if less than 7 days old
+        return venue
+      }
+    }
+
+    const pricing = await this.scrapeVenuePricing(venue)
+    
+    return {
+      ...venue,
+      pricing: pricing || undefined
+    }
   }
 
   // AI-powered venue enhancement

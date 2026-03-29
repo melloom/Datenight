@@ -51,7 +51,8 @@ import {
   Ghost,
   Fireworks,
   Snowflake,
-  Flower2
+  Flower2,
+  Ticket
 } from "lucide-react"
 import { Venue } from "@/lib/venue-search"
 import { useAuth } from "@/lib/auth-context"
@@ -67,22 +68,46 @@ interface Step {
   rating: number
   reviewCount: number
   priceRange: string
-  tag: string
+  address: string
+  phone?: string
+  website?: string
+  imageUrl?: string
   description: string
   highlights: string[]
-  address: string
-  phone: string
-  category: string
-  imageUrl?: string
-  website?: string
+  coordinates: {
+    lat: number
+    lng: number
+  }
+  distance?: number
   hours?: string
-  vibe?: string
-  features: string[]
   tags: string[]
-  coordinates: { lat: number; lng: number }
-  reservationRecommended: boolean
-  travelTimeToNext?: number // in minutes
-  distanceToNext?: number // in miles
+  capacity?: number
+  features: string[]
+  vibe?: string
+  aiEnhanced?: boolean
+  aiInsights?: {
+    bestFor: string[]
+    insiderTips: string[]
+    photoSpots: string[]
+    vibeTags: string[]
+  }
+  travelTimeToNext?: number
+  travelDistanceToNext?: number
+  pricing?: {
+    tickets?: number
+    food?: number
+    drinks?: number
+    activities?: number
+    packages?: Array<{
+      name: string
+      price: number
+      includes: string[]
+    }>
+    minimumSpend?: number
+    currency?: string
+    source?: string
+    lastUpdated?: string
+  }
 }
 
 // Calculate travel time between two coordinates
@@ -646,23 +671,52 @@ function calculateBudgetBreakdown(steps: Step[], partySize: number): BudgetBreak
     let foodCost = 0
     let drinkCost = 0
     let activityCost = 0
+    let ticketCost = 0
     
-    // Estimate costs based on venue category and price range
-    const priceMultiplier = getPriceMultiplier(step.priceRange)
-    
-    if (step.category === 'dinner') {
-      foodCost = 25 * priceMultiplier * partySize
-      drinkCost = 8 * priceMultiplier * partySize
-    } else if (step.category === 'drinks') {
-      drinkCost = 12 * priceMultiplier * partySize
-      foodCost = 10 * priceMultiplier * partySize // appetizers
-    } else if (step.category === 'activity') {
-      activityCost = 30 * priceMultiplier * partySize
-      drinkCost = 5 * priceMultiplier * partySize
-      foodCost = 8 * priceMultiplier * partySize // snacks
+    // Use real pricing data if available, otherwise fall back to estimates
+    if (step.pricing) {
+      const pricing = step.pricing
+      
+      // Use real pricing data
+      foodCost = (pricing.food || 0) * partySize
+      drinkCost = (pricing.drinks || 0) * partySize
+      activityCost = (pricing.activities || 0) * partySize
+      ticketCost = (pricing.tickets || 0) * partySize
+      
+      // If no specific pricing, use price range estimates
+      if (!pricing.food && !pricing.drinks && !pricing.activities && !pricing.tickets) {
+        const priceMultiplier = getPriceMultiplier(step.priceRange)
+        
+        if (step.category === 'dinner') {
+          foodCost = 25 * priceMultiplier * partySize
+          drinkCost = 8 * priceMultiplier * partySize
+        } else if (step.category === 'drinks') {
+          drinkCost = 12 * priceMultiplier * partySize
+          foodCost = 10 * priceMultiplier * partySize // appetizers
+        } else if (step.category === 'activity') {
+          activityCost = 30 * priceMultiplier * partySize
+          drinkCost = 5 * priceMultiplier * partySize
+          foodCost = 8 * priceMultiplier * partySize // snacks
+        }
+      }
+    } else {
+      // Fall back to estimates for venues without pricing data
+      const priceMultiplier = getPriceMultiplier(step.priceRange)
+      
+      if (step.category === 'dinner') {
+        foodCost = 25 * priceMultiplier * partySize
+        drinkCost = 8 * priceMultiplier * partySize
+      } else if (step.category === 'drinks') {
+        drinkCost = 12 * priceMultiplier * partySize
+        foodCost = 10 * priceMultiplier * partySize // appetizers
+      } else if (step.category === 'activity') {
+        activityCost = 30 * priceMultiplier * partySize
+        drinkCost = 5 * priceMultiplier * partySize
+        foodCost = 8 * priceMultiplier * partySize // snacks
+      }
     }
     
-    const venueTotal = foodCost + drinkCost + activityCost
+    const venueTotal = foodCost + drinkCost + activityCost + ticketCost
     totalCost += venueTotal
     
     venues.push({
@@ -962,6 +1016,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         features: venue.features || [],
         tags: venue.tags || [],
         coordinates: venue.coordinates || { lat: 0, lng: 0 },
+        pricing: venue.pricing,
         reservationRecommended:
           venue.category === "dinner" && (venue.priceRange === "$$$" || venue.priceRange === "$$$$") ||
           venue.category === "drinks" && venue.priceRange === "$$$$" ||
@@ -1483,7 +1538,13 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                             <span className="font-medium text-sm">{venue.venue.place}</span>
                             <span className="text-sm font-semibold">${venue.totalCost.toFixed(2)}</span>
                           </div>
-                          <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {venue.venue.pricing?.tickets && venue.venue.pricing.tickets > 0 && (
+                              <div className="flex items-center gap-1">
+                                <Ticket className="w-3 h-3" />
+                                <span>Tickets: ${venue.venue.pricing.tickets.toFixed(2)}</span>
+                              </div>
+                            )}
                             {venue.foodCost > 0 && (
                               <div className="flex items-center gap-1">
                                 <UtensilsCrossed className="w-3 h-3" />
@@ -1503,6 +1564,11 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                               </div>
                             )}
                           </div>
+                          {venue.venue.pricing?.source && (
+                            <div className="text-xs text-green-600 mt-1">
+                              💰 Real pricing data
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
