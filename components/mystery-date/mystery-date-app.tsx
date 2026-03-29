@@ -14,6 +14,10 @@ interface DateConfig {
   vibes: string[]
   time: string
   partySize: number
+  cuisine?: string
+  customCuisine?: string
+  activity?: string
+  customActivity?: string
 }
 
 export function MysteryDateApp() {
@@ -58,12 +62,16 @@ export function MysteryDateApp() {
       budget: config.budget as '$' | '$$' | '$$$' | '$$$$',
       vibes: config.vibes,
       time: config.time as 'early' | 'prime' | 'late',
-      partySize: config.partySize
+      partySize: config.partySize,
+      cuisine: config.cuisine,
+      customCuisine: config.customCuisine,
+      activity: config.activity,
+      customActivity: config.customActivity,
     }
   }
 
   return (
-    <main className="max-w-md mx-auto min-h-svh relative overflow-hidden">
+    <main className="w-full min-h-svh relative overflow-x-hidden">
       {/* Screen transitions */}
       <div 
         className={`transition-all duration-500 ${

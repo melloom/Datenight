@@ -39,6 +39,10 @@ export interface SearchCriteria {
   vibes: string[]
   time: 'early' | 'prime' | 'late'
   partySize: number
+  cuisine?: string
+  customCuisine?: string
+  activity?: string
+  customActivity?: string
 }
 
 export interface VenueConstraints {
@@ -159,6 +163,8 @@ class VenueSearcher {
     console.log(`⏰ Time of day: ${criteria.time} - ${TIME_FILTERS[criteria.time].timeRange.start} to ${TIME_FILTERS[criteria.time].timeRange.end}`)
     console.log(`💰 Budget: $${criteria.budget} - Vibe: ${criteria.vibes}`)
     console.log(`📍 Location: ${criteria.location}`)
+    console.log(`🍽️ Cuisine: ${criteria.cuisine || 'any'} ${criteria.customCuisine ? `(custom: ${criteria.customCuisine})` : ''}`)
+    console.log(`🎭 Activity: ${criteria.activity || 'none'} ${criteria.customActivity ? `(custom: ${criteria.customActivity})` : ''}`)
 
     // Try to get AI-powered search enhancement (optional)
     let aiEnhancement = null
@@ -167,7 +173,9 @@ class VenueSearcher {
       aiEnhancement = await geminiAI.enhanceVenueSearch(criteria.location, {
         budget: criteria.budget,
         vibes: criteria.vibes,
-        time: criteria.time
+        time: criteria.time,
+        cuisine: criteria.cuisine,
+        activity: criteria.activity,
       })
       console.log('✨ AI insights:', aiEnhancement.locationInsights)
     } catch (error) {
@@ -781,8 +789,17 @@ class VenueSearcher {
       categories.push('4d4b7105d754a06376d80012') // Nightlife
       categories.push('4d4b7105d754a06377d80012') // Arts & Entertainment
     }
+
+    // Add activity-specific Foursquare categories
+    const activity = criteria.customActivity || criteria.activity
+    if (activity && activity !== 'none') {
+      if (activity === 'live-music') categories.push('4bf58dd8d48988d1e5931735') // Music Venue
+      else if (activity === 'art') categories.push('4bf58dd8d48988d1e2931735') // Art Gallery
+      else if (activity === 'outdoor') categories.push('4bf58dd8d48988d163941735') // Park
+      else categories.push('4d4b7105d754a06377d80012') // Arts & Entertainment as fallback
+    }
     
-    return categories
+    return [...new Set(categories)]
   }
 
   private getYelpCategories(criteria: SearchCriteria): string[] {
@@ -795,8 +812,23 @@ class VenueSearcher {
     } else {
       categories.push('bars', 'nightlife')
     }
+
+    // Add cuisine-specific category for Yelp
+    const cuisine = criteria.customCuisine || criteria.cuisine
+    if (cuisine && cuisine !== 'any') {
+      categories.push(cuisine.toLowerCase().replace(/\s+/g, ''))
+    }
+
+    // Add activity-specific category for Yelp
+    const activity = criteria.customActivity || criteria.activity
+    if (activity && activity !== 'none') {
+      if (activity === 'live-music') categories.push('musicvenues')
+      else if (activity === 'art') categories.push('galleries', 'museums')
+      else if (activity === 'outdoor') categories.push('parks', 'hiking')
+      else categories.push(activity.toLowerCase().replace(/\s+/g, ''))
+    }
     
-    return categories
+    return [...new Set(categories)]
   }
 
   private convertFoursquareToVenue(place: any, criteria: SearchCriteria): Venue {
@@ -982,6 +1014,7 @@ class VenueSearcher {
 
       for (const placeType of placeTypes) {
         try {
+          const cuisineKeyword = criteria.customCuisine || (criteria.cuisine && criteria.cuisine !== 'any' ? criteria.cuisine : '')
           const response = await fetch('/api/venues/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -990,7 +1023,8 @@ class VenueSearcher {
               lat: location.lat,
               lng: location.lng,
               radius,
-              type: placeType
+              type: placeType,
+              keyword: cuisineKeyword || undefined
             })
           })
 
@@ -1129,8 +1163,17 @@ class VenueSearcher {
     } else {
       types.push('bar', 'night_club', 'restaurant')
     }
+
+    // Add activity-specific types
+    const activity = criteria.customActivity || criteria.activity
+    if (activity && activity !== 'none') {
+      if (activity === 'live-music') types.push('night_club', 'bar')
+      else if (activity === 'art') types.push('art_gallery', 'museum')
+      else if (activity === 'outdoor') types.push('park', 'tourist_attraction')
+      else types.push('point_of_interest') // custom activity — broad search
+    }
     
-    return types
+    return [...new Set(types)]
   }
 
   private convertGooglePlaceToVenue(place: any, criteria: SearchCriteria): Venue {

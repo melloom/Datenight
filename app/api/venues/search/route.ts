@@ -14,6 +14,7 @@ const venueSearchSchema = z.object({
   radius: z.number().min(1).max(50000).optional(),
   type: z.string().max(100).optional(),
   query: z.string().max(500).optional(),
+  keyword: z.string().max(200).optional(),
   location: z.string().max(200).optional(),
   placeId: z.string().max(200).optional()
 })
@@ -30,14 +31,15 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const { action, lat, lng, radius, type, query, location } = validationResult.data
+    const { action, lat, lng, radius, type, query, keyword, location } = validationResult.data
 
     if (action === 'google-places') {
       if (!GOOGLE_PLACES_API_KEY || GOOGLE_PLACES_API_KEY === 'your_google_places_api_key_here') {
         return NextResponse.json({ error: 'Google Places API key not configured' }, { status: 503 })
       }
 
-      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&key=${GOOGLE_PLACES_API_KEY}`
+      const keywordParam = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''
+      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}${keywordParam}&key=${GOOGLE_PLACES_API_KEY}`
       const response = await fetch(url)
       const data = await response.json()
       return NextResponse.json(data)

@@ -156,19 +156,24 @@ Make it sound exciting, romantic, and personalized. Focus on creating memories.
       budget: string
       vibes: string[]
       time: string
+      cuisine?: string
+      activity?: string
     }
   ): Promise<{
     searchTerms: string[]
     locationInsights: string
     recommendations: string[]
   }> {
+    const cuisineInfo = criteria.cuisine && criteria.cuisine !== 'any' ? `\nCuisine Preference: ${criteria.cuisine}` : ''
+    const activityInfo = criteria.activity && criteria.activity !== 'none' ? `\nAfter Dinner Activity: ${criteria.activity}` : ''
+
     const prompt = `
 Enhance venue search for a date night app with:
 
 Location: ${location}
 Budget: ${criteria.budget}
 Desired Vibes: ${criteria.vibes.join(', ')}
-Time: ${criteria.time}
+Time: ${criteria.time}${cuisineInfo}${activityInfo}
 
 Provide a JSON response with these exact keys:
 {
@@ -177,7 +182,7 @@ Provide a JSON response with these exact keys:
   "recommendations": ["3-4 specific types of venues or areas to focus on"]
 }
 
-Focus on romantic, date-appropriate venues and hidden gems. Consider local culture and dating scene.
+Focus on romantic, date-appropriate venues and hidden gems. Consider local culture and dating scene.${cuisineInfo ? ` Prioritize ${criteria.cuisine} cuisine options.` : ''}${activityInfo ? ` Include ${criteria.activity} activity venues.` : ''}
 `
 
     try {

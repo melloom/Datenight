@@ -75,7 +75,10 @@ function StepCard({
   isRevealed,
   isNext,
   onReveal,
-  totalSteps
+  totalSteps,
+  onVenuesUpdate,
+  handleSwapVenue,
+  isSwapping
 }: {
   step: Step
   index: number
@@ -83,6 +86,9 @@ function StepCard({
   isNext: boolean
   onReveal: (index: number) => void
   totalSteps: number
+  onVenuesUpdate?: (venues: Venue[]) => void
+  handleSwapVenue?: (index: number) => void
+  isSwapping?: number | null
 }) {
   const [isSaved, setIsSaved] = useState(false)
 
@@ -187,7 +193,7 @@ function StepCard({
             </div>
 
             {/* Swap Button */}
-            {onVenuesUpdate && (
+            {onVenuesUpdate && handleSwapVenue && (
               <button
                 onClick={() => handleSwapVenue(index)}
                 disabled={isSwapping === index}
@@ -356,7 +362,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/50">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="mx-auto px-4 md:px-12 py-3 flex items-center justify-between w-full">
           <button
             onClick={onReset}
             className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -383,7 +389,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-6">
+      <div className="mx-auto px-4 md:px-12 py-6 w-full">
         {/* Progress */}
         <div className="text-center mb-6">
           <h1 className="text-xl font-bold text-foreground mb-1">Your Date Night</h1>
@@ -414,7 +420,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                 <button
                   onClick={handleImprovePlan}
                   disabled={isImproving}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-purple-500 text-white text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 mx-auto"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-linear-to-r from-violet-500 to-purple-500 text-white text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 mx-auto"
                 >
                   {isImproving ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -446,6 +452,9 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
               isNext={index === revealedCount}
               onReveal={handleReveal}
               totalSteps={steps.length}
+              onVenuesUpdate={onVenuesUpdate}
+              handleSwapVenue={handleSwapVenue}
+              isSwapping={isSwapping}
             />
           ))}
         </div>

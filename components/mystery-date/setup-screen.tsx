@@ -18,7 +18,9 @@ import {
   Utensils,
   Music,
   Palette,
-  TreePine
+  TreePine,
+  Plus,
+  X
 } from "lucide-react"
 import Image from "next/image"
 
@@ -67,7 +69,9 @@ interface DateConfig {
   time: string
   partySize: number
   cuisine?: string
+  customCuisine?: string
   activity?: string
+  customActivity?: string
 }
 
 interface SetupScreenProps {
@@ -80,8 +84,12 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const [vibes, setVibes] = useState<string[]>(["romantic"])
   const [time, setTime] = useState("prime")
   const [partySize, setPartySize] = useState(2)
-  const [cuisine, setCuisine] = useState("any")
-  const [activity, setActivity] = useState("none")
+  const [cuisine, setCuisine] = useState<string>("any")
+  const [activity, setActivity] = useState<string>("none")
+  const [customCuisine, setCustomCuisine] = useState("")
+  const [showCustomCuisine, setShowCustomCuisine] = useState(false)
+  const [customActivity, setCustomActivity] = useState("")
+  const [showCustomActivity, setShowCustomActivity] = useState(false)
   const [isLocating, setIsLocating] = useState(false)
 
   const toggleVibe = (id: string) => {
@@ -154,7 +162,17 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   }
 
   const handleSubmit = () => {
-    onSubmit({ budget, location: location || "", vibes, time, partySize, cuisine, activity })
+    onSubmit({
+      budget,
+      location: location || "",
+      vibes,
+      time,
+      partySize,
+      cuisine: cuisine === "custom" ? customCuisine : cuisine,
+      customCuisine: cuisine === "custom" ? customCuisine : undefined,
+      activity: activity === "custom" ? customActivity : activity,
+      customActivity: activity === "custom" ? customActivity : undefined,
+    })
   }
 
   return (
@@ -165,7 +183,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
         <div className="absolute -bottom-32 -left-32 w-72 h-72 bg-accent/8 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative z-10 flex flex-col px-5 pt-10 pb-6 flex-1 max-w-lg mx-auto w-full">
+      <div className="relative z-10 flex flex-col px-5 md:px-12 pt-10 pb-6 flex-1 mx-auto w-full">
         {/* Header */}
         <div className="flex flex-col items-center gap-3 mb-8">
           <div className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center">
@@ -331,7 +349,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
               {CUISINE_OPTIONS.map((c) => (
                 <button
                   key={c.id}
-                  onClick={() => setCuisine(c.id)}
+                  onClick={() => { setCuisine(c.id); setShowCustomCuisine(false) }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                     cuisine === c.id
                       ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
@@ -341,7 +359,36 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                   {c.label}
                 </button>
               ))}
+              <button
+                onClick={() => { setCuisine("custom"); setShowCustomCuisine(true) }}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                  cuisine === "custom"
+                    ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
+                    : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                }`}
+              >
+                <Plus className="w-3 h-3" />
+                Custom
+              </button>
             </div>
+            {showCustomCuisine && (
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  value={customCuisine}
+                  onChange={(e) => setCustomCuisine(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all"
+                  placeholder="e.g. Korean BBQ, Peruvian, Sushi..."
+                  autoFocus
+                />
+                <button
+                  onClick={() => { setShowCustomCuisine(false); setCuisine("any"); setCustomCuisine("") }}
+                  className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </section>
 
           {/* Activity Preference */}
@@ -356,7 +403,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                 return (
                   <button
                     key={a.id}
-                    onClick={() => setActivity(a.id)}
+                    onClick={() => { setActivity(a.id); setShowCustomActivity(false) }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                       activity === a.id
                         ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
@@ -368,7 +415,36 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                   </button>
                 )
               })}
+              <button
+                onClick={() => { setActivity("custom"); setShowCustomActivity(true) }}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                  activity === "custom"
+                    ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
+                    : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                }`}
+              >
+                <Plus className="w-3 h-3" />
+                Custom
+              </button>
             </div>
+            {showCustomActivity && (
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  value={customActivity}
+                  onChange={(e) => setCustomActivity(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all"
+                  placeholder="e.g. Bowling, Comedy show, Karaoke..."
+                  autoFocus
+                />
+                <button
+                  onClick={() => { setShowCustomActivity(false); setActivity("none"); setCustomActivity("") }}
+                  className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </section>
         </div>
 
