@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import {
   Compass,
   Sparkles,
@@ -96,6 +96,64 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const [showCustomVibe, setShowCustomVibe] = useState(false)
   const [inputErrors, setInputErrors] = useState<Record<string, string | null>>({})
   const [isLocating, setIsLocating] = useState(false)
+  const [locationResults, setLocationResults] = useState<Array<{ label: string; displayName: string; lat: string; lon: string }>>([])
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false)
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false)
+  const locationDropdownRef = useRef<HTMLDivElement>(null)
+  const locationInputRef = useRef<HTMLInputElement>(null)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const searchLocation = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setLocationResults([])
+      setShowLocationDropdown(false)
+      return
+    }
+    setIsSearchingLocation(true)
+    try {
+      const res = await fetch('/api/geocode/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setLocationResults(data.results || [])
+        setShowLocationDropdown((data.results || []).length > 0)
+      }
+    } catch {
+      setLocationResults([])
+    } finally {
+      setIsSearchingLocation(false)
+    }
+  }, [])
+
+  const handleLocationChange = (value: string) => {
+    setLocation(value)
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    searchTimeoutRef.current = setTimeout(() => searchLocation(value), 300)
+  }
+
+  const selectLocation = (label: string) => {
+    setLocation(label)
+    setShowLocationDropdown(false)
+    setLocationResults([])
+  }
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        locationDropdownRef.current &&
+        !locationDropdownRef.current.contains(e.target as Node) &&
+        locationInputRef.current &&
+        !locationInputRef.current.contains(e.target as Node)
+      ) {
+        setShowLocationDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleCustomInput = (field: string, value: string, setter: (v: string) => void) => {
     setter(value)
@@ -250,21 +308,49 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
         {/* Form */}
         <div className="flex flex-col gap-6 flex-1">
           {/* Location */}
-          <section>
+          <section data-tutorial="location">
             <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
               <MapPin className="w-3 h-3" />
               Location
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Compass className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/60" />
+                <Compass className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/60 z-10" />
                 <input
+                  ref={locationInputRef}
                   type="text"
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
+                  onChange={(e) => handleLocationChange(e.target.value)}
+                  onFocus={() => { if (locationResults.length > 0) setShowLocationDropdown(true) }}
                   className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-sm transition-all"
                   placeholder="City or neighborhood..."
+                  autoComplete="off"
                 />
+                {isSearchingLocation && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                )}
+                {showLocationDropdown && locationResults.length > 0 && (
+                  <div
+                    ref={locationDropdownRef}
+                    className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-50"
+                  >
+                    {locationResults.map((result, idx) => (
+                      <button
+                        key={`${result.label}-${idx}`}
+                        onClick={() => selectLocation(result.label)}
+                        className="w-full flex items-start gap-2.5 px-3.5 py-2.5 text-left hover:bg-primary/5 transition-colors border-b border-border/50 last:border-b-0"
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-primary/60 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{result.label}</p>
+                          {result.displayName !== result.label && (
+                            <p className="text-[11px] text-muted-foreground truncate">{result.displayName}</p>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <button
                 onClick={handleLocate}
@@ -282,7 +368,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
 
           {/* Party Size + Time (side by side) */}
           <div className="grid grid-cols-2 gap-4">
-            <section>
+            <section data-tutorial="party-size">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
                 <Users className="w-3 h-3" />
                 Party Size
@@ -304,7 +390,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
               </div>
             </section>
 
-            <section>
+            <section data-tutorial="time">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
                 <Clock className="w-3 h-3" />
                 Time
@@ -329,7 +415,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </div>
 
           {/* Budget */}
-          <section>
+          <section data-tutorial="budget">
             <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
               <DollarSign className="w-3 h-3" />
               Budget
@@ -354,7 +440,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </section>
 
           {/* Vibes */}
-          <section>
+          <section data-tutorial="vibes">
             <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between mb-2.5">
               <span className="flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3" />
@@ -446,7 +532,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </section>
 
           {/* Cuisine Preference */}
-          <section>
+          <section data-tutorial="cuisine">
             <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
               <Utensils className="w-3 h-3" />
               Cuisine
@@ -509,7 +595,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </section>
 
           {/* Activity Preference */}
-          <section>
+          <section data-tutorial="activity">
             <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
               <Music className="w-3 h-3" />
               After Dinner
@@ -580,6 +666,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
         <div className="mt-6 pt-4 border-t border-border/60">
           <button
             onClick={handleSubmit}
+            data-tutorial="submit"
             disabled={vibes.length === 0 || hasInputErrors()}
             className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/25 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >

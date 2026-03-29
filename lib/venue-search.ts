@@ -224,8 +224,11 @@ class VenueSearcher {
         }
       })
 
+    // Also search for entertainment/activity venues using AI search terms or defaults
+    const activitySearchPromise = this.searchActivitiesWithTextSearch(criteria, aiEnhancement)
+
     // Wait for all searches to complete
-    const searchResults = await Promise.all(searchPromises)
+    const searchResults = await Promise.all([...searchPromises, activitySearchPromise])
     allVenues.push(...searchResults.flat())
 
     console.log(`📈 Total venues found: ${allVenues.length}`)
@@ -699,6 +702,99 @@ class VenueSearcher {
     return true
   }
 
+  private async searchActivitiesWithTextSearch(
+    criteria: SearchCriteria,
+    aiEnhancement: { searchTerms: string[]; locationInsights: string; recommendations: string[] } | null
+  ): Promise<Venue[]> {
+    try {
+      const location = await this.geocodeLocation(criteria.location)
+      if (!location) return []
+
+      const radius = TIME_FILTERS[criteria.time].searchRadius * 1609
+
+      // Use AI search terms if available, otherwise use defaults
+      const defaultActivityTerms = [
+        'bowling alley', 'TopGolf driving range', 'escape room',
+        'arcade bar', 'comedy club', 'karaoke',
+        'mini golf', 'movie theater', 'axe throwing',
+        'trampoline park', 'go kart', 'laser tag',
+        'roller skating rink', 'Dave and Busters', 'paintball'
+      ]
+
+      // Pick activity-relevant terms from AI or defaults
+      let searchTerms: string[]
+      if (aiEnhancement?.searchTerms && aiEnhancement.searchTerms.length > 0) {
+        // Filter AI terms to focus on activity/entertainment ones
+        const activityKeywords = ['bowl', 'golf', 'escape', 'arcade', 'comedy', 'karaoke',
+          'mini golf', 'movie', 'axe', 'trampoline', 'kart', 'laser', 'paint',
+          'skating', 'climb', 'entertainment', 'fun', 'game', 'experience', 'adventure',
+          'topgolf', 'dave', 'theater', 'theatre', 'museum', 'aquarium', 'zoo']
+        const aiActivityTerms = aiEnhancement.searchTerms.filter(term =>
+          activityKeywords.some(kw => term.toLowerCase().includes(kw))
+        )
+        // Use AI activity terms plus some defaults for variety
+        searchTerms = [...aiActivityTerms, ...defaultActivityTerms.slice(0, 5)]
+      } else {
+        searchTerms = defaultActivityTerms.slice(0, 8)
+      }
+
+      // Dedupe and limit
+      searchTerms = [...new Set(searchTerms)].slice(0, 10)
+
+      console.log(`🎮 Searching for activity venues with ${searchTerms.length} terms: ${searchTerms.slice(0, 5).join(', ')}...`)
+
+      const venues: Venue[] = []
+
+      // Search in parallel batches of 3 to avoid rate limiting
+      for (let i = 0; i < searchTerms.length; i += 3) {
+        const batch = searchTerms.slice(i, i + 3)
+        const batchResults = await Promise.all(
+          batch.map(async (term) => {
+            try {
+              const searchQuery = `${term} near ${criteria.location}`
+              const response = await fetch('/api/venues/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  action: 'google-text-search',
+                  query: searchQuery,
+                  lat: location.lat,
+                  lng: location.lng,
+                  radius: Math.min(radius, 50000)
+                })
+              })
+
+              if (!response.ok) return []
+
+              const data = await response.json()
+              if (data.results) {
+                return data.results.slice(0, 3).map((place: any) =>
+                  this.convertGooglePlaceToVenue(place, criteria)
+                )
+              }
+              return []
+            } catch (error) {
+              console.error(`Text search failed for "${term}":`, error)
+              return []
+            }
+          })
+        )
+        venues.push(...batchResults.flat())
+
+        // Small delay between batches
+        if (i + 3 < searchTerms.length) {
+          await new Promise(resolve => setTimeout(resolve, 200))
+        }
+      }
+
+      console.log(`🎮 Activity text search found ${venues.length} venues`)
+      return venues
+    } catch (error) {
+      console.error('Activity text search failed:', error)
+      return []
+    }
+  }
+
   private async searchFoursquare(criteria: SearchCriteria): Promise<Venue[]> {
     try {
       const location = await this.geocodeLocation(criteria.location)
@@ -812,13 +908,33 @@ class VenueSearcher {
       categories.push('4d4b7105d754a06377d80012') // Arts & Entertainment
     }
 
+    // Always include entertainment/activity categories
+    categories.push('4d4b7105d754a06377d80012') // Arts & Entertainment
+    categories.push('4bf58dd8d48988d1e1931735') // Bowling Alley
+    categories.push('4bf58dd8d48988d1e4931735') // Movie Theater
+    categories.push('56aa371be4b08b9a8d5734db') // Escape Room
+    categories.push('4bf58dd8d48988d18e941735') // Comedy Club
+    categories.push('4bf58dd8d48988d1e3931735') // Pool Hall
+    categories.push('52e81612bcbc57f1066b79e7') // Arcade
+    categories.push('4bf58dd8d48988d165941735') // Scenic Lookout
+    categories.push('4bf58dd8d48988d175941735') // Gym / Fitness
+
     // Add activity-specific Foursquare categories
     const activity = criteria.customActivity || criteria.activity
     if (activity && activity !== 'none') {
-      if (activity === 'live-music') categories.push('4bf58dd8d48988d1e5931735') // Music Venue
-      else if (activity === 'art') categories.push('4bf58dd8d48988d1e2931735') // Art Gallery
-      else if (activity === 'outdoor') categories.push('4bf58dd8d48988d163941735') // Park
-      else categories.push('4d4b7105d754a06377d80012') // Arts & Entertainment as fallback
+      if (activity === 'live-music') {
+        categories.push('4bf58dd8d48988d1e5931735') // Music Venue
+        categories.push('4bf58dd8d48988d1e7931735') // Concert Hall
+      } else if (activity === 'art') {
+        categories.push('4bf58dd8d48988d1e2931735') // Art Gallery
+        categories.push('4bf58dd8d48988d181941735') // Museum
+      } else if (activity === 'outdoor') {
+        categories.push('4bf58dd8d48988d163941735') // Park
+        categories.push('4bf58dd8d48988d166941735') // Plaza
+        categories.push('52e81612bcbc57f1066b7a21') // Mini Golf
+      } else {
+        categories.push('4bf58dd8d48988d17f941735') // General Entertainment
+      }
     }
     
     return [...new Set(categories)]
@@ -835,6 +951,12 @@ class VenueSearcher {
       categories.push('bars', 'nightlife')
     }
 
+    // Always include entertainment/activity categories
+    categories.push('bowling', 'escapegames', 'arcades', 'mini_golf', 'gokarts')
+    categories.push('karaoke', 'comedyclubs', 'movietheaters', 'poolhalls')
+    categories.push('topgolf', 'axethrowing', 'trampoline', 'laser_tag')
+    categories.push('amusementparks', 'active', 'entertainment')
+
     // Add cuisine-specific category for Yelp
     const cuisine = criteria.customCuisine || criteria.cuisine
     if (cuisine && cuisine !== 'any') {
@@ -844,9 +966,9 @@ class VenueSearcher {
     // Add activity-specific category for Yelp
     const activity = criteria.customActivity || criteria.activity
     if (activity && activity !== 'none') {
-      if (activity === 'live-music') categories.push('musicvenues')
-      else if (activity === 'art') categories.push('galleries', 'museums')
-      else if (activity === 'outdoor') categories.push('parks', 'hiking')
+      if (activity === 'live-music') categories.push('musicvenues', 'jazzandblues', 'concerthalls')
+      else if (activity === 'art') categories.push('galleries', 'museums', 'artmuseums')
+      else if (activity === 'outdoor') categories.push('parks', 'hiking', 'beaches', 'boating')
       else categories.push(activity.toLowerCase().replace(/\s+/g, ''))
     }
     
@@ -1077,9 +1199,63 @@ class VenueSearcher {
   }
 
   private getFallbackLocation(location: string): { lat: number; lng: number } | null {
-    // Major city coordinates for common locations
+    // US state → largest/most popular city coordinates
+    const stateCoordinates: Record<string, { lat: number; lng: number; city: string }> = {
+      'alabama': { lat: 33.5207, lng: -86.8025, city: 'Birmingham' },
+      'alaska': { lat: 61.2181, lng: -149.9003, city: 'Anchorage' },
+      'arizona': { lat: 33.4484, lng: -112.0740, city: 'Phoenix' },
+      'arkansas': { lat: 34.7465, lng: -92.2896, city: 'Little Rock' },
+      'california': { lat: 34.0522, lng: -118.2437, city: 'Los Angeles' },
+      'colorado': { lat: 39.7392, lng: -104.9903, city: 'Denver' },
+      'connecticut': { lat: 41.7658, lng: -72.6734, city: 'Hartford' },
+      'delaware': { lat: 39.7391, lng: -75.5398, city: 'Wilmington' },
+      'florida': { lat: 25.7617, lng: -80.1918, city: 'Miami' },
+      'georgia': { lat: 33.7490, lng: -84.3880, city: 'Atlanta' },
+      'hawaii': { lat: 21.3069, lng: -157.8583, city: 'Honolulu' },
+      'idaho': { lat: 43.6150, lng: -116.2023, city: 'Boise' },
+      'illinois': { lat: 41.8781, lng: -87.6298, city: 'Chicago' },
+      'indiana': { lat: 39.7684, lng: -86.1580, city: 'Indianapolis' },
+      'iowa': { lat: 41.5868, lng: -93.6250, city: 'Des Moines' },
+      'kansas': { lat: 37.6872, lng: -97.3301, city: 'Wichita' },
+      'kentucky': { lat: 38.2527, lng: -85.7585, city: 'Louisville' },
+      'louisiana': { lat: 29.9511, lng: -90.0715, city: 'New Orleans' },
+      'maine': { lat: 43.6591, lng: -70.2568, city: 'Portland' },
+      'maryland': { lat: 39.2904, lng: -76.6122, city: 'Baltimore' },
+      'massachusetts': { lat: 42.3601, lng: -71.0589, city: 'Boston' },
+      'michigan': { lat: 42.3314, lng: -83.0458, city: 'Detroit' },
+      'minnesota': { lat: 44.9778, lng: -93.2650, city: 'Minneapolis' },
+      'mississippi': { lat: 32.2988, lng: -90.1848, city: 'Jackson' },
+      'missouri': { lat: 39.0997, lng: -94.5786, city: 'Kansas City' },
+      'montana': { lat: 46.8787, lng: -114.0090, city: 'Missoula' },
+      'nebraska': { lat: 41.2565, lng: -95.9345, city: 'Omaha' },
+      'nevada': { lat: 36.1699, lng: -115.1398, city: 'Las Vegas' },
+      'new hampshire': { lat: 42.9956, lng: -71.4548, city: 'Manchester' },
+      'new jersey': { lat: 40.7357, lng: -74.1724, city: 'Newark' },
+      'new mexico': { lat: 35.0844, lng: -106.6504, city: 'Albuquerque' },
+      'new york': { lat: 40.7128, lng: -74.0060, city: 'New York City' },
+      'north carolina': { lat: 35.2271, lng: -80.8431, city: 'Charlotte' },
+      'north dakota': { lat: 46.8772, lng: -96.7898, city: 'Fargo' },
+      'ohio': { lat: 39.9612, lng: -82.9988, city: 'Columbus' },
+      'oklahoma': { lat: 35.4676, lng: -97.5164, city: 'Oklahoma City' },
+      'oregon': { lat: 45.5152, lng: -122.6784, city: 'Portland' },
+      'pennsylvania': { lat: 39.9526, lng: -75.1652, city: 'Philadelphia' },
+      'rhode island': { lat: 41.8240, lng: -71.4128, city: 'Providence' },
+      'south carolina': { lat: 32.7765, lng: -79.9311, city: 'Charleston' },
+      'south dakota': { lat: 43.5460, lng: -96.7313, city: 'Sioux Falls' },
+      'tennessee': { lat: 36.1627, lng: -86.7816, city: 'Nashville' },
+      'texas': { lat: 29.7604, lng: -95.3698, city: 'Houston' },
+      'utah': { lat: 40.7608, lng: -111.8910, city: 'Salt Lake City' },
+      'vermont': { lat: 44.4759, lng: -73.2121, city: 'Burlington' },
+      'virginia': { lat: 36.8529, lng: -75.9780, city: 'Virginia Beach' },
+      'washington': { lat: 47.6062, lng: -122.3321, city: 'Seattle' },
+      'west virginia': { lat: 38.3498, lng: -81.6326, city: 'Charleston' },
+      'wisconsin': { lat: 43.0389, lng: -87.9065, city: 'Milwaukee' },
+      'wyoming': { lat: 41.1400, lng: -104.8202, city: 'Cheyenne' },
+    }
+
+    // Major city coordinates
     const cityCoordinates: Record<string, { lat: number; lng: number }> = {
-      'new york': { lat: 40.7128, lng: -74.0060 },
+      'new york city': { lat: 40.7128, lng: -74.0060 },
       'nyc': { lat: 40.7128, lng: -74.0060 },
       'manhattan': { lat: 40.7831, lng: -73.9712 },
       'brooklyn': { lat: 40.6782, lng: -73.9442 },
@@ -1101,7 +1277,7 @@ class VenueSearcher {
       'indianapolis': { lat: 39.7684, lng: -86.1580 },
       'seattle': { lat: 47.6062, lng: -122.3321 },
       'denver': { lat: 39.7392, lng: -104.9903 },
-      'washington': { lat: 38.9072, lng: -77.0369 },
+      'washington dc': { lat: 38.9072, lng: -77.0369 },
       'dc': { lat: 38.9072, lng: -77.0369 },
       'boston': { lat: 42.3601, lng: -71.0589 },
       'el paso': { lat: 31.7619, lng: -106.4850 },
@@ -1124,30 +1300,71 @@ class VenueSearcher {
       'charlotte': { lat: 35.2271, lng: -80.8431 },
       'minneapolis': { lat: 44.9778, lng: -93.2650 },
       'tulsa': { lat: 36.1540, lng: -95.9944 },
-      'baltimore': { lat: 39.2904, lng: -76.6122 }
+      'baltimore': { lat: 39.2904, lng: -76.6122 },
+      'miami': { lat: 25.7617, lng: -80.1918 },
+      'new orleans': { lat: 29.9511, lng: -90.0715 },
+      'honolulu': { lat: 21.3069, lng: -157.8583 },
+      'salt lake city': { lat: 40.7608, lng: -111.8910 },
+      'charleston': { lat: 32.7765, lng: -79.9311 },
+      'providence': { lat: 41.8240, lng: -71.4128 },
+      'boise': { lat: 43.6150, lng: -116.2023 },
+      'richmond': { lat: 37.5407, lng: -77.4360 },
+      'raleigh': { lat: 35.7796, lng: -78.6382 },
+      'pittsburgh': { lat: 40.4406, lng: -79.9959 },
+      'tampa': { lat: 27.9506, lng: -82.4572 },
+      'orlando': { lat: 28.5383, lng: -81.3792 },
+      'st louis': { lat: 38.6270, lng: -90.1994 },
+      'cincinnati': { lat: 39.1031, lng: -84.5120 },
+      'cleveland': { lat: 41.4993, lng: -81.6944 },
     }
 
     const locationLower = location.toLowerCase().trim()
+    // Strip common suffixes like ", United States", ", US", ", USA"
+    const cleaned = locationLower.replace(/,?\s*(united states|usa|us)$/i, '').trim()
     
-    // Check for exact matches
-    if (cityCoordinates[locationLower]) {
-      return cityCoordinates[locationLower]
+    // Check city exact matches first (more specific wins)
+    if (cityCoordinates[cleaned]) {
+      return cityCoordinates[cleaned]
     }
     
-    // Check for partial matches
+    // Check state exact matches
+    if (stateCoordinates[cleaned]) {
+      const s = stateCoordinates[cleaned]
+      console.log(`📍 Resolved state "${location}" → ${s.city} (${s.lat}, ${s.lng})`)
+      return { lat: s.lat, lng: s.lng }
+    }
+    
+    // Check for partial city matches
     for (const [city, coords] of Object.entries(cityCoordinates)) {
-      if (locationLower.includes(city)) {
+      if (cleaned.includes(city) || city.includes(cleaned)) {
         return coords
       }
     }
     
-    // Default to NYC if no match found
-    console.log('No city match found, defaulting to NYC coordinates')
-    return { lat: 40.7128, lng: -74.0060 }
+    // Check for partial state matches
+    for (const [state, info] of Object.entries(stateCoordinates)) {
+      if (cleaned.includes(state) || state.includes(cleaned)) {
+        console.log(`📍 Resolved state "${location}" → ${info.city} (${info.lat}, ${info.lng})`)
+        return { lat: info.lat, lng: info.lng }
+      }
+    }
+    
+    // No match found — return null instead of wrong coordinates
+    console.log(`⚠️ No location match found for "${location}"`)
+    return null
   }
 
   private async geocodeLocation(locationName: string): Promise<{lat: number, lng: number} | null> {
     try {
+      // First check if this is a known state/region name — resolve directly to city
+      const directMatch = this.getFallbackLocation(locationName)
+      // Only use direct match for state-like inputs (short names without commas)
+      const looksLikeState = !locationName.includes(',') && locationName.trim().split(/\s+/).length <= 3
+      if (directMatch && looksLikeState) {
+        console.log(`📍 Direct match for "${locationName}": ${directMatch.lat}, ${directMatch.lng}`)
+        return directMatch
+      }
+
       // Use server-side API route to avoid CORS issues
       const response = await fetch('/api/venues/search', {
         method: 'POST',
@@ -1163,7 +1380,19 @@ class VenueSearcher {
       const data = await response.json()
 
       if (data.results && data.results.length > 0) {
-        const { lat, lng } = data.results[0].geometry.location
+        const result = data.results[0]
+        const { lat, lng } = result.geometry.location
+        const types: string[] = result.types || []
+
+        // If Google returns a state/country-level result, it's too broad
+        // Resolve to the largest city in that area instead
+        if (types.includes('administrative_area_level_1') || types.includes('country')) {
+          console.log(`📍 "${locationName}" geocoded as state/country (${types.join(', ')}), resolving to largest city...`)
+          const cityCoords = this.getFallbackLocation(locationName)
+          if (cityCoords) return cityCoords
+          // If no fallback, use Google's coords as last resort
+        }
+
         return { lat, lng }
       }
 
@@ -1186,13 +1415,19 @@ class VenueSearcher {
       types.push('bar', 'night_club', 'restaurant')
     }
 
+    // Always include entertainment/activity types to find fun venues
+    types.push('bowling_alley', 'movie_theater', 'amusement_park', 'spa', 'stadium')
+
     // Add activity-specific types
     const activity = criteria.customActivity || criteria.activity
     if (activity && activity !== 'none') {
-      if (activity === 'live-music') types.push('night_club', 'bar')
+      if (activity === 'live-music') types.push('night_club', 'bar', 'stadium')
       else if (activity === 'art') types.push('art_gallery', 'museum')
-      else if (activity === 'outdoor') types.push('park', 'tourist_attraction')
-      else types.push('point_of_interest') // custom activity — broad search
+      else if (activity === 'outdoor') types.push('park', 'tourist_attraction', 'campground', 'zoo', 'aquarium')
+      else {
+        // Broad search for custom activities (TopGolf, axe throwing, escape rooms, etc.)
+        types.push('point_of_interest', 'tourist_attraction', 'establishment')
+      }
     }
     
     return [...new Set(types)]
@@ -1389,11 +1624,22 @@ class VenueSearcher {
   private categorizeGooglePlace(place: any): 'drinks' | 'dinner' | 'activity' {
     const types = place.types || []
     
+    // Drinks
     if (types.includes('bar') || types.includes('night_club') || types.includes('liquor_store')) {
       return 'drinks'
     }
-    if (types.includes('restaurant') || types.includes('food') || types.includes('cafe')) {
+    // Dinner
+    if (types.includes('restaurant') || types.includes('food') || types.includes('cafe') || types.includes('bakery')) {
       return 'dinner'
+    }
+    // Activity — entertainment/recreation
+    const activityTypes = [
+      'bowling_alley', 'movie_theater', 'amusement_park', 'spa', 'stadium',
+      'museum', 'art_gallery', 'aquarium', 'zoo', 'campground',
+      'tourist_attraction', 'gym', 'park', 'casino'
+    ]
+    if (types.some((t: string) => activityTypes.includes(t))) {
+      return 'activity'
     }
     
     return 'activity'
@@ -1706,32 +1952,44 @@ class VenueSearcher {
     
     const queries = []
 
+    // Amenity types: restaurants, bars, entertainment
+    const amenityTypes = 'bar|pub|restaurant|arts_centre|cinema|theatre|nightclub|community_centre|bowling_alley|casino|ice_cream'
+    // Leisure types: parks, sports, recreation
+    const leisureTypes = 'park|garden|sports_centre|fitness_centre|miniature_golf|ice_rink|water_park|bowling_alley|escape_game|amusement_arcade|stadium|dance'
+    // Tourism types: attractions, museums, galleries
+    const tourismTypes = 'museum|gallery|aquarium|zoo|theme_park|attraction|viewpoint'
+
     // Single comprehensive query to find all venue types at once
-    // This reduces the number of API calls to avoid rate limiting
     queries.push(`
       [out:json][timeout:30];
       area["name"="${locationName}"]->.searchArea;
       (
-        node["amenity"~"bar|pub|restaurant|arts_centre|cinema|theatre|community_centre"](area.searchArea);
-        way["amenity"~"bar|pub|restaurant|arts_centre|cinema|theatre|community_centre"](area.searchArea);
-        relation["amenity"~"bar|pub|restaurant|arts_centre|cinema|theatre|community_centre"](area.searchArea);
-        node["leisure"~"park|garden|sports_centre"](area.searchArea);
-        way["leisure"~"park|garden|sports_centre"](area.searchArea);
-        relation["leisure"~"park|garden|sports_centre"](area.searchArea);
+        node["amenity"~"${amenityTypes}"](area.searchArea);
+        way["amenity"~"${amenityTypes}"](area.searchArea);
+        relation["amenity"~"${amenityTypes}"](area.searchArea);
+        node["leisure"~"${leisureTypes}"](area.searchArea);
+        way["leisure"~"${leisureTypes}"](area.searchArea);
+        relation["leisure"~"${leisureTypes}"](area.searchArea);
+        node["tourism"~"${tourismTypes}"](area.searchArea);
+        way["tourism"~"${tourismTypes}"](area.searchArea);
+        node["sport"~"bowling|climbing|skating"](area.searchArea);
+        way["sport"~"bowling|climbing|skating"](area.searchArea);
       );
       out geom;
     `)
 
-    // Fallback query with different approach if the first fails
+    // Fallback query with addr:city approach
     queries.push(`
       [out:json][timeout:30];
       (
-        node["amenity"~"bar|pub|restaurant"]["addr:city"="${locationName}"];
-        way["amenity"~"bar|pub|restaurant"]["addr:city"="${locationName}"];
-        relation["amenity"~"bar|pub|restaurant"]["addr:city"="${locationName}"];
-        node["leisure"~"park|garden"]["addr:city"="${locationName}"];
-        way["leisure"~"park|garden"]["addr:city"="${locationName}"];
-        relation["leisure"~"park|garden"]["addr:city"="${locationName}"];
+        node["amenity"~"${amenityTypes}"]["addr:city"="${locationName}"];
+        way["amenity"~"${amenityTypes}"]["addr:city"="${locationName}"];
+        relation["amenity"~"${amenityTypes}"]["addr:city"="${locationName}"];
+        node["leisure"~"${leisureTypes}"]["addr:city"="${locationName}"];
+        way["leisure"~"${leisureTypes}"]["addr:city"="${locationName}"];
+        relation["leisure"~"${leisureTypes}"]["addr:city"="${locationName}"];
+        node["tourism"~"${tourismTypes}"]["addr:city"="${locationName}"];
+        way["tourism"~"${tourismTypes}"]["addr:city"="${locationName}"];
       );
       out geom;
     `)
@@ -1740,15 +1998,56 @@ class VenueSearcher {
   }
 
   private extractLocationName(location: string): string {
+    // All US state names for detection
+    const usStates = new Set([
+      'alabama', 'alaska', 'arizona', 'arkansas', 'california', 'colorado',
+      'connecticut', 'delaware', 'florida', 'georgia', 'hawaii', 'idaho',
+      'illinois', 'indiana', 'iowa', 'kansas', 'kentucky', 'louisiana',
+      'maine', 'maryland', 'massachusetts', 'michigan', 'minnesota',
+      'mississippi', 'missouri', 'montana', 'nebraska', 'nevada',
+      'new hampshire', 'new jersey', 'new mexico', 'new york',
+      'north carolina', 'north dakota', 'ohio', 'oklahoma', 'oregon',
+      'pennsylvania', 'rhode island', 'south carolina', 'south dakota',
+      'tennessee', 'texas', 'utah', 'vermont', 'virginia', 'washington',
+      'west virginia', 'wisconsin', 'wyoming', 'united states', 'usa', 'us'
+    ])
+
+    // State → largest city name for Overpass queries
+    const stateToCityName: Record<string, string> = {
+      'maine': 'Portland', 'alabama': 'Birmingham', 'alaska': 'Anchorage',
+      'arizona': 'Phoenix', 'arkansas': 'Little Rock', 'california': 'Los Angeles',
+      'colorado': 'Denver', 'connecticut': 'Hartford', 'delaware': 'Wilmington',
+      'florida': 'Miami', 'georgia': 'Atlanta', 'hawaii': 'Honolulu',
+      'idaho': 'Boise', 'illinois': 'Chicago', 'indiana': 'Indianapolis',
+      'iowa': 'Des Moines', 'kansas': 'Wichita', 'kentucky': 'Louisville',
+      'louisiana': 'New Orleans', 'maryland': 'Baltimore', 'massachusetts': 'Boston',
+      'michigan': 'Detroit', 'minnesota': 'Minneapolis', 'mississippi': 'Jackson',
+      'missouri': 'Kansas City', 'montana': 'Missoula', 'nebraska': 'Omaha',
+      'nevada': 'Las Vegas', 'new hampshire': 'Manchester', 'new jersey': 'Newark',
+      'new mexico': 'Albuquerque', 'new york': 'New York', 'north carolina': 'Charlotte',
+      'north dakota': 'Fargo', 'ohio': 'Columbus', 'oklahoma': 'Oklahoma City',
+      'oregon': 'Portland', 'pennsylvania': 'Philadelphia', 'rhode island': 'Providence',
+      'south carolina': 'Charleston', 'south dakota': 'Sioux Falls', 'tennessee': 'Nashville',
+      'texas': 'Houston', 'utah': 'Salt Lake City', 'vermont': 'Burlington',
+      'virginia': 'Virginia Beach', 'washington': 'Seattle', 'west virginia': 'Charleston',
+      'wisconsin': 'Milwaukee', 'wyoming': 'Cheyenne'
+    }
+
+    // If the entire input is a state name, resolve to its largest city
+    const cleaned = location.toLowerCase().replace(/,?\s*(united states|usa|us)$/i, '').trim()
+    if (stateToCityName[cleaned]) {
+      console.log(`🗺️ Overpass: Resolved state "${location}" → city "${stateToCityName[cleaned]}"`)
+      return stateToCityName[cleaned]
+    }
+
     // Extract city from location string (e.g., "Loyola/Notre Dame, Baltimore, Maryland" -> "Baltimore")
     const parts = location.split(',').map(part => part.trim())
     
     // Try to find the city (usually the second part or before the state)
     for (const part of parts) {
-      // Skip if it's a neighborhood or state
-      if (part.includes('Maryland') || part.includes('California') || 
-          part.includes('New York') || part.includes('Texas') ||
-          part.includes('/') || part.length < 3) {
+      const partLower = part.toLowerCase().trim()
+      // Skip if it's a state, country, neighborhood with slash, or too short
+      if (usStates.has(partLower) || part.includes('/') || part.length < 3) {
         continue
       }
       
@@ -1756,8 +2055,8 @@ class VenueSearcher {
       return part
     }
     
-    // Fallback to second to last part
-    return parts[parts.length - 2] || parts[0] || "Baltimore"
+    // Fallback to second to last part, or first part
+    return parts[parts.length - 2] || parts[0] || "New York"
   }
 
   private parseOverpassResponse(data: any, criteria: SearchCriteria): Venue[] {
@@ -1768,8 +2067,32 @@ class VenueSearcher {
     data.elements.forEach((element: any) => {
       const tags = element.tags || {}
       
-      // Skip if missing essential data
-      if (!tags.name || !element.lat || !element.lon) return
+      // Skip if missing name
+      if (!tags.name) return
+
+      // Extract coordinates: nodes have lat/lon directly, ways/relations have geometry array
+      let lat = element.lat
+      let lon = element.lon
+
+      if (!lat || !lon) {
+        // For ways/relations, calculate center from geometry
+        if (element.geometry && Array.isArray(element.geometry) && element.geometry.length > 0) {
+          const points = element.geometry.filter((p: any) => p.lat && p.lon)
+          if (points.length > 0) {
+            lat = points.reduce((sum: number, p: any) => sum + p.lat, 0) / points.length
+            lon = points.reduce((sum: number, p: any) => sum + p.lon, 0) / points.length
+          }
+        } else if (element.center) {
+          lat = element.center.lat
+          lon = element.center.lon
+        } else if (element.bounds) {
+          lat = (element.bounds.minlat + element.bounds.maxlat) / 2
+          lon = (element.bounds.minlon + element.bounds.maxlon) / 2
+        }
+      }
+
+      // Skip if we still couldn't determine coordinates
+      if (!lat || !lon) return
 
       // Extract venue features from tags
       const features = this.extractVenueFeatures(tags)
@@ -1788,8 +2111,8 @@ class VenueSearcher {
         description: this.generateDescription(tags),
         highlights: this.generateHighlights(tags),
         coordinates: {
-          lat: element.lat,
-          lng: element.lon
+          lat,
+          lng: lon
         },
         hours: tags.opening_hours,
         tags: this.extractTags(tags),
@@ -1838,10 +2161,31 @@ class VenueSearcher {
   }
 
   private categorizeVenue(tags: any): 'drinks' | 'dinner' | 'activity' {
-    if (tags.amenity === 'bar' || tags.amenity === 'pub') return 'drinks'
-    if (tags.amenity === 'restaurant') return 'dinner'
-    if (tags.amenity?.includes('arts') || tags.amenity?.includes('cinema') || 
-        tags.amenity?.includes('theatre') || tags.leisure) return 'activity'
+    const amenity = (tags.amenity || '').toLowerCase()
+    const leisure = (tags.leisure || '').toLowerCase()
+    const tourism = (tags.tourism || '').toLowerCase()
+    const sport = (tags.sport || '').toLowerCase()
+
+    // Drinks
+    if (amenity === 'bar' || amenity === 'pub' || amenity === 'nightclub') return 'drinks'
+    
+    // Dinner
+    if (amenity === 'restaurant' || amenity === 'ice_cream') return 'dinner'
+    
+    // Activity — entertainment amenities
+    if (['arts_centre', 'cinema', 'theatre', 'bowling_alley', 'casino', 'community_centre'].includes(amenity)) return 'activity'
+    
+    // Activity — leisure types
+    if (leisure && ['sports_centre', 'fitness_centre', 'miniature_golf', 'ice_rink',
+        'water_park', 'bowling_alley', 'escape_game', 'amusement_arcade',
+        'stadium', 'dance', 'park', 'garden'].includes(leisure)) return 'activity'
+    
+    // Activity — tourism types
+    if (tourism && ['museum', 'gallery', 'aquarium', 'zoo', 'theme_park',
+        'attraction', 'viewpoint'].includes(tourism)) return 'activity'
+    
+    // Activity — sport types
+    if (sport && ['bowling', 'climbing', 'skating'].includes(sport)) return 'activity'
     
     // Default categorization based on tags
     if (tags.cuisine) return 'dinner'

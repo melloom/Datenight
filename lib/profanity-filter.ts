@@ -36,7 +36,9 @@ function buildPattern(word: string): RegExp {
     .split('')
     .map(char => {
       const sub = SUBSTITUTION_MAP[char.toLowerCase()]
-      return sub || char
+      if (sub) return sub
+      // Escape special regex characters
+      return char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     })
     .join('[\\s._-]*') // Allow separators between characters
 

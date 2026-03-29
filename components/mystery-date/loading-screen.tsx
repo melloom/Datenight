@@ -25,8 +25,24 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
   const stableOnComplete = useCallback(onComplete, [onComplete])
 
   useEffect(() => {
+    let cancelled = false
+    const MIN_DURATION = 4500
+    const startTime = Date.now()
+
+    // Track search readiness
+    let searchDone = false
+    let searchResult: Venue[] = []
+
+    // Progress: animate to 90% quickly, then slow down until search finishes
     const progressInterval = setInterval(() => {
-      setProgress(prev => prev >= 100 ? 100 : prev + 1.5)
+      setProgress(prev => {
+        if (searchDone) {
+          // Search done — quickly fill to 100%
+          return prev >= 100 ? 100 : Math.min(100, prev + 5)
+        }
+        // Cap at 90% while waiting for search
+        return prev >= 90 ? 90 : prev + 1.5
+      })
     }, 60)
 
     const timers = STEPS.map((step, index) =>
@@ -36,6 +52,28 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
       }, step.delay + 800)
     )
 
+    const finishLoading = (venues: Venue[]) => {
+      if (cancelled) return
+      searchDone = true
+      searchResult = venues
+
+      // Wait for minimum animation duration, then complete
+      const elapsed = Date.now() - startTime
+      const remaining = Math.max(0, MIN_DURATION - elapsed)
+
+      setTimeout(() => {
+        if (cancelled) return
+        setProgress(100)
+        // Small delay after hitting 100% so the user sees it
+        setTimeout(() => {
+          if (cancelled) return
+          clearInterval(progressInterval)
+          timers.forEach(clearTimeout)
+          stableOnComplete(searchResult)
+        }, 400)
+      }, remaining)
+    }
+
     const startSearch = async () => {
       try {
         setSearchStatus("Searching your area...")
@@ -43,36 +81,24 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
 
         if (result.venues.length === 0) {
           setSearchStatus("No venues found. Trying alternatives...")
-          setTimeout(() => {
-            clearInterval(progressInterval)
-            timers.forEach(clearTimeout)
-            stableOnComplete([])
-          }, 5200)
+          finishLoading([])
           return
         }
 
         setSearchStatus(`Found ${result.totalFound} venues!`)
         const selectedVenues = selectVenuesForDate(result.venues)
-
-        setTimeout(() => {
-          clearInterval(progressInterval)
-          timers.forEach(clearTimeout)
-          stableOnComplete(selectedVenues)
-        }, 5200)
+        finishLoading(selectedVenues)
       } catch (error) {
         console.error("Venue search failed:", error)
         setSearchStatus("Search failed. Please try again.")
-        setTimeout(() => {
-          clearInterval(progressInterval)
-          timers.forEach(clearTimeout)
-          stableOnComplete([])
-        }, 5200)
+        finishLoading([])
       }
     }
 
     startSearch()
 
     return () => {
+      cancelled = true
       clearInterval(progressInterval)
       timers.forEach(clearTimeout)
     }

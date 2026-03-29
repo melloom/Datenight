@@ -9,7 +9,7 @@ const FOURSQUARE_CLIENT_SECRET = process.env.FOURSQUARE_CLIENT_SECRET || ''
 const YELP_API_KEY = process.env.YELP_API_KEY || ''
 
 const venueSearchSchema = z.object({
-  action: z.enum(['google-places', 'google-geocode', 'google-place-details', 'foursquare', 'yelp', 'overpass']),
+  action: z.enum(['google-places', 'google-text-search', 'google-geocode', 'google-place-details', 'foursquare', 'yelp', 'overpass']),
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
   radius: z.number().min(1).max(50000).optional(),
@@ -44,6 +44,22 @@ export async function POST(request: NextRequest) {
 
       const keywordParam = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''
       const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}${keywordParam}&key=${GOOGLE_PLACES_API_KEY}`
+      const response = await fetch(url)
+      const data = await response.json()
+      return NextResponse.json(data)
+    }
+
+    if (action === 'google-text-search') {
+      if (!GOOGLE_PLACES_API_KEY || GOOGLE_PLACES_API_KEY === 'your_google_places_api_key_here') {
+        return NextResponse.json({ error: 'Google Places API key not configured' }, { status: 503 })
+      }
+
+      if (!query) {
+        return NextResponse.json({ error: 'Query is required for text search' }, { status: 400 })
+      }
+
+      const locationParam = lat && lng ? `&location=${lat},${lng}&radius=${radius || 16000}` : ''
+      const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}${locationParam}&key=${GOOGLE_PLACES_API_KEY}`
       const response = await fetch(url)
       const data = await response.json()
       return NextResponse.json(data)

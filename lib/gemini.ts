@@ -177,11 +177,15 @@ Time: ${criteria.time}${cuisineInfo}${activityInfo}
 
 Provide a JSON response with these exact keys:
 {
-  "searchTerms": ["5-8 specific search terms for finding venues"],
+  "searchTerms": ["8-12 specific search terms for finding venues"],
   "locationInsights": "Insights about this location for dating (2-3 sentences)",
-  "recommendations": ["3-4 specific types of venues or areas to focus on"]
+  "recommendations": ["4-6 specific types of venues or areas to focus on"]
 }
 
+IMPORTANT: Include a MIX of dining AND fun activity venues. Always include search terms for:
+- Entertainment venues (bowling alleys, TopGolf, axe throwing, escape rooms, arcades, go-karts, mini golf, trampoline parks, laser tag)
+- Experience venues (comedy clubs, karaoke bars, movie theaters, live music venues, speakeasies)
+- Unique date activities (cooking classes, painting classes, wine tastings, rooftop bars, outdoor adventures)
 Focus on romantic, date-appropriate venues and hidden gems. Consider local culture and dating scene.${cuisineInfo ? ` Prioritize ${criteria.cuisine} cuisine options.` : ''}${activityInfo ? ` Include ${criteria.activity} activity venues.` : ''}
 `
 
@@ -256,9 +260,20 @@ Don't use markdown or special formatting. Just respond naturally.
 
   private getFallbackSearchEnhancement() {
     return {
-      searchTerms: ["romantic restaurants", "date night spots", "couples dining", "intimate bars"],
-      locationInsights: "This area offers several romantic options perfect for date nights",
-      recommendations: ["Focus on downtown area", "Consider waterfront venues", "Look for places with live music"]
+      searchTerms: [
+        "romantic restaurants", "date night spots", "couples dining", "intimate bars",
+        "bowling alley", "escape room", "TopGolf", "comedy club",
+        "karaoke bar", "arcade bar", "mini golf", "axe throwing",
+        "movie theater", "live music venue"
+      ],
+      locationInsights: "This area offers several romantic options and fun activities perfect for date nights",
+      recommendations: [
+        "Focus on downtown area for dining",
+        "Look for entertainment complexes like TopGolf or bowling",
+        "Consider waterfront venues",
+        "Look for places with live music or comedy shows",
+        "Try experience-based activities like escape rooms or axe throwing"
+      ]
     }
   }
 }

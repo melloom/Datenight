@@ -17,79 +17,57 @@ const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to Date Night! 🌟',
-    content: "Let's plan your perfect evening! I'll show you how to create a magical date experience with curated venues and smart suggestions.",
+    content: "Let me walk you through how to plan the perfect evening in just a few taps.",
     position: 'center'
   },
   {
     id: 'location',
-    title: 'Choose Your Location 📍',
-    content: "Start by entering where you'd like to have your date. We'll find amazing venues nearby - from cozy speakeasies to fine dining restaurants.",
+    title: 'Where to? 📍',
+    content: "Enter your city or neighborhood. Tap the pin icon to auto-detect your location.",
     target: '[data-tutorial="location"]',
     position: 'bottom',
-    action: 'Type your city or neighborhood'
-  },
-  {
-    id: 'budget',
-    title: 'Set Your Budget 💰',
-    content: "Choose how much you'd like to spend. We'll match venues to your budget - from casual spots to luxury experiences.",
-    target: '[data-tutorial="budget"]',
-    position: 'bottom',
-    action: 'Select your preferred price range'
-  },
-  {
-    id: 'vibes',
-    title: 'Pick Your Vibe ✨',
-    content: "What's your mood? Romantic, adventurous, cozy, or something else? Select the vibes that match your perfect date atmosphere.",
-    target: '[data-tutorial="vibes"]',
-    position: 'bottom',
-    action: 'Choose 2-3 vibe tags'
-  },
-  {
-    id: 'time',
-    title: 'Choose Your Timing 🕐',
-    content: "When are you planning your date? Early evening for a relaxed start, prime time for the classic experience, or late night for something special?",
-    target: '[data-tutorial="time"]',
-    position: 'bottom',
-    action: 'Select your preferred time slot'
+    action: 'Type a location or tap the pin button'
   },
   {
     id: 'party-size',
-    title: 'Party Size 👥',
-    content: "Is this just for two, or are you planning a group date? We'll adjust our recommendations accordingly.",
+    title: 'Who\'s Coming? 👥',
+    content: "Just the two of you, or a double date? Pick your party size.",
     target: '[data-tutorial="party-size"]',
     position: 'bottom',
-    action: 'Set the number of people'
+    action: 'Tap a number'
+  },
+  {
+    id: 'time',
+    title: 'Pick a Time 🕐',
+    content: "Early bird, prime time, or late night — each gives a different vibe.",
+    target: '[data-tutorial="time"]',
+    position: 'bottom',
+    action: 'Tap a time slot'
+  },
+  {
+    id: 'budget',
+    title: 'Set Your Budget �',
+    content: "From casual pizza to luxury dining — we'll match venues to what you want to spend.",
+    target: '[data-tutorial="budget"]',
+    position: 'bottom',
+    action: 'Tap a price tier'
+  },
+  {
+    id: 'vibes',
+    title: 'Choose Your Vibe ✨',
+    content: "Romantic? Adventurous? Chill? Pick up to 3 vibes — or add your own custom one.",
+    target: '[data-tutorial="vibes"]',
+    position: 'bottom',
+    action: 'Select 1-3 vibe tags'
   },
   {
     id: 'search',
-    title: 'Find Your Venues 🔍',
-    content: "Ready? Click 'Plan My Date' and we'll search for the perfect venues. This might take a moment as we find the best spots for you!",
+    title: 'You\'re All Set! �',
+    content: "Hit this button and we'll find the perfect venues for your night out.",
     target: '[data-tutorial="submit"]',
     position: 'top',
-    action: 'Click to start the search'
+    action: 'Tap "Plan My Night" when ready'
   },
-  {
-    id: 'loading',
-    title: 'Magic Happening ✨',
-    content: "We're searching multiple sources to find venues that match your preferences. Our smart algorithm is curating the perfect date experience!",
-    position: 'center'
-  },
-  {
-    id: 'itinerary',
-    title: 'Your Perfect Date! 🎉',
-    content: "Here's your curated itinerary! Each venue is revealed one by one. Click 'Reveal' to discover each stop on your romantic journey.",
-    target: '[data-tutorial="itinerary"]',
-    position: 'bottom',
-    action: 'Click Reveal to discover venues'
-  },
-  {
-    id: 'features',
-    title: 'Save & Share 📱',
-    content: "Save your favorite venues, copy the itinerary to share with your date, or sign out when you're done. Your preferences are saved for next time!",
-    target: '[data-tutorial="actions"]',
-    position: 'top',
-    action: 'Try copying your plan'
-  }
 ]
 
 interface TutorialContextType {
