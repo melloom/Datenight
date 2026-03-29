@@ -1035,13 +1035,21 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     }
   }, [])
 
-  // Save current plan to history
+  // Save current plan to history with date-based deduplication
   const saveToHistory = () => {
     if (!searchCriteria || !venues || venues.length === 0) return
 
+    const currentDate = new Date()
+    const currentDateString = currentDate.toDateString() // e.g., "Mon Mar 29 2026"
+    
+    // Check if there's already a plan for today
+    const existingPlanIndex = datePlanHistory.findIndex(item => 
+      new Date(item.date).toDateString() === currentDateString
+    )
+
     const newHistoryItem: DatePlanHistory = {
-      id: Date.now().toString(),
-      date: new Date(),
+      id: existingPlanIndex !== -1 ? datePlanHistory[existingPlanIndex].id : Date.now().toString(),
+      date: currentDate,
       location: searchCriteria.location,
       budget: searchCriteria.budget,
       vibes: searchCriteria.vibes,
@@ -1050,7 +1058,19 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       totalCost: calculateBudgetBreakdown(steps, searchCriteria.partySize).totalCost
     }
 
-    const updatedHistory = [newHistoryItem, ...datePlanHistory].slice(0, 20) // Keep last 20 plans
+    let updatedHistory: DatePlanHistory[]
+    
+    if (existingPlanIndex !== -1) {
+      // Update existing plan for today
+      updatedHistory = [...datePlanHistory]
+      updatedHistory[existingPlanIndex] = newHistoryItem
+      console.log(`📝 Updated existing plan for ${currentDateString}`)
+    } else {
+      // Add new plan for different date
+      updatedHistory = [newHistoryItem, ...datePlanHistory].slice(0, 20) // Keep last 20 plans
+      console.log(`➕ Added new plan for ${currentDateString}`)
+    }
+
     setDatePlanHistory(updatedHistory)
     localStorage.setItem('datePlanHistory', JSON.stringify(updatedHistory))
   }
