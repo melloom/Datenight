@@ -1762,7 +1762,32 @@ class VenueSearcher {
             await new Promise(resolve => setTimeout(resolve, 5000))
             continue
           } else if (response.status === 504) {
-            console.error('⏰ Gateway timeout (504), skipping this query...')
+            console.error('⏰ Gateway timeout (504), retrying with shorter query...')
+            // Retry with a simpler query on timeout
+            if (query.includes('timeout:30') || query.includes('timeout:15')) {
+              // Try a much simpler query
+              const simpleQuery = `
+[out:json][timeout:8];
+(
+  node["amenity"="restaurant"]["addr:state"="Maryland"];
+);
+out count;
+`
+              try {
+                const retryResponse = await fetch('/api/venues/search', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ action: 'overpass', query: simpleQuery })
+                })
+                if (retryResponse.ok) {
+                  console.log('✅ Retry with simple query succeeded')
+                  continue
+                }
+              } catch (retryError) {
+                console.log('❌ Retry also failed')
+              }
+            }
+            console.log('⏰ Skipping query due to timeout')
             continue
           } else if (response.status === 400) {
             console.error(`⚠️ Overpass API bad request (400) - query may be invalid for area "${criteria.location}"`)
@@ -1803,58 +1828,42 @@ class VenueSearcher {
   private buildOverpassQueries(criteria: SearchCriteria): string[] {
     const queries = []
 
-    // Amenity types: restaurants, bars, entertainment
-    const amenityTypes = 'bar|pub|restaurant|arts_centre|cinema|theatre|nightclub|community_centre|bowling_alley|casino|ice_cream'
-    // Leisure types: parks, sports, recreation
-    const leisureTypes = 'park|garden|sports_centre|fitness_centre|miniature_golf|ice_rink|water_park|bowling_alley|escape_game|amusement_arcade|stadium|dance'
-    // Tourism types: attractions, museums, galleries
-    const tourismTypes = 'museum|gallery|aquarium|zoo|theme_park|attraction|viewpoint'
-
+    // Simplified amenity types to reduce query complexity
+    const coreTypes = 'restaurant|bar|pub|cinema|theatre|bowling_alley|nightclub'
+    
     // Extract location name for simpler queries
     const locationName = this.extractLocationName(criteria.location)
     const stateName = this.extractStateName(criteria.location)
 
-    // Query 1: Use state-based search with city filtering (more reliable)
+    // Query 1: Simple state-based search with reduced timeout (faster)
     if (stateName) {
       queries.push(`
-[out:json][timeout:30];
+[out:json][timeout:15];
 area["name"="${stateName}"]->.searchArea;
 (
-  node["amenity"~"${amenityTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis|Glen Burnie|Pasadena"](area.searchArea);
-  way["amenity"~"${amenityTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis|Glen Burnie|Pasadena"](area.searchArea);
-  relation["amenity"~"${amenityTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis|Glen Burnie|Pasadena"](area.searchArea);
-  node["leisure"~"${leisureTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis|Glen Burnie|Pasadena"](area.searchArea);
-  way["leisure"~"${leisureTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis|Glen Burnie|Pasadena"](area.searchArea);
-  relation["leisure"~"${leisureTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis|Glen Burnie|Pasadena"](area.searchArea);
+  node["amenity"~"${coreTypes}"]["addr:city"~"${locationName}|Baltimore|Annapolis"](area.searchArea);
 );
 out geom;
 `)
     }
 
-    // Query 2: Simple statewide search as fallback
+    // Query 2: Even simpler - just restaurants and bars
     if (stateName) {
       queries.push(`
-[out:json][timeout:30];
+[out:json][timeout:15];
 area["name"="${stateName}"]->.searchArea;
 (
-  node["amenity"~"${amenityTypes}"](area.searchArea);
-  way["amenity"~"${amenityTypes}"](area.searchArea);
-  relation["amenity"~"${amenityTypes}"](area.searchArea);
-  node["leisure"~"${leisureTypes}"](area.searchArea);
-  way["leisure"~"${leisureTypes}"](area.searchArea);
-  relation["leisure"~"${leisureTypes}"](area.searchArea);
+  node["amenity"~"restaurant|bar|pub"](area.searchArea);
 );
 out geom;
 `)
     }
 
-    // Query 3: Very simple fallback - just state filter without area
+    // Query 3: Minimal fallback - just state filter, nodes only
     queries.push(`
-[out:json][timeout:30];
+[out:json][timeout:10];
 (
-  node["amenity"~"${amenityTypes}"]["addr:state"="${stateName}"];
-  way["amenity"~"${amenityTypes}"]["addr:state"="${stateName}"];
-  relation["amenity"~"${amenityTypes}"]["addr:state"="${stateName}"];
+  node["amenity"~"restaurant|bar"]["addr:state"="${stateName}"];
 );
 out geom;
 `)
