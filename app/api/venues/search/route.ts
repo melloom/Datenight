@@ -69,6 +69,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(data)
     }
 
+    if (action === 'overpass') {
+      const { query: overpassQuery } = body
+      if (!overpassQuery) {
+        return NextResponse.json({ error: 'Missing overpass query' }, { status: 400 })
+      }
+
+      const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        body: `data=${encodeURIComponent(overpassQuery)}`,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'DateNightApp/1.0'
+        }
+      })
+
+      if (!response.ok) {
+        return NextResponse.json({ error: `Overpass API error: ${response.status}` }, { status: response.status })
+      }
+
+      const text = await response.text()
+      try {
+        const data = JSON.parse(text)
+        return NextResponse.json(data)
+      } catch {
+        return NextResponse.json({ error: 'Invalid JSON from Overpass' }, { status: 502 })
+      }
+    }
+
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 
   } catch (error) {

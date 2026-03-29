@@ -227,14 +227,20 @@ class VenueSearcher {
     const optimizedPlan = this.optimizeDatePlan(rankedVenues, criteria)
     console.log(`🗺️ Optimized date plan with ${optimizedPlan.length} venues`)
 
+    // If no venues found from any source, use fallback venues
+    const finalPlan = optimizedPlan.length > 0 ? optimizedPlan : this.createFallbackVenues(criteria)
+    if (optimizedPlan.length === 0) {
+      console.log('⚠️ No venues from APIs, using fallback venues')
+    }
+
     const endTime = Date.now()
     const searchTime = endTime - startTime
 
     return {
-      venues: optimizedPlan,
-      totalFound: allVenues.length,
+      venues: finalPlan,
+      totalFound: Math.max(allVenues.length, finalPlan.length),
       searchTime,
-      sources: usedSources
+      sources: usedSources.length > 0 ? usedSources : ['Fallback']
     }
   }
 
@@ -736,35 +742,41 @@ class VenueSearcher {
 
   private async searchFoursquare(criteria: SearchCriteria): Promise<Venue[]> {
     try {
-      await this.checkRateLimit('Foursquare API')
-      
       const location = await this.geocodeLocation(criteria.location)
       if (!location) return []
 
       const radius = TIME_FILTERS[criteria.time].searchRadius * 1609
       const venues: Venue[] = []
 
-      // Search for different venue categories
+      // Search for different venue categories via server-side API route
       const categories = this.getFoursquareCategories(criteria)
-      
+
       for (const category of categories) {
         try {
-          const url = `${this.searchSources.find(s => s.name === 'Foursquare API')?.baseUrl}/search?ll=${location.lat},${location.lng}&radius=${radius}&categories=${category}&limit=20&client_id=${this.getFoursquareClientId()}&client_secret=${this.getFoursquareClientSecret()}&v=20240101`
-          
-          const response = await fetch(url)
+          const response = await fetch('/api/venues/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'foursquare',
+              lat: location.lat,
+              lng: location.lng,
+              radius,
+              query: category
+            })
+          })
+
           if (!response.ok) {
             console.error(`Foursquare API error for ${category}: ${response.status}`)
             continue
           }
 
           const data = await response.json()
-          
-          if (data.results) {
-            const places = data.results.map((place: any) => this.convertFoursquareToVenue(place, criteria))
+
+          if (data.response?.venues) {
+            const places = data.response.venues.map((place: any) => this.convertFoursquareToVenue(place, criteria))
             venues.push(...places)
           }
 
-          // Add delay to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 200))
         } catch (error) {
           console.error(`Foursquare search failed for ${category}:`, error)
@@ -780,35 +792,41 @@ class VenueSearcher {
 
   private async searchYelp(criteria: SearchCriteria): Promise<Venue[]> {
     try {
-      await this.checkRateLimit('Yelp Fusion API')
-      
       const location = await this.geocodeLocation(criteria.location)
       if (!location) return []
 
       const radius = TIME_FILTERS[criteria.time].searchRadius * 1609
       const venues: Venue[] = []
 
-      // Search for different venue types
+      // Search for different venue types via server-side API route
       const categories = this.getYelpCategories(criteria)
-      
+
       for (const category of categories) {
         try {
-          const url = `${this.searchSources.find(s => s.name === 'Yelp Fusion API')?.baseUrl}/search?latitude=${location.lat}&longitude=${location.lng}&radius=${radius}&categories=${category}&limit=20&Authorization=Bearer ${this.getYelpApiKey()}`
-          
-          const response = await fetch(url)
+          const response = await fetch('/api/venues/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'yelp',
+              lat: location.lat,
+              lng: location.lng,
+              radius: Math.min(radius, 40000),
+              query: category
+            })
+          })
+
           if (!response.ok) {
             console.error(`Yelp API error for ${category}: ${response.status}`)
             continue
           }
 
           const data = await response.json()
-          
+
           if (data.businesses) {
             const places = data.businesses.map((place: any) => this.convertYelpToVenue(place, criteria))
             venues.push(...places)
           }
 
-          // Add delay to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 200))
         } catch (error) {
           console.error(`Yelp search failed for ${category}:`, error)
@@ -1030,21 +1048,30 @@ class VenueSearcher {
       const radius = TIME_FILTERS[criteria.time].searchRadius * 1609 // Convert miles to meters
       const venues: Venue[] = []
 
-      // Search for different venue types
+      // Search for different venue types via server-side API route
       const placeTypes = this.getGooglePlaceTypes(criteria)
-      
+
       for (const placeType of placeTypes) {
         try {
-          const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location.lat},${location.lng}&radius=${radius}&type=${placeType}&key=${this.getGoogleApiKey()}`
-          
-          const response = await fetch(url)
+          const response = await fetch('/api/venues/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'google-places',
+              lat: location.lat,
+              lng: location.lng,
+              radius,
+              type: placeType
+            })
+          })
+
           if (!response.ok) {
             console.error(`Google Places API error for ${placeType}: ${response.status}`)
             continue
           }
 
           const data = await response.json()
-          
+
           if (data.results) {
             const places = data.results.map((place: any) => this.convertGooglePlaceToVenue(place, criteria))
             venues.push(...places)
@@ -1136,22 +1163,29 @@ class VenueSearcher {
 
   private async geocodeLocation(locationName: string): Promise<{lat: number, lng: number} | null> {
     try {
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(locationName)}&key=${this.getGoogleApiKey()}`
-      
-      const response = await fetch(url)
-      if (!response.ok) return null
+      // Use server-side API route to avoid CORS issues
+      const response = await fetch('/api/venues/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'google-geocode', location: locationName })
+      })
+
+      if (!response.ok) {
+        console.warn('Geocode API route failed, using fallback location')
+        return this.getFallbackLocation(locationName)
+      }
 
       const data = await response.json()
-      
+
       if (data.results && data.results.length > 0) {
         const { lat, lng } = data.results[0].geometry.location
         return { lat, lng }
       }
-      
-      return null
+
+      return this.getFallbackLocation(locationName)
     } catch (error) {
       console.error('Geocoding failed:', error)
-      return null
+      return this.getFallbackLocation(locationName)
     }
   }
 
@@ -1227,15 +1261,18 @@ class VenueSearcher {
   }
 
   private async fetchGooglePlaceDetails(placeId: string): Promise<any> {
-    const url = `https://places.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name,rating,formatted_phone_number,website,opening_hours,price_level,user_ratings_total,reviews,photos&key=${this.getGoogleApiKey()}`
-    
-    const response = await fetch(url)
+    const response = await fetch('/api/venues/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'google-place-details', placeId })
+    })
+
     if (!response.ok) {
       throw new Error(`Google Places details API error: ${response.status}`)
     }
-    
+
     const data = await response.json()
-    return data.result
+    return data.result || {}
   }
 
   private extractDetailedFeatures(place: any): string[] {
@@ -1621,65 +1658,38 @@ class VenueSearcher {
         }
         
         console.log(`🗺️ Running OpenStreetMap query ${i + 1}/${queries.length}...`)
-        
-        const response = await fetch('https://overpass-api.de/api/interpreter', {
+
+        // Use server-side API route to avoid CORS issues
+        const response = await fetch('/api/venues/search', {
           method: 'POST',
-          body: `data=${encodeURIComponent(query)}`,
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'DateNightApp/1.0'
-          }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'overpass', query })
         })
 
-        // Check if response is ok before parsing
         if (!response.ok) {
           if (response.status === 429) {
             console.error('⏱️ Rate limited, waiting before retry...')
-            // Wait longer for rate limit
             await new Promise(resolve => setTimeout(resolve, 5000))
-            continue
-          } else if (response.status === 400) {
-            console.error(`❌ Bad query (400), skipping this query`)
             continue
           } else if (response.status === 504) {
             console.error('⏰ Gateway timeout (504), using fallback data...')
-            // Create fallback venues for 504 errors
             const fallbackVenues = this.createFallbackVenues(criteria)
             venues.push(...fallbackVenues)
             continue
-          } else if (response.status >= 500) {
-            console.error(`🔥 Server error (${response.status}), skipping this query`)
-            continue
           } else {
-            console.error(`HTTP error! status: ${response.status}`)
+            console.error(`Overpass API error: ${response.status}`)
             continue
           }
-        }
-
-        const responseText = await response.text()
-        
-        // Check if response is empty or invalid JSON
-        if (!responseText || responseText.trim() === '') {
-          console.error('Empty response from Overpass API')
-          continue
-        }
-
-        // Check if response looks like JSON
-        if (!responseText.trim().startsWith('{') && !responseText.trim().startsWith('[')) {
-          console.error('Response is not JSON format:', responseText.substring(0, 100))
-          continue
         }
 
         let data
         try {
-          data = JSON.parse(responseText)
+          data = await response.json()
         } catch (parseError) {
           console.error('JSON parse error:', parseError)
-          console.error('Response text:', responseText.substring(0, 200))
           continue
         }
 
-        // Validate parsed data structure
         if (!data || typeof data !== 'object') {
           console.error('Invalid data structure after parsing')
           continue
