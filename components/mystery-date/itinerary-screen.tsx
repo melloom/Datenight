@@ -39,7 +39,13 @@ import {
   PiggyBank,
   Receipt,
   AlertCircle,
-  Info
+  Info,
+  Calendar,
+  Cloud,
+  CloudRain,
+  Sun,
+  Map,
+  PhoneCall
 } from "lucide-react"
 import { Venue } from "@/lib/venue-search"
 import { useAuth } from "@/lib/auth-context"
@@ -732,6 +738,149 @@ function generateAlternatives(steps: Step[], partySize: number): { venue: Step; 
   return alternatives.slice(0, 3) // Return top 3 alternatives
 }
 
+// Calendar and Weather functions
+function generateCalendarEvents(steps: Step[], date: Date, travelTimes: any[]): any[] {
+  const events = []
+  let currentTime = new Date(date)
+  currentTime.setHours(19, 0, 0, 0) // Start at 7 PM
+
+  steps.forEach((step, index) => {
+    const event = {
+      title: `${step.label}: ${step.place}`,
+      start: new Date(currentTime),
+      end: new Date(currentTime.getTime() + 90 * 60 * 1000), // 1.5 hours per venue
+      location: step.address,
+      description: `Date night stop ${index + 1}. ${step.description}`,
+      category: step.category
+    }
+    events.push(event)
+
+    // Add travel time to next venue
+    if (index < steps.length - 1 && travelTimes[index]) {
+      currentTime = new Date(currentTime.getTime() + (90 + travelTimes[index]) * 60 * 1000)
+    } else {
+      currentTime = new Date(currentTime.getTime() + 90 * 60 * 1000)
+    }
+  })
+
+  return events
+}
+
+async function fetchWeather(location: string): Promise<any> {
+  try {
+    // This is a mock weather API call - in production, you'd use a real weather API
+    const mockWeather = {
+      temperature: 72,
+      condition: 'partly-cloudy',
+      humidity: 65,
+      windSpeed: 8,
+      precipitation: 0,
+      forecast: 'Partly cloudy with a high of 75°F and low of 62°F'
+    }
+    return mockWeather
+  } catch (error) {
+    console.error('Weather fetch failed:', error)
+    return null
+  }
+}
+
+function getWeatherRecommendation(weather: any, steps: Step[]): string[] {
+  const recommendations = []
+  
+  if (!weather) {
+    return ['Weather data unavailable - plan for both indoor and outdoor options']
+  }
+
+  if (weather.precipitation > 0) {
+    recommendations.push('Rain expected - prioritize indoor venues with covered areas')
+    steps.forEach(step => {
+      if (step.category === 'activity') {
+        recommendations.push(`Consider indoor alternatives for ${step.place}`)
+      }
+    })
+  } else if (weather.temperature > 80) {
+    recommendations.push('Hot weather expected - look for venues with AC or outdoor shade')
+    recommendations.push('Great weather for outdoor dining or rooftop bars!')
+  } else if (weather.temperature < 50) {
+    recommendations.push('Cool weather expected - cozy indoor venues recommended')
+    recommendations.push('Perfect weather for intimate indoor dining')
+  } else {
+    recommendations.push('Pleasant weather expected - great for any venue type!')
+    if (steps.some(s => s.category === 'activity')) {
+      recommendations.push('Perfect weather for outdoor activities')
+    }
+  }
+
+  return recommendations
+}
+
+function generateReservationLinks(steps: Step[]): { venue: Step; link: string; type: string }[] {
+  const reservationLinks = []
+
+  steps.forEach(step => {
+    let link = ''
+    let type = ''
+
+    if (step.category === 'dinner') {
+      link = `https://www.opentable.com/search?q=${encodeURIComponent(step.place + ' ' + step.address)}`
+      type = 'OpenTable Reservation'
+    } else if (step.category === 'drinks') {
+      link = `https://www.yelp.com/search?find_desc=${encodeURIComponent(step.place)}&find_loc=${encodeURIComponent(step.address)}`
+      type = 'Yelp Booking'
+    } else if (step.category === 'activity') {
+      link = `https://www.google.com/search?q=${encodeURIComponent(step.place + ' booking ' + step.address)}`
+      type = 'Google Booking'
+    }
+
+    if (link) {
+      reservationLinks.push({ venue: step, link, type })
+    }
+  })
+
+  return reservationLinks
+}
+
+function createGoogleCalendarUrl(events: any[]): string {
+  const baseUrl = 'https://calendar.google.com/calendar/render'
+  const params = new URLSearchParams()
+  
+  events.forEach((event, index) => {
+    const startDate = event.start.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+    const endDate = event.end.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+    
+    params.append(`text${index}`, event.title)
+    params.append(`dates${index}`, `${startDate}/${endDate}`)
+    params.append(`location${index}`, event.location)
+    params.append(`details${index}`, event.description)
+  })
+
+  return `${baseUrl}?${params.toString()}`
+}
+
+function createAppleCalendarUrl(events: any[]): string {
+  const icsContent = events.map(event => {
+    const formatDate = (date: Date) => {
+      return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '') + 'Z'
+    }
+
+    return `BEGIN:VEVENT
+SUMMARY:${event.title}
+DTSTART:${formatDate(event.start)}
+DTEND:${formatDate(event.end)}
+LOCATION:${event.location}
+DESCRIPTION:${event.description}
+END:VEVENT`
+  }).join('\n')
+
+  const fullIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Date Night App//Date Night//EN
+${icsContent}
+END:VCALENDAR`
+
+  return `data:text/calendar;charset=utf8,${encodeURIComponent(fullIcs)}`
+}
+
 export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdate }: ItineraryScreenProps) {
   const [revealedCount, setRevealedCount] = useState(0)
   const [copied, setCopied] = useState(false)
@@ -745,7 +894,27 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [showBudgetCalculator, setShowBudgetCalculator] = useState(false)
   const [partySize, setPartySize] = useState(2)
   const [splitType, setSplitType] = useState<'equal' | 'custom'>('equal')
+  const [showCalendarDialog, setShowCalendarDialog] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+  const [weather, setWeather] = useState<any>(null)
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([])
   const { signOut } = useAuth()
+
+  // Fetch weather when calendar dialog opens
+  useEffect(() => {
+    if (showCalendarDialog && searchCriteria?.location) {
+      fetchWeather(searchCriteria.location).then(setWeather)
+    }
+  }, [showCalendarDialog, searchCriteria])
+
+  // Generate calendar events when date or steps change
+  useEffect(() => {
+    if (steps.length > 0) {
+      const travelTimes = steps.map((step, index) => step.travelTimeToNext || 10)
+      const events = generateCalendarEvents(steps, selectedDate, travelTimes)
+      setCalendarEvents(events)
+    }
+  }, [steps, selectedDate])
 
   useEffect(() => {
     if (!venues || venues.length === 0) {
@@ -950,6 +1119,14 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             >
               <Share2 className="w-3.5 h-3.5" />
               Send
+            </button>
+            <button
+              onClick={() => setShowCalendarDialog(true)}
+              disabled={steps.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 text-xs font-medium hover:bg-blue-500/15 transition-all disabled:opacity-40"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              Calendar
             </button>
             <button
               onClick={() => setShowBudgetCalculator(true)}
@@ -1386,6 +1563,170 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                 </div>
               )
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* Calendar Integration Modal */}
+      {showCalendarDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-2xl border p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-blue-600" />
+                <h3 className="font-semibold text-lg">Date Night Calendar</h3>
+              </div>
+              <button
+                onClick={() => setShowCalendarDialog(false)}
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Date Selection */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground block mb-2">Select Date</label>
+                <input
+                  type="date"
+                  value={selectedDate.toISOString().split('T')[0]}
+                  onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+
+              {/* Weather Information */}
+              {weather && (
+                <div className="bg-gradient-to-r from-blue-500/10 to-sky-500/10 rounded-xl p-4 border border-blue-500/20">
+                  <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                    {weather.precipitation > 0 ? <CloudRain className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                    Weather Forecast
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Temperature:</span>
+                      <span className="ml-2 font-medium">{weather.temperature}°F</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Condition:</span>
+                      <span className="ml-2 font-medium capitalize">{weather.condition.replace('-', ' ')}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Humidity:</span>
+                      <span className="ml-2 font-medium">{weather.humidity}%</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Wind:</span>
+                      <span className="ml-2 font-medium">{weather.windSpeed} mph</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 text-sm text-muted-foreground">{weather.forecast}</div>
+                </div>
+              )}
+
+              {/* Weather Recommendations */}
+              {weather && (
+                <div>
+                  <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                    <Cloud className="w-4 h-4" />
+                    Weather-Based Recommendations
+                  </h4>
+                  <div className="space-y-2">
+                    {getWeatherRecommendation(weather, steps).map((rec, index) => (
+                      <div key={index} className="flex items-start gap-2 text-sm text-muted-foreground bg-blue-500/5 rounded-lg p-3">
+                        <Info className="w-3.5 h-3.5 mt-0.5 text-blue-500 shrink-0" />
+                        <span>{rec}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Calendar Events Preview */}
+              <div>
+                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Schedule Preview
+                </h4>
+                <div className="space-y-3">
+                  {calendarEvents.map((event, index) => (
+                    <div key={index} className="bg-muted/50 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-sm">{event.title}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {event.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - 
+                          {event.end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {event.location}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reservation Links */}
+              <div>
+                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                  <PhoneCall className="w-4 h-4" />
+                  Reservation & Booking Links
+                </h4>
+                <div className="space-y-2">
+                  {generateReservationLinks(steps).map((link, index) => (
+                    <a
+                      key={index}
+                      href={link.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between bg-amber-500/10 rounded-lg p-3 border border-amber-500/20 hover:bg-amber-500/15 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <ExternalLink className="w-3.5 h-3.5 text-amber-600" />
+                        <div>
+                          <div className="text-sm font-medium">{link.venue.place}</div>
+                          <div className="text-xs text-muted-foreground">{link.type}</div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-amber-600 font-medium">Book Now</div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              {/* Calendar Export Buttons */}
+              <div>
+                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Add to Calendar
+                </h4>
+                <div className="flex gap-3">
+                  <a
+                    href={createGoogleCalendarUrl(calendarEvents)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    Google Calendar
+                  </a>
+                  <a
+                    href={createAppleCalendarUrl(calendarEvents)}
+                    download="date-night.ics"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-gray-800 text-white text-sm font-medium hover:bg-gray-900 transition-colors"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    Apple Calendar
+                  </a>
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground text-center">
+                  Events include travel time and venue details
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
