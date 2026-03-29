@@ -991,9 +991,32 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [datePlanHistory, setDatePlanHistory] = useState<DatePlanHistory[]>([])
   const { signOut } = useAuth()
 
-  // Scroll to top when modal opens
+  // Scroll to center modal when it opens
   const scrollToModal = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    // Small delay to ensure modal is rendered
+    setTimeout(() => {
+      const modal = document.querySelector('.fixed.inset-0.bg-black\\/50')
+      if (modal) {
+        // Get modal's position and size
+        const rect = modal.getBoundingClientRect()
+        const modalHeight = rect.height
+        const viewportHeight = window.innerHeight
+        
+        // Calculate scroll position to center modal
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+        const modalTop = rect.top + scrollTop
+        const desiredScrollTop = modalTop - (viewportHeight - modalHeight) / 2
+        
+        // Smooth scroll to center the modal
+        window.scrollTo({
+          top: Math.max(0, desiredScrollTop),
+          behavior: 'smooth'
+        })
+      } else {
+        // Fallback to top if modal not found
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+    }, 100)
   }
 
   // Load history from localStorage on mount
