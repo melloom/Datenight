@@ -177,6 +177,13 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
     }
   }, [])
 
+  // Auto-scroll to modal when any modal opens
+  useEffect(() => {
+    if (showHistory || showCustomVibe || showCustomCuisine || showCustomActivity) {
+      scrollToModal()
+    }
+  }, [showHistory, showCustomVibe, showCustomCuisine, showCustomActivity])
+
   const searchLocation = useCallback(async (query: string) => {
     if (query.length < 2) {
       setLocationResults([])
@@ -346,25 +353,27 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
 
   // Scroll to center modal when it opens
   const scrollToModal = () => {
-    // Remove delay completely for instant response
-    const modal = document.querySelector('.fixed.inset-0.bg-black\\/50')
-    if (modal) {
-      // Get modal's position and size
-      const rect = modal.getBoundingClientRect()
-      const modalHeight = rect.height
-      const viewportHeight = window.innerHeight
-      
-      // Calculate scroll position to center modal
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-      const modalTop = rect.top + scrollTop
-      const desiredScrollTop = modalTop - (viewportHeight - modalHeight) / 2
-      
-      // Use instant scroll with no animation
-      window.scrollTo(0, Math.max(0, desiredScrollTop))
-    } else {
-      // Fallback to top if modal not found
-      window.scrollTo(0, 0)
-    }
+    // Small delay to ensure modal is rendered
+    setTimeout(() => {
+      const modal = document.querySelector('.fixed.inset-0.bg-black\\/50')
+      if (modal) {
+        // Get modal's position and size
+        const rect = modal.getBoundingClientRect()
+        const modalHeight = rect.height
+        const viewportHeight = window.innerHeight
+        
+        // Calculate scroll position to center modal
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+        const modalTop = rect.top + scrollTop
+        const desiredScrollTop = modalTop - (viewportHeight - modalHeight) / 2
+        
+        // Use instant scroll with no animation
+        window.scrollTo(0, Math.max(0, desiredScrollTop))
+      } else {
+        // Fallback to top if modal not found
+        window.scrollTo(0, 0)
+      }
+    }, 50) // 50ms delay to ensure modal is rendered
   }
 
   const handleSurpriseMe = () => {
