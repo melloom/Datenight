@@ -859,7 +859,17 @@ class VenueSearcher {
       const defaultActivityTerms = [
         'bowling alley', 'TopGolf', 'escape room',
         'comedy club', 'karaoke', 'movie theater',
-        'mini golf', 'arcade'
+        'mini golf', 'arcade', 'shopping mall',
+        'tourist attractions', 'amusement park',
+        'spa wellness', 'museum', 'aquarium',
+        'zoo', 'trampoline park', 'go kart',
+        'ice skating rink', 'art gallery',
+        'rooftop bar lounge', 'botanical garden',
+        'axe throwing', 'laser tag', 'Dave and Busters',
+        'boardwalk', 'waterfront', 'farmers market',
+        'food hall', 'wine tasting', 'brewery tour',
+        'paintball', 'rock climbing gym',
+        'drive in theater', 'roller skating'
       ]
 
       // Pick activity-relevant terms from AI or defaults
@@ -869,18 +879,21 @@ class VenueSearcher {
         const activityKeywords = ['bowl', 'golf', 'escape', 'arcade', 'comedy', 'karaoke',
           'mini golf', 'movie', 'axe', 'trampoline', 'kart', 'laser', 'paint',
           'skating', 'climb', 'entertainment', 'fun', 'game', 'experience', 'adventure',
-          'topgolf', 'dave', 'theater', 'theatre', 'museum', 'aquarium', 'zoo']
+          'topgolf', 'dave', 'theater', 'theatre', 'museum', 'aquarium', 'zoo',
+          'mall', 'shopping', 'attraction', 'spa', 'botanical', 'garden', 'waterfront',
+          'boardwalk', 'market', 'brewery', 'winery', 'wine', 'rooftop', 'lounge',
+          'food hall', 'drive-in', 'roller', 'ice rink', 'gallery', 'amusement']
         const aiActivityTerms = aiEnhancement.searchTerms.filter(term =>
           activityKeywords.some(kw => term.toLowerCase().includes(kw))
         )
-        // Use AI activity terms plus some defaults for variety
-        searchTerms = [...aiActivityTerms, ...defaultActivityTerms.slice(0, 3)]
+        // Use AI activity terms plus defaults for variety
+        searchTerms = [...aiActivityTerms, ...defaultActivityTerms.slice(0, 6)]
       } else {
-        searchTerms = defaultActivityTerms.slice(0, 5)
+        searchTerms = defaultActivityTerms.slice(0, 8)
       }
 
-      // Dedupe and limit
-      searchTerms = [...new Set(searchTerms)].slice(0, 6)
+      // Dedupe and limit — allow more terms for broader coverage
+      searchTerms = [...new Set(searchTerms)].slice(0, 10)
 
 
       const venues: Venue[] = []
@@ -1519,15 +1532,21 @@ class VenueSearcher {
       types.push('bar', 'night_club', 'restaurant')
     }
 
-    // Add only top entertainment types to avoid rate limiting
-    types.push('bowling_alley', 'movie_theater')
+    // Always include broad entertainment & attraction types
+    types.push(
+      'bowling_alley', 'movie_theater', 'shopping_mall',
+      'tourist_attraction', 'amusement_park', 'spa',
+      'museum', 'art_gallery', 'aquarium', 'zoo'
+    )
 
-    // Add activity-specific types (limited)
+    // Add activity-specific types
     const activity = criteria.customActivity || criteria.activity
     if (activity && activity !== 'none') {
-      if (activity === 'live-music') types.push('night_club', 'bar')
+      if (activity === 'live-music') types.push('night_club', 'bar', 'stadium')
       else if (activity === 'art') types.push('art_gallery', 'museum')
-      else if (activity === 'outdoor') types.push('park')
+      else if (activity === 'outdoor') types.push('park', 'campground', 'stadium')
+      else if (activity === 'shopping') types.push('shopping_mall', 'department_store')
+      else if (activity === 'wellness') types.push('spa', 'gym')
       else {
         // Broad search for custom activities
         types.push('point_of_interest')
@@ -1734,11 +1753,15 @@ class VenueSearcher {
     if (types.includes('restaurant') || types.includes('food') || types.includes('cafe') || types.includes('bakery')) {
       return 'dinner'
     }
-    // Activity — entertainment/recreation
+    // Activity — entertainment, recreation, shopping, attractions
     const activityTypes = [
       'bowling_alley', 'movie_theater', 'amusement_park', 'spa', 'stadium',
       'museum', 'art_gallery', 'aquarium', 'zoo', 'campground',
-      'tourist_attraction', 'gym', 'park', 'casino'
+      'tourist_attraction', 'gym', 'park', 'casino',
+      'shopping_mall', 'department_store', 'clothing_store',
+      'book_store', 'florist', 'jewelry_store',
+      'library', 'church', 'city_hall', 'courthouse',
+      'natural_feature', 'point_of_interest', 'establishment'
     ]
     if (types.some((t: string) => activityTypes.includes(t))) {
       return 'activity'
