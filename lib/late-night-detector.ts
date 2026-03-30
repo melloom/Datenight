@@ -63,8 +63,19 @@ class LateNightDetector {
     const currentMinute = currentTime.getMinutes()
     
     // Check if the planned date is today
+    console.log('Late Night Detection Debug:', {
+      currentTime: currentTime.toISOString(),
+      plannedDate: criteria.plannedDate?.toISOString(),
+      currentTimeLocal: currentTime.toLocaleString(),
+      plannedDateLocal: criteria.plannedDate?.toLocaleString(),
+      currentDate: currentTime.getDate(),
+      plannedDateDate: criteria.plannedDate?.getDate()
+    })
+    
     const isPlannedForToday = criteria.plannedDate ? 
       this.isSameDay(currentTime, criteria.plannedDate) : true // Default to true if no date specified
+    
+    console.log('Is planned for today?', isPlannedForToday)
     
     // Only consider it "too late" if it's actually late AND they're planning for today
     const isTooLate = isPlannedForToday && currentHour >= this.LATE_NIGHT_CUTOFF

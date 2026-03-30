@@ -154,7 +154,10 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const [showLocationDropdown, setShowLocationDropdown] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [datePlanHistory, setDatePlanHistory] = useState<DatePlanHistory[]>([])
-  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date()
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  })
   const locationDropdownRef = useRef<HTMLDivElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -531,7 +534,11 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
               <input
                 type="date"
                 value={selectedDate.toISOString().split('T')[0]}
-                onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                onChange={(e) => {
+                  const [year, month, day] = e.target.value.split('-').map(Number)
+                  // Set to midnight local time to avoid timezone issues
+                  setSelectedDate(new Date(year, month - 1, day, 0, 0, 0, 0))
+                }}
                 min={new Date().toISOString().split('T')[0]}
                 className="w-full bg-transparent text-foreground text-sm focus:outline-none"
               />
@@ -587,7 +594,6 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                 ))}
               </div>
             </section>
-          </div>
           </div>
 
           {/* Budget */}
@@ -875,7 +881,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
             <p className="text-center text-xs text-destructive mt-2">Enter a location to continue</p>
           )}
         </div>
-      </div>
+        </div>
 
       {/* Date Plan History Modal */}
       {showHistory && (
@@ -994,7 +1000,6 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </div>
         </div>
       )}
-    </div>
     </div>
   )
 }
