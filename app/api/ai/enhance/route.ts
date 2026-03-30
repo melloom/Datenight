@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { action } = body
+    const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || ''
 
     let validationResult
     if (action === 'enhance-search') {
@@ -107,14 +108,17 @@ export async function POST(request: NextRequest) {
       validationResult = fetchPricingSchema.safeParse(body)
     } else if (action === 'swap-venue') {
       validationResult = swapVenueSchema.safeParse(body)
+    } else if (action === 'improve-plan' || action === 'generate-venues' || action === 'suggest-alternative') {
+      // These actions accept flexible input — skip strict schema validation
+      validationResult = { success: true }
     } else {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
-    if (!validationResult.success) {
-      return NextResponse.json({ 
-        error: 'Invalid input', 
-        details: validationResult.error.errors 
+    if (validationResult && !validationResult.success) {
+      return NextResponse.json({
+        error: 'Invalid input',
+        details: (validationResult as any).error?.errors 
       }, { status: 400 })
     }
 
@@ -275,7 +279,6 @@ Provide JSON:
       }
 
       // Step 1: Try scraping real pricing from Google Place Details in parallel
-      const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || ''
       const scrapedPricing: (any | null)[] = await Promise.all(
         venues.map(async (v: any) => {
           // If venue already has scraped pricing, return it
@@ -381,220 +384,272 @@ Return JSON array (same order):
       return NextResponse.json({ pricing: finalPricing })
     }
 
+    // ─── Shared helpers: geocode + Google Places search + details ─────────────
+    async function geocodeLocation(location: string): Promise<{ lat: number; lng: number } | null> {
+      try {
+        const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${GOOGLE_API_KEY}`)
+        if (!res.ok) return null
+        const data = await res.json()
+        const loc = data.results?.[0]?.geometry?.location
+        return loc ? { lat: loc.lat, lng: loc.lng } : null
+      } catch { return null }
+    }
+
+    async function searchGooglePlaces(query: string, lat: number, lng: number, radius: number = 16000): Promise<any[]> {
+      try {
+        const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&location=${lat},${lng}&radius=${radius}&key=${GOOGLE_API_KEY}`
+        const res = await fetch(url)
+        if (!res.ok) return []
+        const data = await res.json()
+        return data.results || []
+      } catch { return [] }
+    }
+
+    async function fetchPlaceDetails(placeId: string): Promise<any> {
+      try {
+        const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=formatted_phone_number,website,opening_hours,reviews,photos,url,price_level,rating,user_ratings_total,editorial_summary,serves_beer,serves_wine,serves_vegetarian_food,reservable,dine_in,takeout,delivery,wheelchair_accessible_entrance,outdoor_seating,types,name,geometry&key=${GOOGLE_API_KEY}`
+        const res = await fetch(url)
+        if (!res.ok) return null
+        const data = await res.json()
+        return data.result || null
+      } catch { return null }
+    }
+
+    function categorizePlace(types: string[]): 'drinks' | 'dinner' | 'activity' {
+      if (types.some(t => ['bar', 'night_club'].includes(t))) return 'drinks'
+      if (types.some(t => ['restaurant', 'food', 'cafe', 'bakery'].includes(t))) return 'dinner'
+      return 'activity'
+    }
+
+    function convertPriceLevel(level?: number): string {
+      return ['$', '$$', '$$$', '$$$$'][((level || 2) - 1)] || '$$'
+    }
+
+    function placeToVenue(place: any, details: any | null, forcedCategory?: string): any {
+      const d = details || {}
+      const types = place.types || d.types || []
+      const photos = d.photos || place.photos || []
+      return {
+        id: `google-${place.place_id}`,
+        name: d.name || place.name,
+        category: forcedCategory || categorizePlace(types),
+        rating: d.rating || place.rating || 4.0,
+        reviewCount: d.user_ratings_total || place.user_ratings_total || 0,
+        priceRange: convertPriceLevel(d.price_level || place.price_level),
+        address: place.formatted_address || d.formatted_address || '',
+        phone: d.formatted_phone_number || '',
+        website: d.website || '',
+        imageUrl: photos.length > 0
+          ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photos[0].photo_reference}&key=${GOOGLE_API_KEY}`
+          : '',
+        description: d.editorial_summary?.overview || `${place.name} — a popular spot perfect for date nights.`,
+        highlights: [],
+        coordinates: {
+          lat: place.geometry?.location?.lat || d.geometry?.location?.lat || 0,
+          lng: place.geometry?.location?.lng || d.geometry?.location?.lng || 0,
+        },
+        tags: types,
+        features: [],
+        vibe: '',
+        reservable: d.reservable || false,
+        wheelchairAccessible: d.wheelchair_accessible_entrance || false,
+        outdoorSeating: d.outdoor_seating || false,
+        photoCount: photos.length,
+        photoScore: Math.min(photos.length / 10, 1.0),
+      }
+    }
+
+    // Search for real venues via Google Places, optionally guided by AI search terms
+    async function findRealVenues(
+      location: string,
+      queries: string[],
+      excludeNames: string[],
+      maxResults: number = 3
+    ): Promise<any[]> {
+      const geo = await geocodeLocation(location)
+      if (!geo) return []
+
+      const allPlaces: any[] = []
+      const seenIds = new Set<string>()
+      const excludeLower = excludeNames.map(n => n.toLowerCase())
+
+      // Search with each query in parallel
+      const searchResults = await Promise.all(
+        queries.slice(0, 6).map(q => searchGooglePlaces(q, geo.lat, geo.lng))
+      )
+
+      for (const results of searchResults) {
+        for (const place of results) {
+          if (seenIds.has(place.place_id)) continue
+          if (excludeLower.some(n => place.name.toLowerCase().includes(n) || n.includes(place.name.toLowerCase()))) continue
+          seenIds.add(place.place_id)
+          allPlaces.push(place)
+        }
+      }
+
+      // Sort by rating * log(reviews) to get best venues
+      allPlaces.sort((a, b) => {
+        const scoreA = (a.rating || 0) * Math.log10((a.user_ratings_total || 1) + 1)
+        const scoreB = (b.rating || 0) * Math.log10((b.user_ratings_total || 1) + 1)
+        return scoreB - scoreA
+      })
+
+      // Fetch details for top results
+      const topPlaces = allPlaces.slice(0, maxResults)
+      const venues = await Promise.all(
+        topPlaces.map(async (place) => {
+          const details = await fetchPlaceDetails(place.place_id)
+          return placeToVenue(place, details)
+        })
+      )
+
+      return venues
+    }
+
     if (action === 'generate-venues') {
       const { location, criteria } = body
-      const prompt = `You are a local expert. Suggest 3 REAL, SPECIFIC venues for a date night in ${location || 'a popular city'}.
+      const vibes = criteria?.vibes?.join(' ') || 'romantic'
+      const budget = criteria?.budget || '$$'
 
-Requirements:
-- Budget: ${criteria?.budget || '$$'}
-- Vibes: ${criteria?.vibes?.join(', ') || 'romantic'}
-- Time: ${criteria?.time || 'prime'} (early=5-7pm, prime=7-9pm, late=9pm+)
-- Party size: ${criteria?.partySize || 2}
+      // Use AI to suggest search terms, then search Google Places for real venues
+      let searchQueries = [
+        `best ${vibes} restaurant ${location}`,
+        `date night bar ${location}`,
+        `fun things to do for couples ${location}`,
+      ]
 
-You MUST suggest real places that actually exist. Use your knowledge of restaurants, bars, and entertainment venues.
-
-Return a JSON array of exactly 3 venues:
-[
-  {
-    "name": "Actual real venue name",
-    "category": "drinks" or "dinner" or "activity",
-    "rating": 4.0 to 4.8,
-    "reviewCount": 100 to 2000,
-    "priceRange": "$" or "$$" or "$$$" or "$$$$",
-    "address": "Real street address, City, State",
-    "phone": "Real phone if known or empty string",
-    "description": "2-3 sentence description of why this place is great for dates",
-    "highlights": ["3-4 specific highlights"],
-    "tags": ["2-3 tags like 'cocktail bar', 'italian', 'live music'"],
-    "vibe": "romantic/adventurous/chill/upscale/quirky"
-  }
-]
-
-First venue should be a drinks/bar spot, second a dinner restaurant, third an activity or after-dinner spot. Be specific with real names and addresses.`
-
-      if (!model) {
-        return NextResponse.json({ venues: [] })
+      if (model) {
+        try {
+          const result = await model.generateContent(
+            `Suggest 4 specific Google search queries to find real ${vibes} date night venues (1 bar, 1 restaurant, 1 activity) in ${location} for budget ${budget}. Return JSON: {"queries": ["query1","query2","query3","query4"]}`
+          )
+          const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
+          const parsed = JSON.parse(text)
+          if (parsed.queries) searchQueries = parsed.queries
+        } catch { /* use defaults */ }
       }
 
-      try {
-        const result = await model.generateContent(prompt)
-        const text = result.response.text()
-        const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
-        const venues = JSON.parse(cleaned)
-        return NextResponse.json({ venues: Array.isArray(venues) ? venues : [] })
-      } catch {
-        return NextResponse.json({ venues: [] })
-      }
+      const venues = await findRealVenues(location, searchQueries, [], 3)
+      return NextResponse.json({ venues })
     }
 
     if (action === 'suggest-alternative') {
       const { location, criteria, currentVenue, category } = body
-      const prompt = `Suggest ONE alternative REAL venue to replace "${currentVenue?.name || 'the current venue'}" for a date night in ${location || 'a popular city'}.
+      const vibes = criteria?.vibes?.join(' ') || 'romantic'
+      const cat = category || 'dinner'
+      const excludeNames = [currentVenue?.name || '']
 
-The current venue is a ${category || 'dinner'} spot. Suggest something DIFFERENT but still great.
+      const typeMap: Record<string, string> = { dinner: 'restaurant', drinks: 'bar cocktail lounge', activity: 'entertainment fun' }
+      let searchQueries = [
+        `best ${vibes} ${typeMap[cat] || cat} ${location}`,
+        `top rated ${typeMap[cat] || cat} ${location}`,
+      ]
 
-Requirements:
-- Budget: ${criteria?.budget || '$$'}
-- Vibes: ${criteria?.vibes?.join(', ') || 'romantic'}
-- Category must be: ${category || 'dinner'}
-
-Return a single JSON object (NOT an array):
-{
-  "name": "Real venue name",
-  "category": "${category || 'dinner'}",
-  "rating": 4.0 to 4.8,
-  "reviewCount": 100 to 2000,
-  "priceRange": "${criteria?.budget || '$$'}",
-  "address": "Real address, City, State",
-  "phone": "",
-  "description": "2-3 sentences about why this is better/different",
-  "highlights": ["3-4 highlights"],
-  "tags": ["2-3 tags"],
-  "vibe": "${criteria?.vibes?.[0] || 'romantic'}"
-}
-
-Be specific with a real venue name and address.`
-
-      if (!model) {
-        return NextResponse.json({ venue: null })
+      if (model) {
+        try {
+          const result = await model.generateContent(
+            `Suggest 3 Google search queries to find a REAL ${vibes} ${cat} venue in ${location} (budget ${criteria?.budget || '$$'}) that's different from "${currentVenue?.name}". Return JSON: {"queries": ["q1","q2","q3"]}`
+          )
+          const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
+          const parsed = JSON.parse(text)
+          if (parsed.queries) searchQueries = parsed.queries
+        } catch { /* use defaults */ }
       }
 
-      try {
-        const result = await model.generateContent(prompt)
-        const text = result.response.text()
-        const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
-        const venue = JSON.parse(cleaned)
-        return NextResponse.json({ venue })
-      } catch {
-        return NextResponse.json({ venue: null })
-      }
+      const venues = await findRealVenues(location, searchQueries, excludeNames, 1)
+      const venue = venues[0] || null
+      if (venue) venue.category = cat
+      return NextResponse.json({ venue })
     }
 
     if (action === 'improve-plan') {
       const { location, criteria, currentVenues, feedback } = body
-      const venueList = currentVenues?.map((v: any) => `${v.name} (${v.category})`).join(', ') || 'none'
-      const prompt = `A user wants to improve their date night plan in ${location || 'their city'}.
+      const vibes = criteria?.vibes?.join(' ') || 'romantic'
+      const loc = location || criteria?.location || 'the city'
+      const excludeNames = (currentVenues || body.currentPlan || []).map((v: any) => v.name)
 
-Current plan: ${venueList}
-User feedback: "${feedback || 'I want better options'}"
-Budget: ${criteria?.budget || '$$'}
-Vibes: ${criteria?.vibes?.join(', ') || 'romantic'}
-Time: ${criteria?.time || 'prime'}
+      // Use AI to generate targeted search queries from user feedback
+      let searchQueries = [
+        `best ${vibes} restaurant ${loc}`,
+        `top ${vibes} bar ${loc}`,
+        `fun date activity ${loc}`,
+      ]
 
-Suggest 3 REAL, SPECIFIC replacement venues that address the user's feedback. Each must be a real place.
-
-Return JSON array:
-[
-  {
-    "name": "Real venue name",
-    "category": "drinks" or "dinner" or "activity",
-    "rating": 4.0 to 4.8,
-    "reviewCount": 100 to 2000,
-    "priceRange": "${criteria?.budget || '$$'}",
-    "address": "Real address, City, State",
-    "phone": "",
-    "description": "Why this is a better choice based on the feedback",
-    "highlights": ["3-4 highlights"],
-    "tags": ["2-3 tags"],
-    "vibe": "${criteria?.vibes?.[0] || 'romantic'}"
-  }
-]`
-
-      if (!model) {
-        return NextResponse.json({ venues: [] })
+      if (model) {
+        try {
+          const userFeedback = feedback || 'I want better options'
+          const result = await model.generateContent(
+            `A user wants to improve their date plan in ${loc}. Their feedback: "${userFeedback}". Vibes: ${vibes}, Budget: ${criteria?.budget || '$$'}. Current venues: ${excludeNames.join(', ') || 'none'}. Suggest 5 specific Google search queries to find REAL replacement venues (1 drinks, 1 dinner, 1 activity). Return JSON: {"queries": ["q1","q2","q3","q4","q5"]}`
+          )
+          const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
+          const parsed = JSON.parse(text)
+          if (parsed.queries) searchQueries = parsed.queries
+        } catch { /* use defaults */ }
       }
 
-      try {
-        const result = await model.generateContent(prompt)
-        const text = result.response.text()
-        const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
-        const venues = JSON.parse(cleaned)
-        return NextResponse.json({ venues: Array.isArray(venues) ? venues : [] })
-      } catch {
-        return NextResponse.json({ venues: [] })
+      const venues = await findRealVenues(loc, searchQueries, excludeNames, 3)
+
+      // Try to assign categories: 1 dinner, 1 drinks, 1 activity
+      const cats = ['dinner', 'drinks', 'activity']
+      const usedCats = new Set<string>()
+      for (const v of venues) {
+        if (!usedCats.has(v.category)) {
+          usedCats.add(v.category)
+        }
       }
+      // If all same category, force-assign
+      if (venues.length === 3 && usedCats.size === 1) {
+        venues[0].category = 'dinner'
+        venues[1].category = 'drinks'
+        venues[2].category = 'activity'
+      }
+
+      return NextResponse.json({ venues })
     } else if (action === 'swap-venue') {
-      const { venue, criteria, currentPlan, swapCategory, customRequests } = body
-      
-      if (!model) {
-        // Fallback: return a generic alternative venue
-        return NextResponse.json({
-          venue: {
-            id: `fallback-${Date.now()}`,
-            name: `Alternative ${swapCategory} venue`,
-            category: swapCategory,
-            address: criteria.location,
-            rating: 4.2,
-            reviewCount: 150,
-            priceRange: criteria.budget,
-            description: `A great ${swapCategory} option that matches your preferences.`,
-            highlights: ['Good alternative', 'Matches your criteria'],
-            coordinates: { lat: 0, lng: 0 }
-          }
-        })
+      const { venue, criteria, currentPlan, swapCategory } = body
+      const customReq = criteria?.customRequests || body.customRequests || ''
+      const loc = criteria?.location || ''
+      const vibes = criteria?.vibes?.join(' ') || 'romantic'
+      const excludeNames = (currentPlan || []).map((v: any) => v.name)
+
+      const typeMap: Record<string, string> = { dinner: 'restaurant', drinks: 'bar cocktail lounge', activity: 'entertainment fun' }
+      let searchQueries = [
+        `best ${vibes} ${typeMap[swapCategory] || swapCategory} ${loc}`,
+        `top rated ${typeMap[swapCategory] || swapCategory} ${loc}`,
+      ]
+
+      // If user gave a custom request, use AI to make smarter queries
+      if (model && (customReq || vibes)) {
+        try {
+          const result = await model.generateContent(
+            `Find a replacement ${swapCategory} venue in ${loc} for a date night. Replacing "${venue.name}". User request: "${customReq || 'something different'}". Vibes: ${vibes}, Budget: ${criteria?.budget || '$$'}. Suggest 3 Google search queries for REAL venues. Return JSON: {"queries": ["q1","q2","q3"]}`
+          )
+          const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
+          const parsed = JSON.parse(text)
+          if (parsed.queries) searchQueries = parsed.queries
+        } catch { /* use defaults */ }
       }
 
-      const currentVenueNames = currentPlan.map((v: any) => v.name).join(', ')
-      
-      const prompt = `Find a replacement venue for a date night app with these details:
-
-Current venue to replace: ${venue.name} (${venue.category})
-Category needed: ${swapCategory}
-Location: ${criteria.location}
-Budget: ${criteria.budget}
-Vibes: ${criteria.vibes.join(', ')}
-Time: ${criteria.time}
-Party size: ${criteria.partySize}
-Custom request: ${customRequests || 'No specific request'}
-Current venues in plan: ${currentVenueNames}
-
-Provide a JSON response with this exact structure:
-{
-  "venue": {
-    "id": "unique-id",
-    "name": "venue name",
-    "category": "${swapCategory}",
-    "address": "full address",
-    "rating": 4.5,
-    "reviewCount": 200,
-    "priceRange": "${criteria.budget}",
-    "description": "detailed description of the venue",
-    "highlights": ["highlight 1", "highlight 2", "highlight 3"],
-    "coordinates": { "lat": 39.2904, "lng": -76.6122 }
-  }
-}
-
-Requirements:
-- Must be different from all current venues: ${currentVenueNames}
-- Must match the ${swapCategory} category
-- Must be in or near ${criteria.location}
-- Must fit the ${criteria.budget} budget
-- Should match the custom request: "${customRequests || 'none'}"
-- Must be suitable for a romantic date night
-- Must be a real, existing venue if possible`
-
-      try {
-        const result = await model.generateContent(prompt)
-        const text = result.response.text()
-        const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
-        const response = JSON.parse(cleaned)
-        return NextResponse.json(response)
-      } catch {
-        return NextResponse.json({
-          venue: {
-            id: `fallback-${Date.now()}`,
-            name: `Alternative ${swapCategory} venue`,
-            category: swapCategory,
-            address: criteria.location,
-            rating: 4.0,
-            reviewCount: 100,
-            priceRange: criteria.budget,
-            description: `A ${swapCategory} venue that matches your preferences.`,
-            highlights: ['Good alternative'],
-            coordinates: { lat: 0, lng: 0 }
-          }
-        })
+      const venues = await findRealVenues(loc, searchQueries, excludeNames, 1)
+      const newVenue = venues[0] || null
+      if (newVenue) {
+        newVenue.category = swapCategory
+        // Add features/highlights from AI if available
+        if (model) {
+          try {
+            const result = await model.generateContent(
+              `For the venue "${newVenue.name}" at ${newVenue.address}, provide: {"highlights": ["3-4 highlights"], "vibe": "one word vibe", "features": ["2-3 features"]}. Be factual.`
+            )
+            const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
+            const extras = JSON.parse(text)
+            newVenue.highlights = extras.highlights || []
+            newVenue.vibe = extras.vibe || ''
+            newVenue.features = extras.features || []
+          } catch { /* venue is fine without extras */ }
+        }
       }
+
+      return NextResponse.json({ venue: newVenue })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
