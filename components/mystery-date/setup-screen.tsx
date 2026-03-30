@@ -16,6 +16,7 @@ import {
   Shuffle,
   ChevronRight,
   ChevronDown,
+  ChevronDown,
   Utensils,
   Music,
   Palette,
@@ -30,6 +31,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import { validateCustomInput } from "@/lib/profanity-filter"
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 
 const BUDGET_OPTIONS = [
@@ -588,6 +590,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
               </div>
             </section>
           </div>
+          </div>
 
           {/* Budget */}
           <section data-tutorial="budget">
@@ -723,135 +726,135 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
               <ChevronDown className={`w-4 h-4 transition-transform ${showMoreOptions ? "rotate-180" : ""}`} />
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-6 mt-4">
-              {/* Cuisine Preference */}
-              <section data-tutorial="cuisine">
+          {/* Cuisine Preference */}
+          <section data-tutorial="cuisine">
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
-                  <Utensils className="w-3 h-3" />
-                  Cuisine
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {CUISINE_OPTIONS.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => { setCuisine(c.id); setShowCustomCuisine(false) }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                        cuisine === c.id
-                          ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
-                          : "bg-card border-border text-muted-foreground hover:border-primary/30"
-                      }`}
-                    >
-                      {c.label}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => { setCuisine("custom"); setShowCustomCuisine(true) }}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                      cuisine === "custom"
-                        ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
-                        : "bg-card border-border text-muted-foreground hover:border-primary/30"
+              <Utensils className="w-3 h-3" />
+              Cuisine
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {CUISINE_OPTIONS.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => { setCuisine(c.id); setShowCustomCuisine(false) }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                    cuisine === c.id
+                      ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
+                      : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+              <button
+                onClick={() => { setCuisine("custom"); setShowCustomCuisine(true) }}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                  cuisine === "custom"
+                    ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
+                    : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                }`}
+              >
+                <Plus className="w-3 h-3" />
+                Custom
+              </button>
+            </div>
+            {showCustomCuisine && (
+              <div className="mt-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customCuisine}
+                    onChange={(e) => handleCustomInput('cuisine', e.target.value, setCustomCuisine)}
+                    className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
+                      inputErrors.cuisine ? 'border-destructive' : 'border-border'
                     }`}
+                    placeholder="e.g. Korean BBQ, Peruvian, Sushi..."
+                    maxLength={50}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => { setShowCustomCuisine(false); setCuisine("any"); setCustomCuisine(""); setInputErrors(prev => ({ ...prev, cuisine: null })) }}
+                    className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
                   >
-                    <Plus className="w-3 h-3" />
-                    Custom
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                {showCustomCuisine && (
-                  <div className="mt-2">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={customCuisine}
-                        onChange={(e) => handleCustomInput('cuisine', e.target.value, setCustomCuisine)}
-                        className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
-                          inputErrors.cuisine ? 'border-destructive' : 'border-border'
-                        }`}
-                        placeholder="e.g. Korean BBQ, Peruvian, Sushi..."
-                        maxLength={50}
-                        autoFocus
-                      />
-                      <button
-                        onClick={() => { setShowCustomCuisine(false); setCuisine("any"); setCustomCuisine(""); setInputErrors(prev => ({ ...prev, cuisine: null })) }}
-                        className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    {inputErrors.cuisine && (
-                      <p className="mt-1 text-[10px] text-destructive flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {inputErrors.cuisine}
-                      </p>
-                    )}
-                  </div>
+                {inputErrors.cuisine && (
+                  <p className="mt-1 text-[10px] text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {inputErrors.cuisine}
+                  </p>
                 )}
-              </section>
+              </div>
+            )}
+          </section>
 
-              {/* Activity Preference */}
-              <section data-tutorial="activity">
+          {/* Activity Preference */}
+          <section data-tutorial="activity">
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
-                  <Music className="w-3 h-3" />
-                  After Dinner
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {ACTIVITY_OPTIONS.map((a) => {
-                    const Icon = a.icon
-                    return (
-                      <button
-                        key={a.id}
-                        onClick={() => { setActivity(a.id); setShowCustomActivity(false) }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                          activity === a.id
-                            ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
-                            : "bg-card border-border text-muted-foreground hover:border-primary/30"
-                        }`}
-                      >
-                        <Icon className="w-3 h-3" />
-                        {a.label}
-                      </button>
-                    )
-                  })}
+              <Music className="w-3 h-3" />
+              After Dinner
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {ACTIVITY_OPTIONS.map((a) => {
+                const Icon = a.icon
+                return (
                   <button
-                    onClick={() => { setActivity("custom"); setShowCustomActivity(true) }}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                      activity === "custom"
+                    key={a.id}
+                    onClick={() => { setActivity(a.id); setShowCustomActivity(false) }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      activity === a.id
                         ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
                         : "bg-card border-border text-muted-foreground hover:border-primary/30"
                     }`}
                   >
-                    <Plus className="w-3 h-3" />
-                    Custom
+                    <Icon className="w-3 h-3" />
+                    {a.label}
+                  </button>
+                )
+              })}
+              <button
+                onClick={() => { setActivity("custom"); setShowCustomActivity(true) }}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                  activity === "custom"
+                    ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
+                    : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                }`}
+              >
+                <Plus className="w-3 h-3" />
+                Custom
+              </button>
+            </div>
+            {showCustomActivity && (
+              <div className="mt-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customActivity}
+                    onChange={(e) => handleCustomInput('activity', e.target.value, setCustomActivity)}
+                    className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
+                      inputErrors.activity ? 'border-destructive' : 'border-border'
+                    }`}
+                    placeholder="e.g. Bowling, Comedy show, Karaoke..."
+                    maxLength={50}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => { setShowCustomActivity(false); setActivity("none"); setCustomActivity(""); setInputErrors(prev => ({ ...prev, activity: null })) }}
+                    className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
+                  >
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                {showCustomActivity && (
-                  <div className="mt-2">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={customActivity}
-                        onChange={(e) => handleCustomInput('activity', e.target.value, setCustomActivity)}
-                        className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
-                          inputErrors.activity ? 'border-destructive' : 'border-border'
-                        }`}
-                        placeholder="e.g. Bowling, Comedy show, Karaoke..."
-                        maxLength={50}
-                        autoFocus
-                      />
-                      <button
-                        onClick={() => { setShowCustomActivity(false); setActivity("none"); setCustomActivity(""); setInputErrors(prev => ({ ...prev, activity: null })) }}
-                        className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    {inputErrors.activity && (
-                      <p className="mt-1 text-[10px] text-destructive flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {inputErrors.activity}
-                      </p>
-                    )}
-                  </div>
+                {inputErrors.activity && (
+                  <p className="mt-1 text-[10px] text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {inputErrors.activity}
+                  </p>
                 )}
-              </section>
+              </div>
+            )}
+          </section>
             </CollapsibleContent>
           </Collapsible>
         </div>
