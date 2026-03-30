@@ -157,6 +157,13 @@ function calculateTravelTime(from: { lat: number; lng: number }, to: { lat: numb
 }
 
 function StarRating({ value, count }: { value: number; count: number }) {
+  if (!value || value <= 0) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-muted-foreground">No rating yet</span>
+      </div>
+    )
+  }
   return (
     <div className="flex items-center gap-1.5">
       <div className="flex items-center">
@@ -174,7 +181,7 @@ function StarRating({ value, count }: { value: number; count: number }) {
         ))}
       </div>
       <span className="text-xs font-semibold text-foreground">{value}</span>
-      <span className="text-[10px] text-muted-foreground">({count})</span>
+      {count > 0 && <span className="text-[10px] text-muted-foreground">({count.toLocaleString()})</span>}
     </div>
   )
 }
@@ -1531,7 +1538,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         time: assignedTime,
         icon: venue.category === "drinks" ? <Wine className="w-5 h-5" /> : venue.category === "dinner" ? <UtensilsCrossed className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />,
         place: venue.name,
-        rating: venue.rating,
+        rating: venue.combinedRating || venue.rating,
         reviewCount: venue.reviewCount,
         priceRange: venue.priceRange,
         tag: venue.category === "drinks" ? "Cocktails" : venue.category === "dinner" ? "Dining" : "Experience",

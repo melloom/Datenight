@@ -434,11 +434,15 @@ class VenueSearcher {
   }
 
   private hasGoodRating(venue: Venue): boolean {
-    return venue.rating >= 4.0 // Minimum 4.0 stars
+    // Allow venues with no rating yet (0 = not enriched, will get real rating later)
+    if (venue.rating === 0) return true
+    return venue.rating >= 3.5 // Minimum 3.5 stars for venues with confirmed ratings
   }
 
   private hasSufficientReviews(venue: Venue): boolean {
-    return venue.reviewCount >= 10 // Minimum 10 reviews
+    // Allow venues with 0 reviews (not enriched yet, will get real count from Place Details + Yelp)
+    if (venue.reviewCount === 0) return true
+    return venue.reviewCount >= 5 // Minimum 5 reviews for venues with confirmed data
   }
 
   private isWithinDistance(venue: Venue, location: string, timeOfDay: string): boolean {
@@ -1225,8 +1229,8 @@ class VenueSearcher {
       id: `foursquare-${place.fsq_id}`,
       name: place.name,
       category: this.categorizeFoursquarePlace(place),
-      rating: place.rating || 4.0,
-      reviewCount: place.stats?.total_ratings || 100,
+      rating: place.rating ? Math.min(5, place.rating / 2) : 0,
+      reviewCount: place.stats?.total_ratings || 0,
       priceRange: this.convertFoursquarePrice(place.price, criteria.budget),
       address: this.buildFoursquareAddress(place.location) || 'Address not available',
       phone: place.tel,
@@ -1717,8 +1721,8 @@ class VenueSearcher {
       id: `google-${place.place_id}`,
       name: place.name,
       category: this.categorizeGooglePlace(place),
-      rating: place.rating || 4.0,
-      reviewCount: place.user_ratings_total || 100,
+      rating: place.rating || 0,
+      reviewCount: place.user_ratings_total || 0,
       priceRange: this.convertGooglePriceLevel(place.price_level, criteria.budget),
       address: this.buildGoogleAddress(place) || 'Address not available',
       phone: place.formatted_phone_number,
@@ -2052,9 +2056,9 @@ class VenueSearcher {
     const yelpRating = details.rating || 0
     const yelpReviewCount = details.review_count || 0
 
-    // Combined rating: weighted average (Google 60%, Yelp 40%)
+    // Combined rating: weighted average (Google 60%, Yelp 40%), clamped to 1-5
     const combinedRating = yelpRating > 0
-      ? Math.round((venue.rating * 0.6 + yelpRating * 0.4) * 10) / 10
+      ? Math.min(5, Math.max(1, Math.round((venue.rating * 0.6 + yelpRating * 0.4) * 10) / 10))
       : venue.rating
 
     // Extract Yelp price level
@@ -2087,6 +2091,7 @@ class VenueSearcher {
 
     return {
       ...venue,
+      rating: combinedRating, // Use combined rating as the displayed rating
       yelpRating,
       combinedRating,
       tags: mergedTags,
@@ -2413,8 +2418,8 @@ class VenueSearcher {
 
     
     return venues.filter(venue => {
-      // Check if venue meets minimum rating for this time
-      if (venue.rating < timeFilter.minRating) {
+      // Check if venue meets minimum rating for this time (skip if not yet enriched)
+      if (venue.rating > 0 && venue.rating < timeFilter.minRating) {
         return false
       }
 
