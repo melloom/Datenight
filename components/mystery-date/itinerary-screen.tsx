@@ -1170,11 +1170,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         
         // Navigate back to setup screen to trigger a real search
         onReset()
-        
-        // Show message about what's happening
-        setTimeout(() => {
-          alert(`Generating ${suggestion.title} plan with optimized search criteria... Starting new search!`)
-        }, 100)
       }
     } catch (error) {
       alert('Sorry, something went wrong generating that plan. Please try again.')
@@ -1199,12 +1194,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         
         // Navigate back to setup for a real search
         onReset()
-        
-        setTimeout(() => {
-          alert(`Generating ${option.title} plan with real venues... Starting optimized search!`)
-        }, 100)
-      } else {
-        alert(`Sorry, couldn't generate search criteria for ${option.title}. Please try a different option.`)
       }
     } catch (error) {
       alert('Sorry, something went wrong creating that plan. Please try again.')
@@ -1235,14 +1224,30 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         newCriteria.vibes = ['late-night', 'casual', 'spontaneous']
         break
       case 'tomorrow-planned':
+        // Set plannedDate to tomorrow at midnight local time
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        newCriteria.plannedDate = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 0, 0, 0, 0)
+        newCriteria.dayOfWeek = newCriteria.plannedDate.toLocaleDateString('en-US', { weekday: 'long' })
         newCriteria.time = 'prime' // Prime time for tomorrow
         newCriteria.vibes = ['romantic', 'special-occasion']
         break
       case 'tomorrow-lunch':
+        // Set plannedDate to tomorrow at midnight local time
+        const tomorrowLunch = new Date()
+        tomorrowLunch.setDate(tomorrowLunch.getDate() + 1)
+        newCriteria.plannedDate = new Date(tomorrowLunch.getFullYear(), tomorrowLunch.getMonth(), tomorrowLunch.getDate(), 0, 0, 0, 0)
+        newCriteria.dayOfWeek = newCriteria.plannedDate.toLocaleDateString('en-US', { weekday: 'long' })
         newCriteria.time = 'early' // Lunch time
         newCriteria.vibes = ['casual', 'daytime', 'relaxed']
         break
       case 'weekend-experience':
+        // Set plannedDate to next weekend (Saturday)
+        const nextWeekend = new Date()
+        const daysUntilSaturday = (6 - nextWeekend.getDay() + 7) % 7 || 7
+        nextWeekend.setDate(nextWeekend.getDate() + daysUntilSaturday)
+        newCriteria.plannedDate = new Date(nextWeekend.getFullYear(), nextWeekend.getMonth(), nextWeekend.getDate(), 0, 0, 0, 0)
+        newCriteria.dayOfWeek = newCriteria.plannedDate.toLocaleDateString('en-US', { weekday: 'long' })
         newCriteria.time = 'prime' // Weekend prime time
         newCriteria.partySize = Math.max(newCriteria.partySize, 2) // Ensure minimum party size
         newCriteria.vibes = ['weekend', 'special', 'memorable']

@@ -19,6 +19,9 @@ interface DateConfig {
   customCuisine?: string
   activity?: string
   customActivity?: string
+  plannedDate?: Date
+  dayOfWeek?: string
+  plannedTime?: string
 }
 
 export function MysteryDateApp() {
@@ -73,6 +76,9 @@ export function MysteryDateApp() {
       customCuisine: config.customCuisine,
       activity: config.activity,
       customActivity: config.customActivity,
+      plannedDate: config.plannedDate,
+      dayOfWeek: config.dayOfWeek,
+      plannedTime: config.plannedTime,
     }
   }
 
