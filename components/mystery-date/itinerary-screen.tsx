@@ -61,7 +61,6 @@ import {
 import { Venue } from "@/lib/venue-search"
 import { useAuth } from "@/lib/auth-context"
 import { shareItinerary, SavedDate } from "@/lib/db"
-import { AIAssistant } from "@/components/ai/ai-assistant"
 import { AIRecommendation } from "@/components/ai/ai-recommendation"
 import { LateNightAlert } from "@/components/ui/late-night-alert"
 import { AlternativeSuggestion, SameDayOption } from "@/lib/late-night-detector"
@@ -413,9 +412,9 @@ function ShareModal({ steps, isOpen, onClose, venues, searchCriteria }: { steps:
               onClick={handleCopyLink}
               className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors"
             >
-              <Link2 className="w-4 h-4 text-primary flex-shrink-0" />
+              <Link2 className="w-4 h-4 text-primary shrink-0" />
               <span className="text-xs text-primary truncate flex-1 text-left">{shareUrl}</span>
-              {linkCopied ? <Check className="w-4 h-4 text-primary flex-shrink-0" /> : <Copy className="w-4 h-4 text-primary/60 flex-shrink-0" />}
+              {linkCopied ? <Check className="w-4 h-4 text-primary shrink-0" /> : <Copy className="w-4 h-4 text-primary/60 shrink-0" />}
             </button>
             {linkCopied && <p className="text-[10px] text-primary text-center mt-1">Link copied!</p>}
           </div>
@@ -1044,7 +1043,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [revealedCount, setRevealedCount] = useState(0)
   const [copied, setCopied] = useState(false)
   const [steps, setSteps] = useState<Step[]>([])
-  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false)
   const [isSwapping, setIsSwapping] = useState<number | null>(null)
   const [isImproving, setIsImproving] = useState(false)
   const [isShareOpen, setIsShareOpen] = useState(false)
@@ -1895,25 +1893,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         )}
       </div>
 
-      {/* AI Assistant */}
-      <AIAssistant
-        currentVenue={steps[revealedCount - 1] ? {
-          id: steps[revealedCount - 1].id.toString(),
-          name: steps[revealedCount - 1].place,
-          category: steps[revealedCount - 1].category as any,
-          rating: steps[revealedCount - 1].rating,
-          reviewCount: steps[revealedCount - 1].reviewCount,
-          priceRange: steps[revealedCount - 1].priceRange,
-          address: steps[revealedCount - 1].address,
-          description: steps[revealedCount - 1].description,
-          highlights: steps[revealedCount - 1].highlights,
-          coordinates: { lat: 0, lng: 0 },
-          tags: [],
-          features: []
-        } : undefined}
-        isOpen={isAIAssistantOpen}
-        onToggle={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
-      />
 
       {/* Swap Venue Dialog */}
       {showSwapDialog !== null && (

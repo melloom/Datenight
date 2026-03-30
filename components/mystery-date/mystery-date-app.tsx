@@ -6,6 +6,7 @@ import { LoadingScreen } from "@/components/mystery-date/loading-screen"
 import { ItineraryScreen } from "@/components/mystery-date/itinerary-screen"
 import { Venue, SearchCriteria } from "@/lib/venue-search"
 import { LateNightResponse } from "@/lib/late-night-detector"
+import { AIAssistant } from "@/components/ai/ai-assistant"
 
 type Screen = "setup" | "loading" | "itinerary"
 
@@ -29,6 +30,7 @@ export function MysteryDateApp() {
   const [config, setConfig] = useState<DateConfig | null>(null)
   const [venues, setVenues] = useState<Venue[]>([])
   const [lateNightResponse, setLateNightResponse] = useState<LateNightResponse | null>(null)
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false)
 
   const handleSubmit = (dateConfig: DateConfig) => {
     setConfig(dateConfig)
@@ -83,50 +85,59 @@ export function MysteryDateApp() {
   }
 
   return (
-    <main className="w-full min-h-svh relative">
-      {/* Screen transitions */}
-      <div 
-        className={`transition-all duration-500 ${
-          screen === "setup" 
-            ? "opacity-100 translate-y-0" 
-            : "opacity-0 -translate-y-4 pointer-events-none absolute inset-0"
-        }`}
-      >
-        {screen === "setup" && <SetupScreen onSubmit={handleSubmit} />}
-      </div>
-      
-      <div 
-        className={`transition-all duration-500 ${
-          screen === "loading" 
-            ? "opacity-100 translate-y-0" 
-            : "opacity-0 translate-y-4 pointer-events-none absolute inset-0"
-        }`}
-      >
-        {screen === "loading" && getSearchCriteria() && (
-          <LoadingScreen 
-            onComplete={handleLoadComplete} 
-            searchCriteria={getSearchCriteria()!}
-          />
-        )}
-      </div>
-      
-      <div 
-        className={`transition-all duration-500 ${
-          screen === "itinerary" 
-            ? "opacity-100 translate-y-0" 
-            : "opacity-0 translate-y-4 pointer-events-none absolute inset-0"
-        }`}
-      >
-        {screen === "itinerary" && (
-          <ItineraryScreen 
-            onReset={handleReset} 
-            venues={venues}
-            searchCriteria={getSearchCriteria()}
-            onVenuesUpdate={handleVenuesUpdate}
-            lateNightResponse={lateNightResponse}
-          />
-        )}
-      </div>
-    </main>
+    <>
+      <main className="w-full min-h-svh relative">
+        {/* Screen transitions */}
+        <div 
+          className={`transition-all duration-500 ${
+            screen === "setup" 
+              ? "opacity-100 translate-y-0" 
+              : "opacity-0 -translate-y-4 pointer-events-none absolute inset-0"
+          }`}
+        >
+          {screen === "setup" && <SetupScreen onSubmit={handleSubmit} />}
+        </div>
+        
+        <div 
+          className={`transition-all duration-500 ${
+            screen === "loading" 
+              ? "opacity-100 translate-y-0" 
+              : "opacity-0 translate-y-4 pointer-events-none absolute inset-0"
+          }`}
+        >
+          {screen === "loading" && getSearchCriteria() && (
+            <LoadingScreen 
+              onComplete={handleLoadComplete} 
+              searchCriteria={getSearchCriteria()!}
+            />
+          )}
+        </div>
+        
+        <div 
+          className={`transition-all duration-500 ${
+            screen === "itinerary" 
+              ? "opacity-100 translate-y-0" 
+              : "opacity-0 translate-y-4 pointer-events-none absolute inset-0"
+          }`}
+        >
+          {screen === "itinerary" && (
+            <ItineraryScreen 
+              onReset={handleReset} 
+              venues={venues}
+              searchCriteria={getSearchCriteria()}
+              onVenuesUpdate={handleVenuesUpdate}
+              lateNightResponse={lateNightResponse}
+            />
+          )}
+        </div>
+      </main>
+      {/* AI Assistant - outside main so fixed positioning works correctly */}
+      <AIAssistant
+        isOpen={isAIAssistantOpen}
+        onToggle={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
+        screen={screen}
+        searchCriteria={screen === 'itinerary' ? getSearchCriteria() : undefined}
+      />
+    </>
   )
 }

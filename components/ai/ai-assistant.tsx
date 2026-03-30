@@ -17,9 +17,10 @@ interface AIAssistantProps {
   searchCriteria?: any
   isOpen: boolean
   onToggle: () => void
+  screen?: 'setup' | 'loading' | 'itinerary'
 }
 
-export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: AIAssistantProps) {
+export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle, screen = 'setup' }: AIAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -34,13 +35,20 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const quickSuggestions = [
+  const quickSuggestions = screen === 'itinerary' ? [
     "What should I wear?",
     "Conversation starters?",
     "Gift ideas?",
     "Restaurant tips?",
     "Photo spots?",
     "Backup plans?"
+  ] : [
+    "Date night ideas?",
+    "What should I wear?",
+    "Conversation starters?",
+    "Gift ideas?",
+    "How to plan a date?",
+    "Romantic gestures?"
   ]
 
   useEffect(() => {
@@ -126,7 +134,7 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
     return (
       <button
         onClick={onToggle}
-        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center group z-150"
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center group z-50"
       >
         <MessageCircle className="w-6 h-6" />
         <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-accent animate-pulse" />
@@ -138,7 +146,7 @@ export function AIAssistant({ currentVenue, searchCriteria, isOpen, onToggle }: 
   }
 
   return (
-    <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-card border border-border rounded-2xl shadow-2xl shadow-primary/20 flex flex-col z-150 animate-in slide-in-from-bottom-4 fade-in duration-300">
+    <div className="fixed bottom-6 right-6 w-[calc(100vw-3rem)] sm:w-96 max-h-[80svh] h-[500px] bg-card border border-border rounded-2xl shadow-2xl shadow-primary/20 flex flex-col z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-linear-to-r from-primary/10 to-accent/10">
         <div className="flex items-center gap-3">

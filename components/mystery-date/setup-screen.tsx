@@ -26,7 +26,8 @@ import {
   History,
   Archive,
   CalendarDays,
-  Trash2
+  Trash2,
+  Menu
 } from "lucide-react"
 import Image from "next/image"
 import { validateCustomInput } from "@/lib/profanity-filter"
@@ -152,6 +153,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const [showLocationDropdown, setShowLocationDropdown] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [datePlanHistory, setDatePlanHistory] = useState<DatePlanHistory[]>([])
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date()
     return new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -433,29 +435,93 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
       <div className="relative z-10 flex flex-col px-5 md:px-12 pt-10 pb-6 flex-1 mx-auto w-full">
         {/* Header */}
         <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center">
-            <Image src="/android-chrome-192x192.png" alt="Date Night" width={56} height={56} />
+          <div className="flex items-center justify-between w-full md:justify-center">
+            <div className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center md:mx-auto">
+              <Image src="/android-chrome-192x192.png" alt="Date Night" width={56} height={56} />
+            </div>
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="md:hidden p-2 rounded-xl bg-card border border-border hover:bg-accent transition-colors"
+              aria-label="Menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Plan Your Night</h1>
           <p className="text-muted-foreground text-sm text-center max-w-xs">Set your preferences and we'll curate the perfect evening</p>
         </div>
 
-        {/* Randomize */}
+        {/* Mobile Menu */}
+        {showMobileMenu && (
+          <div className="md:hidden mb-6 p-4 rounded-2xl bg-card border border-border space-y-4">
+            {/* Budget in Mobile Menu */}
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+                <DollarSign className="w-3 h-3" />
+                Budget
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {BUDGET_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setBudget(opt.value)}
+                    className={`p-3 rounded-xl border transition-all ${
+                      budget === opt.value
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-card border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <div className="text-lg mb-0.5">{opt.emoji}</div>
+                    <div className="text-xs font-semibold">{opt.label}</div>
+                    <div className="text-[10px] opacity-70">{opt.price}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  handleSurpriseMe()
+                  setShowMobileMenu(false)
+                }}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/30 text-primary text-xs font-medium hover:bg-primary/5 active:scale-[0.98] transition-all"
+              >
+                <Shuffle className="w-3.5 h-3.5" />
+                Surprise Me
+              </button>
+              <button
+                onClick={() => {
+                  setShowHistory(true)
+                  setShowMobileMenu(false)
+                  scrollToModal()
+                }}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-amber-500/30 text-amber-600 text-xs font-medium hover:bg-amber-500/5 active:scale-[0.98] transition-all"
+              >
+                <History className="w-3.5 h-3.5" />
+                History
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Randomize - Desktop Only */}
         <button
           onClick={handleSurpriseMe}
-          className="mb-4 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/30 text-primary text-xs font-medium hover:bg-primary/5 active:scale-[0.98] transition-all"
+          className="hidden md:flex mb-4 items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/30 text-primary text-xs font-medium hover:bg-primary/5 active:scale-[0.98] transition-all"
         >
           <Shuffle className="w-3.5 h-3.5" />
           Surprise Me
         </button>
 
-        {/* History */}
+        {/* History - Desktop Only */}
         <button
           onClick={() => {
             setShowHistory(true)
             scrollToModal()
           }}
-          className="mb-6 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-amber-500/30 text-amber-600 text-xs font-medium hover:bg-amber-500/5 active:scale-[0.98] transition-all"
+          className="hidden md:flex mb-6 items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-amber-500/30 text-amber-600 text-xs font-medium hover:bg-amber-500/5 active:scale-[0.98] transition-all"
         >
           <History className="w-3.5 h-3.5" />
           View Past Plans
@@ -595,7 +661,8 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </div>
 
           {/* Budget */}
-          <section data-tutorial="budget">
+          {/* Budget - Desktop Only (Mobile has it in hamburger menu) */}
+          <section data-tutorial="budget" className="hidden md:block">
             <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
               <DollarSign className="w-3 h-3" />
               Budget
