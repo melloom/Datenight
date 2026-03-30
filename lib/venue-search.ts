@@ -1974,16 +1974,26 @@ class VenueSearcher {
     return Promise.all(pricingPromises)
   }
 
-  // Scrape pricing AND run full venue enhancement from Google Place Details
+  // Scrape pricing AND run full venue enhancement from Google Place Details + Yelp
   private async scrapeAndEnhanceVenue(venue: Venue, criteria?: SearchCriteria): Promise<Venue> {
     if (venue.id.startsWith('google-')) {
       const placeId = venue.id.replace('google-', '')
-      const details = await this.fetchGooglePlaceDetails(placeId)
+
+      // Fetch Google details + Yelp match in parallel
+      const [details, yelpData] = await Promise.all([
+        this.fetchGooglePlaceDetails(placeId),
+        this.fetchYelpMatch(venue).catch(() => null)
+      ])
 
       // Run full enhancement with all scraped data
       let enhanced = venue
       if (criteria) {
         enhanced = enhanceVenueWithScrapedData(venue, details, criteria)
+      }
+
+      // Merge Yelp data if available
+      if (yelpData) {
+        enhanced = this.mergeYelpData(enhanced, yelpData)
       }
 
       const priceLevel = details.price_level || 0
@@ -2003,6 +2013,109 @@ class VenueSearcher {
     // Non-Google venues: use estimate pricing
     const pricing = this.buildEstimatePricing(venue)
     return { ...venue, pricing }
+  }
+
+  // Fetch Yelp match for a venue — returns details + reviews or null
+  private async fetchYelpMatch(venue: Venue): Promise<any | null> {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 3000)
+
+      const response = await fetch('/api/venues/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'yelp-match',
+          query: venue.name,
+          location: venue.address,
+          lat: venue.coordinates?.lat || 0,
+          lng: venue.coordinates?.lng || 0
+        }),
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
+
+      if (!response.ok) return null
+      const data = await response.json()
+      if (!data.match && !data.details) return null
+      return data
+    } catch {
+      return null
+    }
+  }
+
+  // Merge Yelp data into venue — combined rating, Yelp reviews, dietary, photos
+  private mergeYelpData(venue: Venue, yelpData: any): Venue {
+    const details = yelpData.details || yelpData.match || {}
+    const yelpReviews = yelpData.reviews?.reviews || []
+
+    const yelpRating = details.rating || 0
+    const yelpReviewCount = details.review_count || 0
+
+    // Combined rating: weighted average (Google 60%, Yelp 40%)
+    const combinedRating = yelpRating > 0
+      ? Math.round((venue.rating * 0.6 + yelpRating * 0.4) * 10) / 10
+      : venue.rating
+
+    // Extract Yelp price level
+    const yelpPrice = details.price || '' // '$', '$$', '$$$', '$$$$'
+
+    // Extract categories for better tagging
+    const yelpCategories = (details.categories || []).map((c: any) => c.title || c.alias || '')
+    const mergedTags = [...new Set([...(venue.tags || []), ...yelpCategories])].slice(0, 10)
+
+    // Extract transactions (delivery, pickup, reservation)
+    const transactions: string[] = details.transactions || []
+    const reservable = venue.reservable || transactions.includes('restaurant_reservation')
+
+    // Build Yelp reservation link if available
+    const reservationLinks = [...(venue.reservationLinks || [])]
+    if (details.url) {
+      reservationLinks.push({ url: details.url, platform: 'Yelp' })
+    }
+
+    // Extract dietary info from Yelp reviews
+    const yelpReviewTexts = yelpReviews.map((r: any) => ({ text: r.text || '' }))
+    const existingDietary = venue.dietaryOptions || []
+    const yelpDietary = this.extractDietaryFromYelp(yelpReviewTexts, yelpCategories)
+    const mergedDietary = [...new Set([...existingDietary, ...yelpDietary])]
+
+    // Yelp photo count boost
+    const yelpPhotoCount = details.photos?.length || 0
+    const totalPhotos = (venue.photoCount || 0) + yelpPhotoCount
+    const photoScore = Math.min(totalPhotos / 10, 1.0)
+
+    return {
+      ...venue,
+      yelpRating,
+      combinedRating,
+      tags: mergedTags,
+      reservable,
+      reservationLinks,
+      dietaryOptions: mergedDietary,
+      photoCount: totalPhotos,
+      photoScore,
+      priceRange: yelpPrice || venue.priceRange,
+      reviewCount: venue.reviewCount + yelpReviewCount,
+    }
+  }
+
+  // Extract dietary info from Yelp reviews + categories
+  private extractDietaryFromYelp(reviews: any[], categories: string[]): string[] {
+    const dietary: string[] = []
+    const allText = [...reviews.map(r => r.text || ''), ...categories].join(' ').toLowerCase()
+
+    const checks: [string, string[]][] = [
+      ['vegan', ['vegan', 'plant-based']],
+      ['vegetarian', ['vegetarian', 'veggie']],
+      ['gluten-free', ['gluten-free', 'gluten free', 'celiac']],
+      ['halal', ['halal']],
+      ['kosher', ['kosher']],
+    ]
+    for (const [label, keywords] of checks) {
+      if (keywords.some(kw => allText.includes(kw))) dietary.push(label)
+    }
+    return dietary
   }
 
   // Extract real dollar amounts mentioned in reviews ($15, $25, etc.)

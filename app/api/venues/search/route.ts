@@ -6,9 +6,10 @@ import { sanitizeForSearch } from '@/lib/profanity-filter'
 const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || ''
 const FOURSQUARE_CLIENT_ID = process.env.FOURSQUARE_CLIENT_ID || ''
 const FOURSQUARE_CLIENT_SECRET = process.env.FOURSQUARE_CLIENT_SECRET || ''
+const YELP_API_KEY = process.env.YELP_API_KEY || ''
 
 const venueSearchSchema = z.object({
-  action: z.enum(['google-places', 'google-text-search', 'google-geocode', 'google-place-details', 'foursquare', 'overpass']),
+  action: z.enum(['google-places', 'google-text-search', 'google-geocode', 'google-place-details', 'foursquare', 'overpass', 'yelp-search', 'yelp-match']),
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
   radius: z.number().min(1).max(50000).optional(),
@@ -216,6 +217,95 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Invalid JSON from Overpass' }, { status: 502 })
         }
         return NextResponse.json({ error: 'Overpass API failed' }, { status: 502 })
+      }
+    }
+
+    // Yelp Business Search — find venues by term + location
+    if (action === 'yelp-search') {
+      if (!YELP_API_KEY) {
+        return NextResponse.json({ error: 'Yelp API key not configured' }, { status: 503 })
+      }
+
+      const { query: searchTerm } = body
+      const params = new URLSearchParams({
+        term: searchTerm || 'date night',
+        latitude: String(lat || 0),
+        longitude: String(lng || 0),
+        radius: String(Math.min(radius || 16000, 40000)),
+        limit: '10',
+        sort_by: 'best_match'
+      })
+
+      const fetchPromise = fetch(`https://api.yelp.com/v3/businesses/search?${params}`, {
+        headers: { 'Authorization': `Bearer ${YELP_API_KEY}` }
+      }).then(response => {
+        if (!response.ok) throw new Error(`Yelp API error: ${response.status}`)
+        return response.json()
+      })
+
+      try {
+        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+        return NextResponse.json(data)
+      } catch (error) {
+        console.error('Yelp Search API error:', error)
+        if (error instanceof Error && error.message === 'Request timeout') {
+          return NextResponse.json({ error: 'Yelp API timeout' }, { status: 504 })
+        }
+        return NextResponse.json({ error: 'Yelp Search API failed' }, { status: 502 })
+      }
+    }
+
+    // Yelp Business Match — find exact Yelp listing for a known venue
+    if (action === 'yelp-match') {
+      if (!YELP_API_KEY) {
+        return NextResponse.json({ error: 'Yelp API key not configured' }, { status: 503 })
+      }
+
+      const { query: venueName, location: venueAddress } = body
+      const params = new URLSearchParams({
+        name: venueName || '',
+        address1: venueAddress || '',
+        city: '',
+        state: '',
+        country: 'US',
+        latitude: String(lat || 0),
+        longitude: String(lng || 0)
+      })
+
+      const fetchPromise = fetch(`https://api.yelp.com/v3/businesses/matches?${params}`, {
+        headers: { 'Authorization': `Bearer ${YELP_API_KEY}` }
+      }).then(response => {
+        if (!response.ok) throw new Error(`Yelp Match API error: ${response.status}`)
+        return response.json()
+      })
+
+      try {
+        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+        // If we got a match, fetch full details including reviews
+        if (data.businesses && data.businesses.length > 0) {
+          const yelpId = data.businesses[0].id
+          const detailsPromise = fetch(`https://api.yelp.com/v3/businesses/${yelpId}`, {
+            headers: { 'Authorization': `Bearer ${YELP_API_KEY}` }
+          }).then(r => r.ok ? r.json() : null)
+
+          const reviewsPromise = fetch(`https://api.yelp.com/v3/businesses/${yelpId}/reviews?limit=5&sort_by=yelp_sort`, {
+            headers: { 'Authorization': `Bearer ${YELP_API_KEY}` }
+          }).then(r => r.ok ? r.json() : null)
+
+          const [details, reviews] = await Promise.all([
+            Promise.race([detailsPromise, new Promise(r => setTimeout(() => r(null), 5000))]),
+            Promise.race([reviewsPromise, new Promise(r => setTimeout(() => r(null), 5000))])
+          ])
+
+          return NextResponse.json({ match: data.businesses[0], details, reviews })
+        }
+        return NextResponse.json({ match: null, details: null, reviews: null })
+      } catch (error) {
+        console.error('Yelp Match API error:', error)
+        if (error instanceof Error && error.message === 'Request timeout') {
+          return NextResponse.json({ error: 'Yelp Match API timeout' }, { status: 504 })
+        }
+        return NextResponse.json({ error: 'Yelp Match API failed' }, { status: 502 })
       }
     }
 
