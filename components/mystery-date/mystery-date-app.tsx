@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { SetupScreen } from "@/components/mystery-date/setup-screen"
 import { LoadingScreen } from "@/components/mystery-date/loading-screen"
 import { ItineraryScreen } from "@/components/mystery-date/itinerary-screen"
@@ -60,14 +60,14 @@ export function MysteryDateApp() {
     setScreen("setup")
   }
 
-  const handleVenuesUpdate = (newVenues: Venue[]) => {
+  const handleVenuesUpdate = useCallback((newVenues: Venue[]) => {
     setVenues(newVenues)
-  }
+  }, [])
 
-  // Convert DateConfig to SearchCriteria
-  const getSearchCriteria = (): SearchCriteria | null => {
+  // Convert DateConfig to SearchCriteria (memoized to prevent unnecessary re-renders)
+  const searchCriteria = useMemo((): SearchCriteria | null => {
     if (!config) return null
-    
+
     return {
       location: config.location,
       budget: config.budget as '$' | '$$' | '$$$' | '$$$$',
@@ -82,7 +82,7 @@ export function MysteryDateApp() {
       dayOfWeek: config.dayOfWeek,
       plannedTime: config.plannedTime,
     }
-  }
+  }, [config])
 
   return (
     <>
@@ -105,10 +105,10 @@ export function MysteryDateApp() {
               : "opacity-0 translate-y-4 pointer-events-none absolute inset-0"
           }`}
         >
-          {screen === "loading" && getSearchCriteria() && (
+          {screen === "loading" && searchCriteria && (
             <LoadingScreen 
               onComplete={handleLoadComplete} 
-              searchCriteria={getSearchCriteria()!}
+              searchCriteria={searchCriteria!}
             />
           )}
         </div>
@@ -124,7 +124,7 @@ export function MysteryDateApp() {
             <ItineraryScreen 
               onReset={handleReset} 
               venues={venues}
-              searchCriteria={getSearchCriteria()}
+              searchCriteria={searchCriteria}
               onVenuesUpdate={handleVenuesUpdate}
               lateNightResponse={lateNightResponse}
             />
@@ -136,7 +136,7 @@ export function MysteryDateApp() {
         isOpen={isAIAssistantOpen}
         onToggle={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
         screen={screen}
-        searchCriteria={screen === 'itinerary' ? getSearchCriteria() : undefined}
+        searchCriteria={screen === 'itinerary' ? searchCriteria : undefined}
       />
     </>
   )

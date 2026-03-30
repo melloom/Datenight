@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   MapPin,
   Navigation,
@@ -1045,6 +1045,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [steps, setSteps] = useState<Step[]>([])
   const [isSwapping, setIsSwapping] = useState<number | null>(null)
   const [isImproving, setIsImproving] = useState(false)
+  const pricingFetchedRef = useRef(false)
+  const venueIdsRef = useRef<string>("")
   const [isShareOpen, setIsShareOpen] = useState(false)
   const [swapRequest, setSwapRequest] = useState<string>('')
   const [showSwapDialog, setShowSwapDialog] = useState<number | null>(null)
@@ -1416,7 +1418,17 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   useEffect(() => {
     if (!venues || venues.length === 0) {
       setSteps([])
+      pricingFetchedRef.current = false
+      venueIdsRef.current = ""
       return
+    }
+
+    // Track venue identity to reset pricing fetch when venues actually change
+    const currentVenueIds = venues.map(v => v.name + v.address).join("|")
+    const venuesChanged = currentVenueIds !== venueIdsRef.current
+    if (venuesChanged) {
+      venueIdsRef.current = currentVenueIds
+      pricingFetchedRef.current = false
     }
 
     const convertedSteps: Step[] = venues.map((venue, index) => {
@@ -1467,9 +1479,11 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
     setSteps(stepsWithTravel)
 
-    // Fetch real pricing for venues missing it
+    // Only fetch pricing once per set of venues to prevent infinite loop
+    if (pricingFetchedRef.current) return
     const venuesMissingPricing = venues.filter(v => !v.pricing || !v.pricing.source)
     if (venuesMissingPricing.length > 0) {
+      pricingFetchedRef.current = true
       fetch('/api/ai/enhance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1501,12 +1515,14 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             pricing: updatedVenues[i]?.pricing || step.pricing
           }))
           setSteps(updatedSteps)
-          // Propagate updated venues to parent if available
+          // Propagate updated venues to parent
           if (onVenuesUpdate) {
             onVenuesUpdate(updatedVenues)
           }
         })
         .catch(() => { /* fallback to estimate-based pricing */ })
+    } else {
+      pricingFetchedRef.current = true
     }
   }, [venues])
 
