@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { z } from 'zod'
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
-
 const enhanceSearchSchema = z.object({
   action: z.literal('enhance-search'),
   location: z.string().min(1).max(200),
@@ -37,6 +35,17 @@ const recommendSchema = z.object({
   })
 })
 
+const fetchPricingSchema = z.object({
+  action: z.literal('fetch-pricing'),
+  venues: z.array(z.object({
+    name: z.string().max(200),
+    category: z.string().max(100),
+    description: z.string().max(500).optional(),
+    address: z.string().max(300).optional(),
+    priceRange: z.string().max(20).optional()
+  })).max(10)
+})
+
 const swapVenueSchema = z.object({
   action: z.literal('swap-venue'),
   venue: z.object({
@@ -58,10 +67,28 @@ const swapVenueSchema = z.object({
   swapCategory: z.string().max(100)
 })
 
+function getApiKey(): string {
+  // Try server-side env first, then public env
+  // NEXT_PUBLIC_ vars are inlined at build time by Next.js
+  return process.env['GEMINI_API_KEY']
+    || process.env['NEXT_PUBLIC_GEMINI_API_KEY']
+    || ''
+}
+
 function getModel() {
-  if (!GEMINI_API_KEY) return null
-  const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
+  const apiKey = getApiKey()
+  if (!apiKey) return null
+  const genAI = new GoogleGenerativeAI(apiKey)
   return genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+}
+
+export async function GET() {
+  const apiKey = getApiKey()
+  return NextResponse.json({
+    hasKey: !!apiKey,
+    keyPrefix: apiKey ? apiKey.substring(0, 8) : 'none',
+    envKeys: Object.keys(process.env).filter(k => k.toLowerCase().includes('gemini'))
+  })
 }
 
 export async function POST(request: NextRequest) {
@@ -76,6 +103,8 @@ export async function POST(request: NextRequest) {
       validationResult = analyzeVenueSchema.safeParse(body)
     } else if (action === 'recommend') {
       validationResult = recommendSchema.safeParse(body)
+    } else if (action === 'fetch-pricing') {
+      validationResult = fetchPricingSchema.safeParse(body)
     } else if (action === 'swap-venue') {
       validationResult = swapVenueSchema.safeParse(body)
     } else {
@@ -226,6 +255,55 @@ Provide JSON:
           tips: ['Dress comfortably', 'Make reservations in advance'],
           alternatives: ['Indoor venues as backup']
         })
+      }
+    }
+
+    if (action === 'fetch-pricing') {
+      const { venues } = body
+      if (!model) {
+        return NextResponse.json({ pricing: venues.map(() => null) })
+      }
+
+      const venueDescriptions = venues.map((v: any, i: number) =>
+        `${i + 1}. "${v.name}" (${v.category})${v.address ? ` at ${v.address}` : ''}${v.priceRange ? ` - Price range: ${v.priceRange}` : ''}${v.description ? ` - ${v.description}` : ''}`
+      ).join('\n')
+
+      const prompt = `Extract accurate pricing information for each of these venues. Consider the venue type and location for realistic local pricing.
+
+Pricing guidance by category:
+- Movie theaters: ticket prices ($10-18), concession food ($8-15), drinks ($5-8)
+- Bowling alleys: lane rental per person ($5-12), shoe rental ($3-5), food ($8-15), drinks ($5-10)
+- Escape rooms: per person pricing ($25-40), group packages
+- Restaurants: typical entree prices ($12-50+), drink prices ($8-15), appetizers ($8-18)
+- Bars/Lounges: cocktail prices ($10-18), beer ($6-10), appetizers ($8-16)
+- Activities (general): per person activity cost ($15-50), food ($8-15), drinks ($5-12)
+
+Venues:
+${venueDescriptions}
+
+Return a JSON array with one pricing object per venue (in the same order):
+[
+  {
+    "tickets": number or null,
+    "food": number or null,
+    "drinks": number or null,
+    "activities": number or null,
+    "packages": [{"name": "package name", "price": number, "includes": ["item1"]}] or [],
+    "source": "AI estimation based on venue type and location"
+  }
+]
+
+Be realistic and specific to each venue's type and location. All prices are per-person in USD.`
+
+      try {
+        const result = await model.generateContent(prompt)
+        const text = result.response.text()
+        const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
+        const pricing = JSON.parse(cleaned)
+        return NextResponse.json({ pricing: Array.isArray(pricing) ? pricing : venues.map(() => null) })
+      } catch (err) {
+        console.error('[fetch-pricing] Gemini error:', err)
+        return NextResponse.json({ pricing: venues.map(() => null) })
       }
     }
 

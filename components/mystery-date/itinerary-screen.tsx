@@ -60,6 +60,7 @@ import {
 } from "lucide-react"
 import { Venue } from "@/lib/venue-search"
 import { useAuth } from "@/lib/auth-context"
+import { shareItinerary, SavedDate } from "@/lib/db"
 import { AIAssistant } from "@/components/ai/ai-assistant"
 import { AIRecommendation } from "@/components/ai/ai-recommendation"
 import { LateNightAlert } from "@/components/ui/late-night-alert"
@@ -291,20 +292,67 @@ function formatItineraryForShare(steps: Step[]): string {
   return `${header}${body}${footer}`
 }
 
-function ShareModal({ steps, isOpen, onClose }: { steps: Step[]; isOpen: boolean; onClose: () => void }) {
+function ShareModal({ steps, isOpen, onClose, venues, searchCriteria }: { steps: Step[]; isOpen: boolean; onClose: () => void; venues: Venue[]; searchCriteria?: any }) {
   const [copied, setCopied] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
   const [shared, setShared] = useState(false)
+  const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [shareLoading, setShareLoading] = useState(false)
+  const { user } = useAuth()
+
+  useEffect(() => {
+    if (!isOpen || shareUrl || shareLoading || !user) return
+    setShareLoading(true)
+
+    const plannedDate = searchCriteria?.plannedDate ? new Date(searchCriteria.plannedDate) : new Date()
+    const dateData: SavedDate = {
+      location: searchCriteria?.location || '',
+      budget: searchCriteria?.budget || '$$',
+      vibes: searchCriteria?.vibes || [],
+      time: searchCriteria?.time || 'prime',
+      partySize: searchCriteria?.partySize || 2,
+      venues,
+      createdAt: Date.now(),
+      status: 'planned' as const,
+    }
+
+    shareItinerary(user.uid, dateData, plannedDate)
+      .then(id => {
+        const url = `${window.location.origin}/shared/${id}`
+        setShareUrl(url)
+      })
+      .catch(() => {
+        // Fall back to text-only sharing
+      })
+      .finally(() => setShareLoading(false))
+  }, [isOpen, user, venues, searchCriteria, shareUrl, shareLoading])
+
+  // Reset share URL when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setShareUrl(null)
+      setShareLoading(false)
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
   const shareText = formatItineraryForShare(steps)
-  const shareTextEncoded = encodeURIComponent(shareText)
+  const shareTextWithLink = shareUrl ? `${shareText}\n\n🔗 View full plan: ${shareUrl}` : shareText
+  const shareTextEncoded = encodeURIComponent(shareTextWithLink)
   const canNativeShare = typeof window !== "undefined" && !!window.navigator?.share
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(shareText)
+    await navigator.clipboard.writeText(shareTextWithLink)
     setCopied(true)
     setTimeout(() => setCopied(false), 2500)
+  }
+
+  const handleCopyLink = async () => {
+    if (!shareUrl) return
+    await navigator.clipboard.writeText(shareUrl)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2500)
   }
 
   const handleNativeShare = async () => {
@@ -312,7 +360,8 @@ function ShareModal({ steps, isOpen, onClose }: { steps: Step[]; isOpen: boolean
       try {
         await navigator.share({
           title: "Date Night Plan",
-          text: shareText,
+          text: shareTextWithLink,
+          ...(shareUrl ? { url: shareUrl } : {}),
         })
         setShared(true)
         setTimeout(() => setShared(false), 2500)
@@ -357,6 +406,27 @@ function ShareModal({ steps, isOpen, onClose }: { steps: Step[]; isOpen: boolean
           </div>
         </div>
 
+        {/* Share Link */}
+        {shareUrl && (
+          <div className="px-4 pb-2">
+            <button
+              onClick={handleCopyLink}
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors"
+            >
+              <Link2 className="w-4 h-4 text-primary flex-shrink-0" />
+              <span className="text-xs text-primary truncate flex-1 text-left">{shareUrl}</span>
+              {linkCopied ? <Check className="w-4 h-4 text-primary flex-shrink-0" /> : <Copy className="w-4 h-4 text-primary/60 flex-shrink-0" />}
+            </button>
+            {linkCopied && <p className="text-[10px] text-primary text-center mt-1">Link copied!</p>}
+          </div>
+        )}
+        {shareLoading && (
+          <div className="px-4 pb-2 flex items-center justify-center gap-2">
+            <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-[10px] text-muted-foreground">Creating shareable link...</span>
+          </div>
+        )}
+
         {/* Share Options */}
         <div className="px-4 pb-4 space-y-2">
           {canNativeShare && (
@@ -389,7 +459,7 @@ function ShareModal({ steps, isOpen, onClose }: { steps: Step[]; isOpen: boolean
               className="flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border border-border hover:bg-muted/50 hover:border-primary/30 transition-all"
             >
               {copied ? <Check className="w-5 h-5 text-primary" /> : <Link2 className="w-5 h-5 text-blue-500" />}
-              <span className="text-[10px] font-medium text-muted-foreground">{copied ? "Copied!" : "Copy"}</span>
+              <span className="text-[10px] font-medium text-muted-foreground">{copied ? "Copied!" : "Copy All"}</span>
             </button>
           </div>
         </div>
@@ -1393,6 +1463,48 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     })
 
     setSteps(stepsWithTravel)
+
+    // Fetch real pricing for venues missing it
+    const venuesMissingPricing = venues.filter(v => !v.pricing || !v.pricing.source)
+    if (venuesMissingPricing.length > 0) {
+      fetch('/api/ai/enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'fetch-pricing',
+          venues: venuesMissingPricing.map(v => ({
+            name: v.name,
+            category: v.category,
+            description: v.description,
+            address: v.address,
+            priceRange: v.priceRange
+          }))
+        })
+      })
+        .then(res => res.ok ? res.json() : null)
+        .then(result => {
+          if (!result?.pricing) return
+          let pricingIdx = 0
+          const updatedVenues = venues.map(v => {
+            if (!v.pricing || !v.pricing.source) {
+              const p = result.pricing[pricingIdx++]
+              if (p) return { ...v, pricing: { ...p, lastUpdated: new Date().toISOString() } }
+            }
+            return v
+          })
+          // Update steps with new pricing data
+          const updatedSteps = stepsWithTravel.map((step, i) => ({
+            ...step,
+            pricing: updatedVenues[i]?.pricing || step.pricing
+          }))
+          setSteps(updatedSteps)
+          // Propagate updated venues to parent if available
+          if (onVenuesUpdate) {
+            onVenuesUpdate(updatedVenues)
+          }
+        })
+        .catch(() => { /* fallback to estimate-based pricing */ })
+    }
   }, [venues])
 
   const handleReveal = () => {
@@ -2728,6 +2840,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         steps={steps}
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
+        venues={venues}
+        searchCriteria={searchCriteria}
       />
     </div>
   )

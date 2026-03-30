@@ -301,10 +301,9 @@ class VenueSearcher {
     // Enhance venues for special occasions
     const occasionEnhancedVenues = this.enhanceVenuesForOccasion(rankedVenues, criteria)
 
-    // Enhance venues with real pricing data
-    const pricingEnhancedVenues = await Promise.all(
-      occasionEnhancedVenues.map(venue => this.enhanceVenueWithPricing(venue))
-    )
+    // Skip pricing enhancement during search to avoid timeout - pricing is fetched
+    // on the shared page via the batch fetch-pricing API instead
+    const pricingEnhancedVenues = occasionEnhancedVenues
 
     // Optimize date plan with travel time
     const optimizedPlan = this.optimizeDatePlan(pricingEnhancedVenues, criteria)
@@ -882,6 +881,11 @@ class VenueSearcher {
           batch.map(async (term) => {
             try {
               const searchQuery = `${term} near ${criteria.location}`
+              
+              // Add timeout to the fetch request
+              const controller = new AbortController()
+              const timeoutId = setTimeout(() => controller.abort(), 12000) // 12 second timeout
+              
               const response = await fetch('/api/venues/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -891,10 +895,20 @@ class VenueSearcher {
                   lat: location.lat,
                   lng: location.lng,
                   radius: Math.min(radius, 50000)
-                })
+                }),
+                signal: controller.signal
               })
 
-              if (!response.ok) return []
+              clearTimeout(timeoutId)
+
+              if (!response.ok) {
+                if (response.status === 504) {
+                  console.warn(`Google Text Search API timeout for ${term}`)
+                } else {
+                  console.warn(`Google Text Search API error ${response.status} for ${term}`)
+                }
+                return []
+              }
 
               const data = await response.json()
               if (data.results) {
@@ -904,6 +918,11 @@ class VenueSearcher {
               }
               return []
             } catch (error) {
+              if (error instanceof Error && error.name === 'AbortError') {
+                console.warn(`Google Text Search API request aborted for ${term}`)
+              } else {
+                console.warn(`Google Text Search API fetch error for ${term}:`, error)
+              }
               return []
             }
           })
@@ -935,6 +954,10 @@ class VenueSearcher {
 
       for (const category of categories) {
         try {
+          // Add timeout to the fetch request
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 12000) // 12 second timeout
+          
           const response = await fetch('/api/venues/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -944,10 +967,18 @@ class VenueSearcher {
               lng: location.lng,
               radius,
               query: category
-            })
+            }),
+            signal: controller.signal
           })
 
+          clearTimeout(timeoutId)
+
           if (!response.ok) {
+            if (response.status === 504) {
+              console.warn(`Foursquare API timeout for ${category}`)
+            } else {
+              console.warn(`Foursquare API error ${response.status} for ${category}`)
+            }
             continue
           }
 
@@ -960,6 +991,12 @@ class VenueSearcher {
 
           await new Promise(resolve => setTimeout(resolve, 200))
         } catch (error) {
+          if (error instanceof Error && error.name === 'AbortError') {
+            console.warn(`Foursquare API request aborted for ${category}`)
+          } else {
+            console.warn(`Foursquare API fetch error for ${category}:`, error)
+          }
+          continue
         }
       }
 
@@ -1199,6 +1236,11 @@ class VenueSearcher {
       for (const placeType of placeTypes) {
         try {
           const cuisineKeyword = criteria.customCuisine || (criteria.cuisine && criteria.cuisine !== 'any' ? criteria.cuisine : '')
+          
+          // Add timeout to the fetch request
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 12000) // 12 second timeout
+          
           const response = await fetch('/api/venues/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1209,12 +1251,19 @@ class VenueSearcher {
               radius,
               type: placeType,
               keyword: cuisineKeyword || undefined
-            })
+            }),
+            signal: controller.signal
           })
+
+          clearTimeout(timeoutId)
 
           if (!response.ok) {
             if (response.status === 503) {
+              console.warn(`Google Places API not available for ${placeType}`)
+            } else if (response.status === 504) {
+              console.warn(`Google Places API timeout for ${placeType}`)
             } else {
+              console.warn(`Google Places API error ${response.status} for ${placeType}`)
             }
             continue
           }
@@ -1229,6 +1278,13 @@ class VenueSearcher {
           // Add delay to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 200))
         } catch (error) {
+          if (error instanceof Error && error.name === 'AbortError') {
+            console.warn(`Google Places API request aborted for ${placeType}`)
+          } else {
+            console.warn(`Google Places API fetch error for ${placeType}:`, error)
+          }
+          // Continue with next place type instead of failing completely
+          continue
         }
       }
 

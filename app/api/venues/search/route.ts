@@ -36,6 +36,11 @@ export async function POST(request: NextRequest) {
     const query = sanitizeForSearch(validationResult.data.query || '') || validationResult.data.query
     const keyword = validationResult.data.keyword ? sanitizeForSearch(validationResult.data.keyword) : undefined
 
+    // Create a timeout promise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), 10000) // 10 second timeout
+    })
+
     if (action === 'google-places') {
       if (!GOOGLE_PLACES_API_KEY || GOOGLE_PLACES_API_KEY === 'your_google_places_api_key_here') {
         return NextResponse.json({ error: 'Google Places API key not configured' }, { status: 503 })
@@ -43,10 +48,24 @@ export async function POST(request: NextRequest) {
 
       const keywordParam = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''
       const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}${keywordParam}&key=${GOOGLE_PLACES_API_KEY}`
-      const response = await fetch(url)
-      const data = await response.json()
       
-      return NextResponse.json(data)
+      const fetchPromise = fetch(url).then(response => {
+        if (!response.ok) {
+          throw new Error(`Google API error: ${response.status}`)
+        }
+        return response.json()
+      })
+
+      try {
+        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+        return NextResponse.json(data)
+      } catch (error) {
+        console.error('Google Places API error:', error)
+        if (error instanceof Error && error.message === 'Request timeout') {
+          return NextResponse.json({ error: 'Google Places API timeout' }, { status: 504 })
+        }
+        return NextResponse.json({ error: 'Google Places API failed' }, { status: 502 })
+      }
     }
 
     if (action === 'google-text-search') {
@@ -60,10 +79,24 @@ export async function POST(request: NextRequest) {
 
       const locationParam = lat && lng ? `&location=${lat},${lng}&radius=${radius || 16000}` : ''
       const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}${locationParam}&key=${GOOGLE_PLACES_API_KEY}`
-      const response = await fetch(url)
-      const data = await response.json()
       
-      return NextResponse.json(data)
+      const fetchPromise = fetch(url).then(response => {
+        if (!response.ok) {
+          throw new Error(`Google API error: ${response.status}`)
+        }
+        return response.json()
+      })
+
+      try {
+        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+        return NextResponse.json(data)
+      } catch (error) {
+        console.error('Google Text Search API error:', error)
+        if (error instanceof Error && error.message === 'Request timeout') {
+          return NextResponse.json({ error: 'Google Text Search API timeout' }, { status: 504 })
+        }
+        return NextResponse.json({ error: 'Google Text Search API failed' }, { status: 502 })
+      }
     }
 
     if (action === 'google-geocode') {
@@ -76,9 +109,24 @@ export async function POST(request: NextRequest) {
       }
 
       const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${GOOGLE_PLACES_API_KEY}`
-      const response = await fetch(url)
-      const data = await response.json()
-      return NextResponse.json(data)
+      
+      const fetchPromise = fetch(url).then(response => {
+        if (!response.ok) {
+          throw new Error(`Google API error: ${response.status}`)
+        }
+        return response.json()
+      })
+
+      try {
+        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+        return NextResponse.json(data)
+      } catch (error) {
+        console.error('Google Geocode API error:', error)
+        if (error instanceof Error && error.message === 'Request timeout') {
+          return NextResponse.json({ error: 'Google Geocode API timeout' }, { status: 504 })
+        }
+        return NextResponse.json({ error: 'Google Geocode API failed' }, { status: 502 })
+      }
     }
 
     if (action === 'google-place-details') {
@@ -88,9 +136,24 @@ export async function POST(request: NextRequest) {
 
       const { placeId } = body
       const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=formatted_phone_number,website,opening_hours,reviews,photos,url&key=${GOOGLE_PLACES_API_KEY}`
-      const response = await fetch(url)
-      const data = await response.json()
-      return NextResponse.json(data)
+      
+      const fetchPromise = fetch(url).then(response => {
+        if (!response.ok) {
+          throw new Error(`Google API error: ${response.status}`)
+        }
+        return response.json()
+      })
+
+      try {
+        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+        return NextResponse.json(data)
+      } catch (error) {
+        console.error('Google Place Details API error:', error)
+        if (error instanceof Error && error.message === 'Request timeout') {
+          return NextResponse.json({ error: 'Google Place Details API timeout' }, { status: 504 })
+        }
+        return NextResponse.json({ error: 'Google Place Details API failed' }, { status: 502 })
+      }
     }
 
     if (action === 'foursquare') {
@@ -99,9 +162,24 @@ export async function POST(request: NextRequest) {
       }
 
       const url = `https://api.foursquare.com/v2/venues/search?ll=${lat},${lng}&radius=${radius}&query=${encodeURIComponent(query || '')}&client_id=${FOURSQUARE_CLIENT_ID}&client_secret=${FOURSQUARE_CLIENT_SECRET}&v=20231001`
-      const response = await fetch(url)
-      const data = await response.json()
-      return NextResponse.json(data)
+      
+      const fetchPromise = fetch(url).then(response => {
+        if (!response.ok) {
+          throw new Error(`Foursquare API error: ${response.status}`)
+        }
+        return response.json()
+      })
+
+      try {
+        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+        return NextResponse.json(data)
+      } catch (error) {
+        console.error('Foursquare API error:', error)
+        if (error instanceof Error && error.message === 'Request timeout') {
+          return NextResponse.json({ error: 'Foursquare API timeout' }, { status: 504 })
+        }
+        return NextResponse.json({ error: 'Foursquare API failed' }, { status: 502 })
+      }
     }
 
     
@@ -111,25 +189,33 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Missing overpass query' }, { status: 400 })
       }
 
-      const response = await fetch('https://overpass-api.de/api/interpreter', {
+      const fetchPromise = fetch('https://overpass-api.de/api/interpreter', {
         method: 'POST',
         body: `data=${encodeURIComponent(overpassQuery)}`,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'User-Agent': 'DateNightApp/1.0'
         }
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error(`Overpass API error: ${response.status}`)
+        }
+        return response.text()
       })
 
-      if (!response.ok) {
-        return NextResponse.json({ error: `Overpass API error: ${response.status}` }, { status: response.status })
-      }
-
-      const text = await response.text()
       try {
+        const text = await Promise.race([fetchPromise, timeoutPromise]) as string
         const data = JSON.parse(text)
         return NextResponse.json(data)
-      } catch {
-        return NextResponse.json({ error: 'Invalid JSON from Overpass' }, { status: 502 })
+      } catch (error) {
+        console.error('Overpass API error:', error)
+        if (error instanceof Error && error.message === 'Request timeout') {
+          return NextResponse.json({ error: 'Overpass API timeout' }, { status: 504 })
+        }
+        if (error instanceof SyntaxError) {
+          return NextResponse.json({ error: 'Invalid JSON from Overpass' }, { status: 502 })
+        }
+        return NextResponse.json({ error: 'Overpass API failed' }, { status: 502 })
       }
     }
 

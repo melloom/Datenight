@@ -464,7 +464,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
         <div className="flex flex-col gap-7 sm:gap-6 flex-1">
           {/* Location */}
           <section data-tutorial="location">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
               <MapPin className="w-3 h-3" />
               Location
             </label>
@@ -523,7 +523,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
 
           {/* Date Selection */}
           <section data-tutorial="date">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
               <CalendarDays className="w-3 h-3" />
               Date Night
             </label>
@@ -536,7 +536,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                 className="w-full bg-transparent text-foreground text-sm focus:outline-none"
               />
             </div>
-            <p className="mt-1.5 text-[10px] text-muted-foreground">
+            <p className="mt-1.5 text-xs text-muted-foreground">
               {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
             </p>
           </section>
@@ -544,7 +544,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           {/* Party Size + Time (side by side) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <section data-tutorial="party-size">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
                 <Users className="w-3 h-3" />
                 Party Size
               </label>
@@ -566,7 +566,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
             </section>
 
             <section data-tutorial="time">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
                 <Clock className="w-3 h-3" />
                 Time
               </label>
@@ -591,7 +591,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
 
           {/* Budget */}
           <section data-tutorial="budget">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
               <DollarSign className="w-3 h-3" />
               Budget
             </label>
@@ -608,7 +608,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                 >
                   <span className="text-lg leading-none">{opt.emoji}</span>
                   <span className={`text-xs font-bold ${budget === opt.value ? "text-primary" : ""}`}>{opt.value}</span>
-                  <span className="text-[9px] opacity-60">{opt.price}</span>
+                  <span className="text-[10px] opacity-60">{opt.price}</span>
                 </button>
               ))}
             </div>
@@ -616,7 +616,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
 
           {/* Vibes */}
           <section data-tutorial="vibes">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between mb-2.5">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between mb-2.5">
               <span className="flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3" />
                 Vibe
@@ -706,135 +706,154 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
             )}
           </section>
 
-          {/* Cuisine Preference */}
-          <section data-tutorial="cuisine">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
-              <Utensils className="w-3 h-3" />
-              Cuisine
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {CUISINE_OPTIONS.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => { setCuisine(c.id); setShowCustomCuisine(false) }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                    cuisine === c.id
-                      ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
-                      : "bg-card border-border text-muted-foreground hover:border-primary/30"
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
-              <button
-                onClick={() => { setCuisine("custom"); setShowCustomCuisine(true) }}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                  cuisine === "custom"
-                    ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
-                    : "bg-card border-border text-muted-foreground hover:border-primary/30"
-                }`}
-              >
-                <Plus className="w-3 h-3" />
-                Custom
-              </button>
-            </div>
-            {showCustomCuisine && (
-              <div className="mt-2">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={customCuisine}
-                    onChange={(e) => handleCustomInput('cuisine', e.target.value, setCustomCuisine)}
-                    className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
-                      inputErrors.cuisine ? 'border-destructive' : 'border-border'
-                    }`}
-                    placeholder="e.g. Korean BBQ, Peruvian, Sushi..."
-                    maxLength={50}
-                    autoFocus
-                  />
-                  <button
-                    onClick={() => { setShowCustomCuisine(false); setCuisine("any"); setCustomCuisine(""); setInputErrors(prev => ({ ...prev, cuisine: null })) }}
-                    className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                {inputErrors.cuisine && (
-                  <p className="mt-1 text-[10px] text-destructive flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {inputErrors.cuisine}
-                  </p>
+          {/* More Options — Cuisine + Activity */}
+          <Collapsible open={showMoreOptions} onOpenChange={setShowMoreOptions}>
+            <CollapsibleTrigger className="w-full flex items-center justify-between py-2.5 px-3 rounded-xl border border-dashed border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all">
+              <span className="flex items-center gap-1.5">
+                More Options
+                {(cuisine !== "any" || activity !== "none") && (
+                  <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold">
+                    {[
+                      cuisine !== "any" ? (cuisine === "custom" ? customCuisine : CUISINE_OPTIONS.find(c => c.id === cuisine)?.label) : null,
+                      activity !== "none" ? (activity === "custom" ? customActivity : ACTIVITY_OPTIONS.find(a => a.id === activity)?.label) : null,
+                    ].filter(Boolean).join(", ")}
+                  </span>
                 )}
-              </div>
-            )}
-          </section>
-
-          {/* Activity Preference */}
-          <section data-tutorial="activity">
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
-              <Music className="w-3 h-3" />
-              After Dinner
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {ACTIVITY_OPTIONS.map((a) => {
-                const Icon = a.icon
-                return (
+              </span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${showMoreOptions ? "rotate-180" : ""}`} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-6 mt-4">
+              {/* Cuisine Preference */}
+              <section data-tutorial="cuisine">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+                  <Utensils className="w-3 h-3" />
+                  Cuisine
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {CUISINE_OPTIONS.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => { setCuisine(c.id); setShowCustomCuisine(false) }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                        cuisine === c.id
+                          ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
+                          : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
                   <button
-                    key={a.id}
-                    onClick={() => { setActivity(a.id); setShowCustomActivity(false) }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                      activity === a.id
+                    onClick={() => { setCuisine("custom"); setShowCustomCuisine(true) }}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      cuisine === "custom"
                         ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
                         : "bg-card border-border text-muted-foreground hover:border-primary/30"
                     }`}
                   >
-                    <Icon className="w-3 h-3" />
-                    {a.label}
-                  </button>
-                )
-              })}
-              <button
-                onClick={() => { setActivity("custom"); setShowCustomActivity(true) }}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                  activity === "custom"
-                    ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
-                    : "bg-card border-border text-muted-foreground hover:border-primary/30"
-                }`}
-              >
-                <Plus className="w-3 h-3" />
-                Custom
-              </button>
-            </div>
-            {showCustomActivity && (
-              <div className="mt-2">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={customActivity}
-                    onChange={(e) => handleCustomInput('activity', e.target.value, setCustomActivity)}
-                    className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
-                      inputErrors.activity ? 'border-destructive' : 'border-border'
-                    }`}
-                    placeholder="e.g. Bowling, Comedy show, Karaoke..."
-                    maxLength={50}
-                    autoFocus
-                  />
-                  <button
-                    onClick={() => { setShowCustomActivity(false); setActivity("none"); setCustomActivity(""); setInputErrors(prev => ({ ...prev, activity: null })) }}
-                    className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
-                  >
-                    <X className="w-3.5 h-3.5" />
+                    <Plus className="w-3 h-3" />
+                    Custom
                   </button>
                 </div>
-                {inputErrors.activity && (
-                  <p className="mt-1 text-[10px] text-destructive flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {inputErrors.activity}
-                  </p>
+                {showCustomCuisine && (
+                  <div className="mt-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={customCuisine}
+                        onChange={(e) => handleCustomInput('cuisine', e.target.value, setCustomCuisine)}
+                        className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
+                          inputErrors.cuisine ? 'border-destructive' : 'border-border'
+                        }`}
+                        placeholder="e.g. Korean BBQ, Peruvian, Sushi..."
+                        maxLength={50}
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => { setShowCustomCuisine(false); setCuisine("any"); setCustomCuisine(""); setInputErrors(prev => ({ ...prev, cuisine: null })) }}
+                        className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    {inputErrors.cuisine && (
+                      <p className="mt-1 text-[10px] text-destructive flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {inputErrors.cuisine}
+                      </p>
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
-          </section>
+              </section>
+
+              {/* Activity Preference */}
+              <section data-tutorial="activity">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+                  <Music className="w-3 h-3" />
+                  After Dinner
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {ACTIVITY_OPTIONS.map((a) => {
+                    const Icon = a.icon
+                    return (
+                      <button
+                        key={a.id}
+                        onClick={() => { setActivity(a.id); setShowCustomActivity(false) }}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                          activity === a.id
+                            ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
+                            : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                        }`}
+                      >
+                        <Icon className="w-3 h-3" />
+                        {a.label}
+                      </button>
+                    )
+                  })}
+                  <button
+                    onClick={() => { setActivity("custom"); setShowCustomActivity(true) }}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      activity === "custom"
+                        ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
+                        : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                    }`}
+                  >
+                    <Plus className="w-3 h-3" />
+                    Custom
+                  </button>
+                </div>
+                {showCustomActivity && (
+                  <div className="mt-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={customActivity}
+                        onChange={(e) => handleCustomInput('activity', e.target.value, setCustomActivity)}
+                        className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
+                          inputErrors.activity ? 'border-destructive' : 'border-border'
+                        }`}
+                        placeholder="e.g. Bowling, Comedy show, Karaoke..."
+                        maxLength={50}
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => { setShowCustomActivity(false); setActivity("none"); setCustomActivity(""); setInputErrors(prev => ({ ...prev, activity: null })) }}
+                        className="p-2 rounded-xl bg-card border border-border text-muted-foreground hover:text-foreground transition-all"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    {inputErrors.activity && (
+                      <p className="mt-1 text-[10px] text-destructive flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {inputErrors.activity}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         {/* CTA */}

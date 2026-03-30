@@ -156,37 +156,50 @@ export async function getPreferences(userId: string): Promise<UserPreferences | 
 
 // --- Shared Itineraries ---
 
-export async function shareItinerary(userId: string, dateData: SavedDate): Promise<string> {
+export async function shareItinerary(userId: string, dateData: SavedDate, plannedDate: Date): Promise<string> {
   if (!rtdb) {
     throw new Error("Database not available")
   }
-  
+
   const sharedRef = push(ref(rtdb, 'shared'))
-  
+
+  // Expire 3 days after the planned date night
+  const expiresAt = new Date(plannedDate)
+  expiresAt.setDate(expiresAt.getDate() + 3)
+  expiresAt.setHours(23, 59, 59, 999)
+
   await set(sharedRef, {
     ownerId: userId,
     ...dateData,
+    plannedDate: plannedDate.toISOString(),
     createdAt: Date.now(),
-    expiresAt: Date.now() + (7 * 24 * 60 * 60 * 1000), // 7 days
+    expiresAt: expiresAt.getTime(),
   })
 
   return sharedRef.key!
 }
 
-export async function getSharedItinerary(shareId: string): Promise<SavedDate | null> {
+export interface SharedItinerary extends SavedDate {
+  ownerId: string
+  plannedDate: string
+  expiresAt: number
+  expired?: boolean
+}
+
+export async function getSharedItinerary(shareId: string): Promise<SharedItinerary | null> {
   if (!rtdb) {
     return null
   }
-  
+
   const snapshot = await get(ref(rtdb, `shared/${shareId}`))
   if (!snapshot.exists()) return null
 
   const data = snapshot.val()
-  
-  // Check expiration
+
+  // Check expiration — mark as expired but still return data
   if (data.expiresAt && Date.now() > data.expiresAt) {
     await remove(ref(rtdb, `shared/${shareId}`))
-    return null
+    return { ...data, expired: true }
   }
 
   return data
