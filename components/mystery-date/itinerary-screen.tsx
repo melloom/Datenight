@@ -90,6 +90,8 @@ interface Step {
   capacity?: number
   features: string[]
   vibe?: string
+  vibeScore?: number
+  vibeTags?: string[]
   aiEnhanced?: boolean
   aiInsights?: {
     bestFor: string[]
@@ -117,6 +119,22 @@ interface Step {
     source?: string
     lastUpdated?: string
   }
+  // Enhanced venue fields
+  editorialSummary?: string
+  photoCount?: number
+  photoScore?: number
+  reservable?: boolean
+  reservationLinks?: { url: string; platform: string }[]
+  wheelchairAccessible?: boolean
+  parkingAvailable?: boolean
+  outdoorSeating?: boolean
+  dietaryOptions?: string[]
+  crowdLevel?: 'quiet' | 'moderate' | 'busy' | 'packed'
+  bestTimes?: string[]
+  socialMedia?: { platform: string; url: string }[]
+  isOpenAtPlannedTime?: boolean
+  verifiedOpen?: boolean
+  seasonalFit?: number
 }
 
 // Calculate travel time between two coordinates
@@ -602,8 +620,66 @@ function StepCard({
                 </div>
               )}
 
-              {/* Reservation Badge */}
+              {/* Crowd Level & Best Times */}
+              {step.crowdLevel && (
+                <div className="flex items-center gap-2 text-xs">
+                  <Users className="w-3.5 h-3.5 text-primary/60" />
+                  <span className="text-muted-foreground">
+                    Expected: <span className="font-medium text-foreground capitalize">{step.crowdLevel}</span>
+                  </span>
+                  {step.bestTimes && step.bestTimes.length > 0 && (
+                    <span className="text-muted-foreground/70 text-[10px]">
+                      &middot; Best: {step.bestTimes[0]}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Dietary Options */}
+              {step.dietaryOptions && step.dietaryOptions.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {step.dietaryOptions.map((d, i) => (
+                    <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-green-500/10 text-green-700 dark:text-green-400 font-medium capitalize">
+                      {d}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Open Status */}
+              {step.verifiedOpen !== undefined && (
+                <div className="flex items-center gap-1.5 text-xs">
+                  <div className={`w-2 h-2 rounded-full ${step.verifiedOpen ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <span className={step.verifiedOpen ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                    {step.verifiedOpen ? 'Verified open at planned time' : 'May be closed at planned time'}
+                  </span>
+                </div>
+              )}
+
+              {/* Reservation Badge + Links */}
               {step.reservationRecommended && <ReservationBadge />}
+              {step.reservationLinks && step.reservationLinks.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {step.reservationLinks.filter(l => l.platform !== 'Google Maps').slice(0, 3).map((link, i) => (
+                    <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
+                      className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors">
+                      {link.platform}
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              {/* Social Media */}
+              {step.socialMedia && step.socialMedia.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {step.socialMedia.slice(0, 3).map((sm, i) => (
+                    <a key={i} href={sm.url.startsWith('http') ? sm.url : `https://${sm.url}`} target="_blank" rel="noopener noreferrer"
+                      className="text-[10px] px-2 py-0.5 rounded-md bg-muted/80 text-muted-foreground font-medium hover:text-foreground transition-colors">
+                      {sm.platform}
+                    </a>
+                  ))}
+                </div>
+              )}
 
               {/* Divider */}
               <div className="border-t border-border/60" />
@@ -639,6 +715,16 @@ function StepCard({
                     <a href={step.website} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors truncate">
                       Visit Website
                     </a>
+                  </div>
+                )}
+
+                {/* Accessibility */}
+                {(step.wheelchairAccessible || step.parkingAvailable) && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Info className="w-3.5 h-3.5 shrink-0 text-primary/60" />
+                    <span>
+                      {[step.wheelchairAccessible && 'Wheelchair accessible', step.parkingAvailable && 'Parking available'].filter(Boolean).join(' · ')}
+                    </span>
                   </div>
                 )}
               </div>
@@ -1449,7 +1535,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         reviewCount: venue.reviewCount,
         priceRange: venue.priceRange,
         tag: venue.category === "drinks" ? "Cocktails" : venue.category === "dinner" ? "Dining" : "Experience",
-        description: venue.description,
+        description: venue.editorialSummary || venue.description,
         highlights: venue.highlights,
         address: venue.address,
         phone: venue.phone || "Phone not available",
@@ -1458,14 +1544,33 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         website: venue.website,
         hours: venue.hours,
         vibe: venue.vibe,
+        vibeScore: venue.vibeScore,
+        vibeTags: venue.vibeTags,
         features: venue.features || [],
         tags: venue.tags || [],
         coordinates: venue.coordinates || { lat: 0, lng: 0 },
         pricing: venue.pricing,
         reservationRecommended:
+          venue.reservable ||
           venue.category === "dinner" && (venue.priceRange === "$$$" || venue.priceRange === "$$$$") ||
           venue.category === "drinks" && venue.priceRange === "$$$$" ||
           false,
+        // Enhanced venue fields
+        editorialSummary: venue.editorialSummary,
+        photoCount: venue.photoCount,
+        photoScore: venue.photoScore,
+        reservable: venue.reservable,
+        reservationLinks: venue.reservationLinks,
+        wheelchairAccessible: venue.wheelchairAccessible,
+        parkingAvailable: venue.parkingAvailable,
+        outdoorSeating: venue.outdoorSeating,
+        dietaryOptions: venue.dietaryOptions,
+        crowdLevel: venue.crowdLevel,
+        bestTimes: venue.bestTimes,
+        socialMedia: venue.socialMedia,
+        isOpenAtPlannedTime: venue.isOpenAtPlannedTime,
+        verifiedOpen: venue.verifiedOpen,
+        seasonalFit: venue.seasonalFit,
       }
       return step
     })

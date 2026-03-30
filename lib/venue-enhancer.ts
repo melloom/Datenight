@@ -198,7 +198,8 @@ export function generateReservationLinks(venue: Venue): { url: string; platform:
   // Only suggest reservations for dinner/drinks venues
   if (venue.category === 'dinner' || venue.category === 'drinks') {
     links.push({ url: `https://www.opentable.com/s?term=${encodedName}&covers=2`, platform: 'OpenTable' })
-    links.push({ url: `https://resy.com/cities/ny?query=${encodedName}`, platform: 'Resy' })
+    const citySlug = (venue.address || '').split(',').map(p => p.trim().toLowerCase().replace(/\s+/g, '-')).find(p => p.length > 2 && !/^\d/.test(p)) || 'ny'
+    links.push({ url: `https://resy.com/cities/${citySlug}?query=${encodedName}`, platform: 'Resy' })
     links.push({ url: `https://www.yelp.com/search?find_desc=${encodedName}&find_loc=${encodedAddr}`, platform: 'Yelp' })
   }
 
@@ -387,6 +388,7 @@ export function enhanceVenueWithScrapedData(venue: Venue, details: any, criteria
   if (details.serves_beer && !enhancedFeatures.includes('Serves Beer')) enhancedFeatures.push('Serves Beer')
   if (details.serves_wine && !enhancedFeatures.includes('Serves Wine')) enhancedFeatures.push('Serves Wine')
   if (details.serves_vegetarian_food && !enhancedFeatures.includes('Vegetarian Options')) enhancedFeatures.push('Vegetarian Options')
+  if ((details.outdoor_seating || venue.outdoorSeating) && !enhancedFeatures.includes('Outdoor Seating')) enhancedFeatures.push('Outdoor Seating')
   if (wheelchairAccessible && !enhancedFeatures.includes('Wheelchair Accessible')) enhancedFeatures.push('Wheelchair Accessible')
   if (parkingAvailable && !enhancedFeatures.includes('Parking Available')) enhancedFeatures.push('Parking Available')
 
@@ -405,7 +407,10 @@ export function enhanceVenueWithScrapedData(venue: Venue, details: any, criteria
     delivery: details.delivery,
     wheelchairAccessible,
     parkingAvailable,
-    outdoorSeating: venue.outdoorSeating || enhancedFeatures.includes('Outdoor Seating'),
+    outdoorSeating: details.outdoor_seating || venue.outdoorSeating || enhancedFeatures.includes('Outdoor Seating'),
+    servesBreakfast: details.serves_breakfast,
+    servesLunch: details.serves_lunch,
+    servesDinner: details.serves_dinner,
     servesVegetarian: details.serves_vegetarian_food,
     servesBeer: details.serves_beer,
     servesWine: details.serves_wine,

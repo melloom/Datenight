@@ -49,6 +49,9 @@ export interface Venue {
   wheelchairAccessible?: boolean
   parkingAvailable?: boolean
   outdoorSeating?: boolean
+  servesBreakfast?: boolean
+  servesLunch?: boolean
+  servesDinner?: boolean
   servesVegetarian?: boolean
   servesBeer?: boolean
   servesWine?: boolean
