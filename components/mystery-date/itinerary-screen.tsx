@@ -1179,21 +1179,18 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   }
 
   const handleSameDaySelect = async (option: SameDayOption) => {
-    
     try {
       setIsGeneratingAlternative(true)
-      
-      // Generate real search criteria for same-day options
+
       const sameDayCriteria = generateCriteriaFromSameDayOption(option, searchCriteria)
-      
+
       if (sameDayCriteria) {
         setShowLateNightAlert(false)
-        
-        // Store the new criteria for setup screen
         sessionStorage.setItem('alternativeSearchCriteria', JSON.stringify(sameDayCriteria))
-        
-        // Navigate back to setup for a real search
         onReset()
+      } else {
+        // Option doesn't require a new search (e.g. streaming) — just dismiss the alert
+        setShowLateNightAlert(false)
       }
     } catch (error) {
       alert('Sorry, something went wrong creating that plan. Please try again.')
@@ -1209,88 +1206,81 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   // Helper functions for alternative suggestions
   const generateCriteriaFromSuggestion = (suggestion: AlternativeSuggestion, originalCriteria: any): any => {
     if (!originalCriteria) return null
-    
+
     const newCriteria = { ...originalCriteria }
-    
-    // Adjust criteria based on suggestion type
+
     switch (suggestion.id) {
       case 'immediate-delivery':
-        newCriteria.time = 'early' // Earlier time for delivery
-        newCriteria.activity = 'delivery'
-        newCriteria.cuisine = 'delivery-friendly' // Favor delivery-friendly cuisines
+        // Search for restaurants that do takeout/delivery — keep user's cuisine preference
+        newCriteria.time = 'late'
+        newCriteria.vibes = ['chill', 'romantic']
+        newCriteria.customRequests = 'restaurants with takeout or delivery available late night'
         break
       case 'immediate-late-night':
-        newCriteria.time = 'late' // Late night venues
-        newCriteria.vibes = ['late-night', 'casual', 'spontaneous']
+        newCriteria.time = 'late'
+        newCriteria.vibes = ['chill', 'adventurous']
+        newCriteria.customRequests = 'venues open late night, bars and lounges open past 10pm'
         break
-      case 'tomorrow-planned':
-        // Set plannedDate to tomorrow at midnight local time
+      case 'tomorrow-planned': {
         const tomorrow = new Date()
         tomorrow.setDate(tomorrow.getDate() + 1)
         newCriteria.plannedDate = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate(), 0, 0, 0, 0)
         newCriteria.dayOfWeek = newCriteria.plannedDate.toLocaleDateString('en-US', { weekday: 'long' })
-        newCriteria.time = 'prime' // Prime time for tomorrow
-        newCriteria.vibes = ['romantic', 'special-occasion']
+        newCriteria.time = 'prime'
         break
-      case 'tomorrow-lunch':
-        // Set plannedDate to tomorrow at midnight local time
+      }
+      case 'tomorrow-lunch': {
         const tomorrowLunch = new Date()
         tomorrowLunch.setDate(tomorrowLunch.getDate() + 1)
         newCriteria.plannedDate = new Date(tomorrowLunch.getFullYear(), tomorrowLunch.getMonth(), tomorrowLunch.getDate(), 0, 0, 0, 0)
         newCriteria.dayOfWeek = newCriteria.plannedDate.toLocaleDateString('en-US', { weekday: 'long' })
-        newCriteria.time = 'early' // Lunch time
-        newCriteria.vibes = ['casual', 'daytime', 'relaxed']
+        newCriteria.time = 'early'
         break
-      case 'weekend-experience':
-        // Set plannedDate to next weekend (Saturday)
+      }
+      case 'weekend-extended': {
         const nextWeekend = new Date()
         const daysUntilSaturday = (6 - nextWeekend.getDay() + 7) % 7 || 7
         nextWeekend.setDate(nextWeekend.getDate() + daysUntilSaturday)
         newCriteria.plannedDate = new Date(nextWeekend.getFullYear(), nextWeekend.getMonth(), nextWeekend.getDate(), 0, 0, 0, 0)
         newCriteria.dayOfWeek = newCriteria.plannedDate.toLocaleDateString('en-US', { weekday: 'long' })
-        newCriteria.time = 'prime' // Weekend prime time
-        newCriteria.partySize = Math.max(newCriteria.partySize, 2) // Ensure minimum party size
-        newCriteria.vibes = ['weekend', 'special', 'memorable']
+        newCriteria.time = 'prime'
         break
+      }
       default:
         break
     }
-    
+
     return newCriteria
   }
 
   const generateCriteriaFromSameDayOption = (option: SameDayOption, originalCriteria: any): any => {
     if (!originalCriteria) return null
-    
+
     const newCriteria = { ...originalCriteria }
-    
-    // Adjust criteria based on same-day option type
+
     switch (option.type) {
       case 'delivery':
-        newCriteria.time = 'early' // Early time for delivery availability
-        newCriteria.activity = 'delivery'
-        newCriteria.cuisine = 'italian,american,asian' // Delivery-friendly cuisines
-        newCriteria.vibes = ['cozy', 'romantic', 'comfortable']
+        // Search for real restaurants with takeout in the area
+        newCriteria.time = 'late'
+        newCriteria.customRequests = 'restaurants with delivery or takeout available tonight'
         break
       case 'streaming':
-        newCriteria.time = 'early' // Home-based activity
-        newCriteria.activity = 'movie-night'
-        newCriteria.vibes = ['cozy', 'relaxed', 'entertaining']
-        break
+        // Not a venue search — just dismiss the alert and keep current plan
+        return null
       case 'outdoor':
-        newCriteria.time = 'early' // Before sunset
+        newCriteria.time = 'early'
         newCriteria.activity = 'outdoor'
-        newCriteria.vibes = ['adventurous', 'romantic', 'scenic']
+        newCriteria.vibes = ['adventurous', 'romantic']
         break
       case 'quick_venue':
-        newCriteria.time = 'late' // Late night options
-        newCriteria.activity = 'dessert' // Focus on dessert spots
-        newCriteria.vibes = ['casual', 'sweet', 'late-night']
+        newCriteria.time = 'late'
+        newCriteria.cuisine = 'any'
+        newCriteria.customRequests = 'dessert bars, ice cream shops, late night cafes open now'
         break
       default:
         break
     }
-    
+
     return newCriteria
   }
 

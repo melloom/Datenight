@@ -182,7 +182,9 @@ class VenueSearcher {
   private requestQueue: Map<string, number[]> = new Map()
   private lastRequestTime: Map<string, number> = new Map()
   private geocodeCache: Map<string, { lat: number; lng: number; timestamp: number }> = new Map()
+  private pricingCache: Map<string, { pricing: VenuePricing; timestamp: number }> = new Map()
   private readonly GEOCODE_CACHE_TTL = 30 * 60 * 1000 // 30 minutes
+  private readonly PRICING_CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
   async searchVenues(criteria: SearchCriteria): Promise<SearchResult> {
     const startTime = Date.now()
@@ -301,9 +303,17 @@ class VenueSearcher {
     // Enhance venues for special occasions
     const occasionEnhancedVenues = this.enhanceVenuesForOccasion(rankedVenues, criteria)
 
-    // Skip pricing enhancement during search to avoid timeout - pricing is fetched
-    // on the shared page via the batch fetch-pricing API instead
-    const pricingEnhancedVenues = occasionEnhancedVenues
+    // Scrape real pricing in parallel with tight timeout — falls back to estimates
+    let pricingEnhancedVenues = occasionEnhancedVenues
+    try {
+      const pricingPromise = this.scrapePricingForVenues(occasionEnhancedVenues)
+      const pricingTimeout = new Promise<Venue[]>(resolve =>
+        setTimeout(() => resolve(occasionEnhancedVenues), 5000) // 5s max
+      )
+      pricingEnhancedVenues = await Promise.race([pricingPromise, pricingTimeout])
+    } catch {
+      pricingEnhancedVenues = occasionEnhancedVenues
+    }
 
     // Optimize date plan with travel time
     const optimizedPlan = this.optimizeDatePlan(pricingEnhancedVenues, criteria)
@@ -1740,6 +1750,161 @@ class VenueSearcher {
   private convertGooglePriceLevel(priceLevel?: number, fallbackBudget?: string): string {
     const levels = ['$', '$$', '$$$', '$$$$']
     return priceLevel ? levels[priceLevel - 1] || fallbackBudget || '$$' : fallbackBudget || '$$'
+  }
+
+  // Scrape real pricing for all venues in parallel — fast with cache + fallback
+  private async scrapePricingForVenues(venues: Venue[]): Promise<Venue[]> {
+    const now = Date.now()
+
+    // Scrape each venue's pricing in parallel with individual 3s timeout
+    const pricingPromises = venues.map(async (venue): Promise<Venue> => {
+      try {
+        // Check cache first
+        const cached = this.pricingCache.get(venue.id)
+        if (cached && (now - cached.timestamp) < this.PRICING_CACHE_TTL) {
+          return { ...venue, pricing: cached.pricing }
+        }
+
+        // Scrape pricing with tight per-venue timeout
+        const scrapePromise = this.scrapeVenuePricing(venue)
+        const timeout = new Promise<VenuePricing>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 3000)
+        )
+        const pricing = await Promise.race([scrapePromise, timeout])
+
+        // Cache the result
+        this.pricingCache.set(venue.id, { pricing, timestamp: now })
+
+        return { ...venue, pricing }
+      } catch {
+        // Fallback: build estimate from priceRange and category
+        const fallback = this.buildEstimatePricing(venue)
+        return { ...venue, pricing: fallback }
+      }
+    })
+
+    return Promise.all(pricingPromises)
+  }
+
+  // Scrape real pricing from Google Place Details (reviews + price_level)
+  private async scrapeVenuePricing(venue: Venue): Promise<VenuePricing> {
+    if (venue.id.startsWith('google-')) {
+      const placeId = venue.id.replace('google-', '')
+      const details = await this.fetchGooglePlaceDetails(placeId)
+
+      const priceLevel = details.price_level || 0
+      const reviews = details.reviews || []
+
+      // Extract real dollar amounts from reviews
+      const dollarAmounts = this.extractDollarAmounts(reviews)
+      const avgSpend = dollarAmounts.length > 0
+        ? Math.round(dollarAmounts.reduce((a: number, b: number) => a + b, 0) / dollarAmounts.length)
+        : 0
+
+      // Build pricing from scraped data
+      return this.buildScrapedPricing(venue.category, priceLevel, avgSpend, reviews)
+    }
+
+    // Non-Google venues: use estimate
+    return this.buildEstimatePricing(venue)
+  }
+
+  // Extract real dollar amounts mentioned in reviews ($15, $25, etc.)
+  private extractDollarAmounts(reviews: any[]): number[] {
+    const amounts: number[] = []
+    for (const review of reviews) {
+      const text = review.text || ''
+      // Match $XX or $XX.XX patterns
+      const matches = text.match(/\$(\d+(?:\.\d{2})?)/g)
+      if (matches) {
+        for (const m of matches) {
+          const val = parseFloat(m.replace('$', ''))
+          // Filter unrealistic amounts (e.g. $1000 tips, $1 items)
+          if (val >= 5 && val <= 500) amounts.push(val)
+        }
+      }
+    }
+    return amounts
+  }
+
+  // Build VenuePricing from scraped Google data
+  private buildScrapedPricing(
+    category: string,
+    priceLevel: number,
+    avgReviewSpend: number,
+    reviews: any[]
+  ): VenuePricing {
+    // Base multiplier from Google price_level (0-4)
+    const mult = [0.6, 0.8, 1.0, 1.5, 2.5][priceLevel] || 1.0
+
+    // Use real review spend if available, otherwise estimate from price_level
+    const hasRealData = avgReviewSpend > 0
+    const source = hasRealData ? 'scraped' : 'estimate'
+
+    if (category === 'dinner') {
+      const food = hasRealData ? avgReviewSpend : Math.round(22 * mult)
+      const drinks = hasRealData ? Math.round(avgReviewSpend * 0.4) : Math.round(10 * mult)
+      return { food, drinks, tickets: undefined, activities: undefined, packages: [], source, lastUpdated: new Date().toISOString() }
+    }
+
+    if (category === 'drinks') {
+      const drinks = hasRealData ? avgReviewSpend : Math.round(12 * mult)
+      const food = hasRealData ? Math.round(avgReviewSpend * 0.7) : Math.round(8 * mult)
+      return { food, drinks, tickets: undefined, activities: undefined, packages: [], source, lastUpdated: new Date().toISOString() }
+    }
+
+    // Activity venues
+    const tickets = hasRealData ? avgReviewSpend : Math.round(20 * mult)
+    const food = Math.round((hasRealData ? avgReviewSpend : 15) * 0.5)
+    const drinks = Math.round((hasRealData ? avgReviewSpend : 10) * 0.4)
+    const activities = hasRealData ? Math.round(avgReviewSpend * 0.6) : Math.round(15 * mult)
+
+    // Extract packages from reviews if mentioned
+    const packages = this.extractPackagesFromReviews(reviews)
+
+    return { tickets, food, drinks, activities, packages, source, lastUpdated: new Date().toISOString() }
+  }
+
+  // Build estimate-only pricing when scraping fails
+  private buildEstimatePricing(venue: Venue): VenuePricing {
+    const multipliers: Record<string, number> = { '$': 0.7, '$$': 1.0, '$$$': 1.8, '$$$$': 3.0 }
+    const mult = multipliers[venue.priceRange] || 1.0
+
+    if (venue.category === 'dinner') {
+      return { food: Math.round(25 * mult), drinks: Math.round(10 * mult), tickets: undefined, activities: undefined, packages: [], source: 'estimate', lastUpdated: new Date().toISOString() }
+    }
+    if (venue.category === 'drinks') {
+      return { food: Math.round(10 * mult), drinks: Math.round(12 * mult), tickets: undefined, activities: undefined, packages: [], source: 'estimate', lastUpdated: new Date().toISOString() }
+    }
+    return { tickets: Math.round(20 * mult), food: Math.round(8 * mult), drinks: Math.round(6 * mult), activities: Math.round(15 * mult), packages: [], source: 'estimate', lastUpdated: new Date().toISOString() }
+  }
+
+  // Extract package deals from review text
+  private extractPackagesFromReviews(reviews: any[]): PricingPackage[] {
+    const packages: PricingPackage[] = []
+    const seen = new Set<string>()
+
+    for (const review of reviews) {
+      const text = (review.text || '').toLowerCase()
+
+      // Detect common package patterns
+      if ((text.includes('package') || text.includes('deal') || text.includes('special')) && text.match(/\$\d+/)) {
+        const priceMatch = text.match(/\$(\d+)/)
+        if (priceMatch) {
+          const price = parseInt(priceMatch[1])
+          if (price >= 10 && price <= 300 && !seen.has(String(price))) {
+            seen.add(String(price))
+            packages.push({
+              name: text.includes('group') ? 'Group Package' : text.includes('couple') ? 'Couples Package' : 'Special Package',
+              price,
+              includes: ['See venue for details']
+            })
+          }
+        }
+      }
+    }
+
+    return packages.slice(0, 3) // Max 3 packages
   }
 
   private async fetchRealPricing(venue: Venue): Promise<string> {

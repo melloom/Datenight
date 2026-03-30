@@ -261,7 +261,7 @@ Provide JSON:
     if (action === 'fetch-pricing') {
       const { venues } = body
 
-      // Generate estimate-based pricing from venue priceRange when AI is unavailable
+      // Generate estimate-based pricing from venue priceRange
       const generateEstimatePricing = (v: any) => {
         const multipliers: Record<string, number> = { '$': 0.7, '$$': 1.0, '$$$': 1.8, '$$$$': 3.0 }
         const mult = multipliers[v.priceRange] || 1.0
@@ -274,51 +274,111 @@ Provide JSON:
         }
       }
 
-      if (!model) {
-        return NextResponse.json({ pricing: venues.map((v: any) => generateEstimatePricing(v)) })
+      // Step 1: Try scraping real pricing from Google Place Details in parallel
+      const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || ''
+      const scrapedPricing: (any | null)[] = await Promise.all(
+        venues.map(async (v: any) => {
+          // If venue already has scraped pricing, return it
+          if (v.pricing?.source === 'scraped') return v.pricing
+
+          // Try Google Place Details for real pricing data
+          if (v.placeId || (v.id && String(v.id).startsWith('google-'))) {
+            const placeId = v.placeId || String(v.id).replace('google-', '')
+            try {
+              const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=price_level,reviews&key=${GOOGLE_API_KEY}`
+              const controller = new AbortController()
+              const timeoutId = setTimeout(() => controller.abort(), 3000) // 3s per venue
+              const res = await fetch(detailsUrl, { signal: controller.signal })
+              clearTimeout(timeoutId)
+
+              if (res.ok) {
+                const data = await res.json()
+                const details = data.result || {}
+                const priceLevel = details.price_level || 0
+                const reviews = details.reviews || []
+
+                // Extract real dollar amounts from reviews
+                const amounts: number[] = []
+                for (const review of reviews) {
+                  const matches = (review.text || '').match(/\$(\d+(?:\.\d{2})?)/g)
+                  if (matches) {
+                    for (const m of matches) {
+                      const val = parseFloat(m.replace('$', ''))
+                      if (val >= 5 && val <= 500) amounts.push(val)
+                    }
+                  }
+                }
+                const avgSpend = amounts.length > 0
+                  ? Math.round(amounts.reduce((a: number, b: number) => a + b, 0) / amounts.length)
+                  : 0
+                const hasReal = avgSpend > 0
+                const mult = [0.6, 0.8, 1.0, 1.5, 2.5][priceLevel] || 1.0
+
+                if (v.category === 'dinner') {
+                  return { food: hasReal ? avgSpend : Math.round(22 * mult), drinks: hasReal ? Math.round(avgSpend * 0.4) : Math.round(10 * mult), tickets: null, activities: null, packages: [], source: hasReal ? 'scraped' : 'estimate' }
+                } else if (v.category === 'drinks') {
+                  return { drinks: hasReal ? avgSpend : Math.round(12 * mult), food: hasReal ? Math.round(avgSpend * 0.7) : Math.round(8 * mult), tickets: null, activities: null, packages: [], source: hasReal ? 'scraped' : 'estimate' }
+                } else {
+                  return { tickets: hasReal ? avgSpend : Math.round(20 * mult), food: Math.round((hasReal ? avgSpend : 15) * 0.5), drinks: Math.round((hasReal ? avgSpend : 10) * 0.4), activities: hasReal ? Math.round(avgSpend * 0.6) : Math.round(15 * mult), packages: [], source: hasReal ? 'scraped' : 'estimate' }
+                }
+              }
+            } catch { /* scrape failed, will try AI or estimate */ }
+          }
+          return null // Scraping didn't work for this venue
+        })
+      )
+
+      // Step 2: For venues that weren't scraped, try AI enhancement or use estimates
+      const finalPricing = scrapedPricing.map((scraped, i) => {
+        if (scraped) return scraped
+        return null // Will be filled by AI or estimate below
+      })
+
+      // Check if all venues have pricing already
+      const missingIndices = finalPricing.map((p, i) => p ? -1 : i).filter(i => i >= 0)
+
+      if (missingIndices.length === 0) {
+        return NextResponse.json({ pricing: finalPricing })
       }
 
-      const venueDescriptions = venues.map((v: any, i: number) =>
-        `${i + 1}. "${v.name}" (${v.category})${v.address ? ` at ${v.address}` : ''}${v.priceRange ? ` - Price range: ${v.priceRange}` : ''}${v.description ? ` - ${v.description}` : ''}`
-      ).join('\n')
+      // Step 3: Use AI for missing venues if available
+      if (model && missingIndices.length > 0) {
+        const missingVenues = missingIndices.map(i => venues[i])
+        const venueDescriptions = missingVenues.map((v: any, idx: number) =>
+          `${idx + 1}. "${v.name}" (${v.category})${v.address ? ` at ${v.address}` : ''}${v.priceRange ? ` - Price range: ${v.priceRange}` : ''}`
+        ).join('\n')
 
-      const prompt = `Extract accurate pricing information for each of these venues. Consider the venue type and location for realistic local pricing.
+        const prompt = `Estimate realistic per-person pricing for these venues in USD:
 
-Pricing guidance by category:
-- Movie theaters: ticket prices ($10-18), concession food ($8-15), drinks ($5-8)
-- Bowling alleys: lane rental per person ($5-12), shoe rental ($3-5), food ($8-15), drinks ($5-10)
-- Escape rooms: per person pricing ($25-40), group packages
-- Restaurants: typical entree prices ($12-50+), drink prices ($8-15), appetizers ($8-18)
-- Bars/Lounges: cocktail prices ($10-18), beer ($6-10), appetizers ($8-16)
-- Activities (general): per person activity cost ($15-50), food ($8-15), drinks ($5-12)
-
-Venues:
 ${venueDescriptions}
 
-Return a JSON array with one pricing object per venue (in the same order):
-[
-  {
-    "tickets": number or null,
-    "food": number or null,
-    "drinks": number or null,
-    "activities": number or null,
-    "packages": [{"name": "package name", "price": number, "includes": ["item1"]}] or [],
-    "source": "AI estimation based on venue type and location"
-  }
-]
+Return JSON array (same order):
+[{"tickets": number|null, "food": number|null, "drinks": number|null, "activities": number|null, "packages": [], "source": "AI estimate"}]`
 
-Be realistic and specific to each venue's type and location. All prices are per-person in USD.`
-
-      try {
-        const result = await model.generateContent(prompt)
-        const text = result.response.text()
-        const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
-        const pricing = JSON.parse(cleaned)
-        return NextResponse.json({ pricing: Array.isArray(pricing) ? pricing : venues.map((v: any) => generateEstimatePricing(v)) })
-      } catch (err) {
-        console.error('[fetch-pricing] Gemini error:', err)
-        return NextResponse.json({ pricing: venues.map((v: any) => generateEstimatePricing(v)) })
+        try {
+          const result = await model.generateContent(prompt)
+          const text = result.response.text()
+          const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
+          const aiPricing = JSON.parse(cleaned)
+          if (Array.isArray(aiPricing)) {
+            missingIndices.forEach((origIdx, aiIdx) => {
+              finalPricing[origIdx] = aiPricing[aiIdx] || generateEstimatePricing(venues[origIdx])
+            })
+          }
+        } catch {
+          // AI failed — fill with estimates
+          missingIndices.forEach(idx => {
+            finalPricing[idx] = generateEstimatePricing(venues[idx])
+          })
+        }
+      } else {
+        // No AI — fill remaining with estimates
+        missingIndices.forEach(idx => {
+          finalPricing[idx] = generateEstimatePricing(venues[idx])
+        })
       }
+
+      return NextResponse.json({ pricing: finalPricing })
     }
 
     if (action === 'generate-venues') {
