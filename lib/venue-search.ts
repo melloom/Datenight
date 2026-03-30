@@ -595,7 +595,8 @@ class VenueSearcher {
     const priceLevels: Record<string, number> = { '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 }
     const venueLevel = priceLevels[venue.priceRange] || 2
     const budgetLevel = priceLevels[budget] || 2
-    return venueLevel <= budgetLevel + 1 // Allow one level above budget for flexibility
+    // Allow venues at or below the user's budget level (exact match or cheaper)
+    return venueLevel <= budgetLevel
   }
 
   private matchesVibe(venue: Venue, vibes: string[]): boolean {
@@ -1047,7 +1048,7 @@ class VenueSearcher {
       category: this.categorizeFoursquarePlace(place),
       rating: place.rating || 4.0,
       reviewCount: place.stats?.total_ratings || 100,
-      priceRange: this.convertFoursquarePrice(place.price),
+      priceRange: this.convertFoursquarePrice(place.price, criteria.budget),
       address: this.buildFoursquareAddress(place.location) || 'Address not available',
       phone: place.tel,
       website: place.website,
@@ -1078,10 +1079,10 @@ class VenueSearcher {
     return 'activity'
   }
 
-  private convertFoursquarePrice(price?: number): string {
+  private convertFoursquarePrice(price?: number, fallbackBudget?: string): string {
     const levels = ['$', '$$', '$$$', '$$$$']
-    if (!price || price < 1 || price > 4) return '$$'
-    return levels[price - 1] || '$$'
+    if (!price || price < 1 || price > 4) return fallbackBudget || '$$'
+    return levels[price - 1] || fallbackBudget || '$$'
   }
 
 
@@ -1533,7 +1534,7 @@ class VenueSearcher {
       category: this.categorizeGooglePlace(place),
       rating: place.rating || 4.0,
       reviewCount: place.user_ratings_total || 100,
-      priceRange: this.convertGooglePriceLevel(place.price_level),
+      priceRange: this.convertGooglePriceLevel(place.price_level, criteria.budget),
       address: this.buildGoogleAddress(place) || 'Address not available',
       phone: place.formatted_phone_number,
       website: place.website,
@@ -1568,7 +1569,7 @@ class VenueSearcher {
           hours: detailedInfo.opening_hours?.weekday_text?.join(', ') || venue.hours,
           rating: detailedInfo.rating || venue.rating,
           reviewCount: detailedInfo.user_ratings_total || venue.reviewCount,
-          priceRange: this.convertGooglePriceLevel(detailedInfo.price_level) || venue.priceRange,
+          priceRange: this.convertGooglePriceLevel(detailedInfo.price_level, venue.priceRange) || venue.priceRange,
           features: this.extractDetailedFeatures(detailedInfo),
           description: this.generateDetailedDescription(detailedInfo)
         }
@@ -1736,9 +1737,9 @@ class VenueSearcher {
     return 'activity'
   }
 
-  private convertGooglePriceLevel(priceLevel?: number): string {
+  private convertGooglePriceLevel(priceLevel?: number, fallbackBudget?: string): string {
     const levels = ['$', '$$', '$$$', '$$$$']
-    return priceLevel ? levels[priceLevel - 1] || '$$' : '$$'
+    return priceLevel ? levels[priceLevel - 1] || fallbackBudget || '$$' : fallbackBudget || '$$'
   }
 
   private async fetchRealPricing(venue: Venue): Promise<string> {
@@ -2433,7 +2434,7 @@ out count;
   private determinePriceRange(tags: any, userBudget: string): string {
     // Analyze venue characteristics to determine realistic price range
     let priceScore = 0
-    
+
     // Cuisine type influences price
     if (tags.cuisine) {
       const cuisine = tags.cuisine.toLowerCase()
@@ -2441,13 +2442,13 @@ out count;
       else if (cuisine.includes('italian') || cuisine.includes('french') || cuisine.includes('japanese')) priceScore += 2
       else if (cuisine.includes('fast_food') || cuisine.includes('casual')) priceScore -= 1
     }
-    
+
     // Venue type influences price
     if (tags.amenity === 'restaurant') {
       if (tags.name?.toLowerCase().includes('bistro') || tags.name?.toLowerCase().includes('café')) priceScore += 1
       if (tags.name?.toLowerCase().includes('grill') || tags.name?.toLowerCase().includes('house')) priceScore += 2
     }
-    
+
     // Features indicate price level
     if (tags.reservation || tags.wifi) priceScore += 1
     if (tags.outdoor_seating) priceScore += 1
@@ -2455,12 +2456,22 @@ out count;
       const stars = parseInt(tags.stars.toString())
       priceScore += stars - 1
     }
-    
+
     // Map score to price range
-    if (priceScore >= 4) return '$$$$'
-    if (priceScore >= 2) return '$$$'
-    if (priceScore >= 0) return '$$'
-    return '$'
+    let estimated: string
+    if (priceScore >= 4) estimated = '$$$$'
+    else if (priceScore >= 2) estimated = '$$$'
+    else if (priceScore >= 0) estimated = '$$'
+    else estimated = '$'
+
+    // Cap at user's budget — don't assign a higher price range than what the user selected
+    const priceLevels: Record<string, number> = { '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 }
+    const estimatedLevel = priceLevels[estimated] || 2
+    const budgetLevel = priceLevels[userBudget] || 2
+    if (estimatedLevel > budgetLevel) {
+      return userBudget
+    }
+    return estimated
   }
 
   private buildAddress(tags: any): string {

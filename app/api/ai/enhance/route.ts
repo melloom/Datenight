@@ -260,8 +260,22 @@ Provide JSON:
 
     if (action === 'fetch-pricing') {
       const { venues } = body
+
+      // Generate estimate-based pricing from venue priceRange when AI is unavailable
+      const generateEstimatePricing = (v: any) => {
+        const multipliers: Record<string, number> = { '$': 0.7, '$$': 1.0, '$$$': 1.8, '$$$$': 3.0 }
+        const mult = multipliers[v.priceRange] || 1.0
+        if (v.category === 'dinner') {
+          return { tickets: null, food: Math.round(25 * mult), drinks: Math.round(10 * mult), activities: null, packages: [], source: 'estimate' }
+        } else if (v.category === 'drinks') {
+          return { tickets: null, food: Math.round(10 * mult), drinks: Math.round(12 * mult), activities: null, packages: [], source: 'estimate' }
+        } else {
+          return { tickets: Math.round(20 * mult), food: Math.round(8 * mult), drinks: Math.round(6 * mult), activities: Math.round(15 * mult), packages: [], source: 'estimate' }
+        }
+      }
+
       if (!model) {
-        return NextResponse.json({ pricing: venues.map(() => null) })
+        return NextResponse.json({ pricing: venues.map((v: any) => generateEstimatePricing(v)) })
       }
 
       const venueDescriptions = venues.map((v: any, i: number) =>
@@ -300,10 +314,10 @@ Be realistic and specific to each venue's type and location. All prices are per-
         const text = result.response.text()
         const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
         const pricing = JSON.parse(cleaned)
-        return NextResponse.json({ pricing: Array.isArray(pricing) ? pricing : venues.map(() => null) })
+        return NextResponse.json({ pricing: Array.isArray(pricing) ? pricing : venues.map((v: any) => generateEstimatePricing(v)) })
       } catch (err) {
         console.error('[fetch-pricing] Gemini error:', err)
-        return NextResponse.json({ pricing: venues.map(() => null) })
+        return NextResponse.json({ pricing: venues.map((v: any) => generateEstimatePricing(v)) })
       }
     }
 
