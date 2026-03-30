@@ -1421,11 +1421,28 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       pricingFetchedRef.current = false
     }
 
+    // Time slots based on user's time preference and venue order
+    const timeSlots: Record<string, Record<string, string[]>> = {
+      early: { activity: ["5:00 PM", "5:30 PM", "6:00 PM"], dinner: ["6:30 PM", "7:00 PM", "7:30 PM"], drinks: ["8:00 PM", "8:30 PM", "9:00 PM"] },
+      prime: { activity: ["6:30 PM", "7:00 PM", "7:30 PM"], dinner: ["8:00 PM", "8:30 PM", "9:00 PM"], drinks: ["9:30 PM", "10:00 PM", "10:30 PM"] },
+      late:  { activity: ["8:30 PM", "9:00 PM", "9:30 PM"], dinner: ["10:00 PM", "10:30 PM", "11:00 PM"], drinks: ["11:00 PM", "11:30 PM", "12:00 AM"] }
+    }
+    const timePref = searchCriteria?.time || 'prime'
+    const slots = timeSlots[timePref] || timeSlots.prime
+    const categoryCounters: Record<string, number> = { activity: 0, dinner: 0, drinks: 0 }
+
     const convertedSteps: Step[] = venues.map((venue, index) => {
+      const cat = venue.category || 'activity'
+      const catSlots = slots[cat] || slots.activity
+      const slotIndex = Math.min(categoryCounters[cat] || 0, catSlots.length - 1)
+      categoryCounters[cat] = (categoryCounters[cat] || 0) + 1
+      // For sequential venues, offset by step position if same category exhausted
+      const assignedTime = index === 0 ? catSlots[0] : catSlots[slotIndex] || catSlots[0]
+
       const step = {
         id: index + 1,
         label: venue.category === "drinks" ? "Drinks" : venue.category === "dinner" ? "Dinner" : "Activity",
-        time: venue.category === "drinks" ? "7:00 PM" : venue.category === "dinner" ? "8:30 PM" : "10:00 PM",
+        time: assignedTime,
         icon: venue.category === "drinks" ? <Wine className="w-5 h-5" /> : venue.category === "dinner" ? <UtensilsCrossed className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />,
         place: venue.name,
         rating: venue.rating,

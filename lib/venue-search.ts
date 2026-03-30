@@ -572,20 +572,50 @@ class VenueSearcher {
   }
 
   private optimizeVenueOrder(venues: Venue[], baseLocation: string): Venue[] {
-    // Simple optimization: sort by rating and category
-    return venues.sort((a, b) => {
-      // Prioritize by category order: drinks -> dinner -> activity
-      const categoryOrder = { 'drinks': 0, 'dinner': 1, 'activity': 2 }
-      const aOrder = categoryOrder[a.category as keyof typeof categoryOrder] ?? 3
-      const bOrder = categoryOrder[b.category as keyof typeof categoryOrder] ?? 3
-      
-      if (aOrder !== bOrder) {
-        return aOrder - bOrder
-      }
-      
-      // Within same category, sort by rating
+    if (venues.length <= 1) return venues
+
+    // Logical date flow: activity first (ice-breaker) → dinner → drinks (wind down)
+    const categoryOrder: Record<string, number> = { 'activity': 0, 'dinner': 1, 'drinks': 2 }
+
+    // Step 1: Sort by date flow category order
+    const sorted = [...venues].sort((a, b) => {
+      const aOrder = categoryOrder[a.category] ?? 1
+      const bOrder = categoryOrder[b.category] ?? 1
+      if (aOrder !== bOrder) return aOrder - bOrder
       return b.rating - a.rating
     })
+
+    // Step 2: Optimize travel within the sorted plan — swap adjacent same-category
+    // venues if it reduces total travel distance
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const current = sorted[i]
+      const next = sorted[i + 1]
+      if (current.coordinates && next.coordinates) {
+        // Check if there's a venue further in the list that's closer to current
+        for (let j = i + 2; j < sorted.length; j++) {
+          if (sorted[j].category === next.category && sorted[j].coordinates) {
+            const distToNext = this.haversineDistance(current.coordinates, next.coordinates)
+            const distToJ = this.haversineDistance(current.coordinates, sorted[j].coordinates)
+            if (distToJ < distToNext * 0.7) {
+              // Swap to reduce travel — only if significantly closer (30%+ closer)
+              ;[sorted[i + 1], sorted[j]] = [sorted[j], sorted[i + 1]]
+            }
+          }
+        }
+      }
+    }
+
+    return sorted
+  }
+
+  private haversineDistance(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+    const R = 3959 // Earth radius in miles
+    const dLat = (b.lat - a.lat) * Math.PI / 180
+    const dLng = (b.lng - a.lng) * Math.PI / 180
+    const x = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2)
+    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))
   }
 
   // Removed fake fallback venue generation - only return real venues from APIs
