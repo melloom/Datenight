@@ -2,6 +2,7 @@
 import { geminiAI } from './gemini'
 import { sanitizeForSearch } from './profanity-filter'
 import { lateNightDetector, LateNightResponse } from './late-night-detector'
+import { enhanceVenueWithScrapedData, preferClusteredVenues, calculateSeasonalFit } from './venue-enhancer'
 
 export interface Venue {
   id: string
@@ -26,6 +27,8 @@ export interface Venue {
   capacity?: number // maximum capacity
   features: string[] // venue features like outdoor seating, parking, etc.
   vibe?: string // venue atmosphere/vibe
+  vibeScore?: number // 0-1 match score against user's vibe preferences
+  vibeTags?: string[] // extracted vibe keywords from reviews
   aiEnhanced?: boolean // whether AI has enhanced this venue
   aiInsights?: {
     bestFor: string[]
@@ -34,6 +37,30 @@ export interface Venue {
     vibeTags: string[]
   }
   pricing?: VenuePricing
+  // Enhanced scraper fields
+  editorialSummary?: string
+  photoCount?: number
+  photoScore?: number // 0-1 quality score based on photo count
+  reservable?: boolean
+  reservationLinks?: { url: string; platform: string }[]
+  dineIn?: boolean
+  takeout?: boolean
+  delivery?: boolean
+  wheelchairAccessible?: boolean
+  parkingAvailable?: boolean
+  outdoorSeating?: boolean
+  servesVegetarian?: boolean
+  servesBeer?: boolean
+  servesWine?: boolean
+  dietaryOptions?: string[] // vegan, gluten-free, halal, etc.
+  crowdLevel?: 'quiet' | 'moderate' | 'busy' | 'packed'
+  bestTimes?: string[] // best times to visit
+  socialMedia?: { platform: string; url: string }[]
+  isOpenAtPlannedTime?: boolean // verified open at user's planned time
+  verifiedOpen?: boolean
+  yelpRating?: number
+  combinedRating?: number // weighted avg of Google + Yelp
+  seasonalFit?: number // 0-1 how well venue fits current season/weather
 }
 
 export interface VenuePricing {
@@ -257,12 +284,19 @@ class VenueSearcher {
     // Also search for entertainment/activity venues using AI search terms or defaults
     const activitySearchPromise = this.searchActivitiesWithTextSearch(criteria, aiEnhancement)
 
+    // #5: Multi-query search — diverse phrasings for better coverage
+    const multiQueryPromise = this.multiQuerySearch(criteria)
+
     // Wait for all searches to complete with overall timeout
     const searchResults = await Promise.all([
       ...searchPromises, 
       Promise.race([
         activitySearchPromise,
-        new Promise<Venue[]>(resolve => setTimeout(() => resolve([]), 10000)) // 10s fallback
+        new Promise<Venue[]>(resolve => setTimeout(() => resolve([]), 10000))
+      ]),
+      Promise.race([
+        multiQueryPromise,
+        new Promise<Venue[]>(resolve => setTimeout(() => resolve([]), 10000))
       ])
     ])
     allVenues.push(...searchResults.flat())
@@ -297,8 +331,11 @@ class VenueSearcher {
       ...filteredVenues.slice(5).map(v => ({ ...v, aiEnhanced: false }))
     ]
 
+    // #4: Prefer clustered (walkable) venues for better date flow
+    const clusteredVenues = preferClusteredVenues(finalVenues, criteria)
+
     // Smart ranking with travel time optimization and AI insights
-    const rankedVenues = this.smartRank(finalVenues, criteria)
+    const rankedVenues = this.smartRank(clusteredVenues, criteria)
 
     // Enhance venues for special occasions
     const occasionEnhancedVenues = this.enhanceVenuesForOccasion(rankedVenues, criteria)
@@ -306,7 +343,7 @@ class VenueSearcher {
     // Scrape real pricing in parallel with tight timeout — falls back to estimates
     let pricingEnhancedVenues = occasionEnhancedVenues
     try {
-      const pricingPromise = this.scrapePricingForVenues(occasionEnhancedVenues)
+      const pricingPromise = this.scrapePricingForVenues(occasionEnhancedVenues, criteria)
       const pricingTimeout = new Promise<Venue[]>(resolve =>
         setTimeout(() => resolve(occasionEnhancedVenues), 5000) // 5s max
       )
@@ -422,41 +459,54 @@ class VenueSearcher {
     let score = 0
     const reasons: string[] = []
 
-    // Budget matching (25% weight)
+    // Budget matching (20% weight)
     const budgetScore = this.calculateBudgetScore(venue, criteria.budget)
-    score += budgetScore * 0.25
+    score += budgetScore * 0.20
     if (budgetScore > 0.8) reasons.push('Great budget match')
 
-    // Rating quality (20% weight)
-    const ratingScore = Math.min(venue.rating / 5, 1)
-    score += ratingScore * 0.2
-    if (venue.rating >= 4.5) reasons.push('Excellent rating')
+    // Rating quality (15% weight) — use combined rating if available
+    const effectiveRating = venue.combinedRating || venue.rating
+    const ratingScore = Math.min(effectiveRating / 5, 1)
+    score += ratingScore * 0.15
+    if (effectiveRating >= 4.5) reasons.push('Excellent rating')
 
-    // Vibe compatibility (20% weight)
-    const vibeScore = this.calculateVibeScore(venue, criteria.vibes)
-    score += vibeScore * 0.2
+    // Vibe compatibility (20% weight) — use scraped vibeScore if available
+    const vibeScore = venue.vibeScore ?? this.calculateVibeScore(venue, criteria.vibes)
+    score += vibeScore * 0.20
     if (vibeScore > 0.8) reasons.push('Perfect vibe match')
 
-    // Custom preferences scoring (20% weight)
+    // Custom preferences scoring (10% weight)
     const customScore = this.calculateCustomPreferencesScore(venue, criteria)
-    score += customScore * 0.2
+    score += customScore * 0.10
     if (customScore > 0.8) reasons.push('Matches custom preferences')
 
-    // Category diversity (15% weight)
+    // Category diversity (10% weight)
     const categoryScore = this.getCategoryScore(venue.category)
-    score += categoryScore * 0.15
+    score += categoryScore * 0.10
 
-    // Time compatibility (15% weight)
-    const timeScore = this.calculateTimeScore(venue, criteria.time)
-    score += timeScore * 0.15
-    if (timeScore > 0.8) reasons.push('Optimal timing')
+    // Time compatibility (10% weight) — boost verified-open venues
+    const timeScore = venue.isOpenAtPlannedTime === true ? 1.0
+      : venue.isOpenAtPlannedTime === false ? 0.1
+      : this.calculateTimeScore(venue, criteria.time)
+    score += timeScore * 0.10
+    if (timeScore > 0.8) reasons.push('Verified open')
 
-    // Popularity factor (10% weight)
+    // Popularity factor (5% weight)
     const popularityScore = Math.min(venue.reviewCount / 1000, 1)
-    score += popularityScore * 0.1
+    score += popularityScore * 0.05
     if (venue.reviewCount >= 500) reasons.push('Popular spot')
 
-    // Travel time bonus (up to 0.2 points)
+    // Photo quality (5% weight)
+    const photoScore = venue.photoScore || 0
+    score += photoScore * 0.05
+    if (photoScore > 0.7) reasons.push('Great photos')
+
+    // Seasonal fit (5% weight)
+    const seasonalScore = venue.seasonalFit ?? calculateSeasonalFit(venue, criteria)
+    score += seasonalScore * 0.05
+    if (seasonalScore > 0.8) reasons.push('Perfect for the season')
+
+    // Travel time bonus (up to 0.15 points)
     const travelBonus = this.calculateTravelBonus(venue, criteria.location)
     score += travelBonus
     if (travelBonus > 0.1) reasons.push('Great location')
@@ -991,6 +1041,79 @@ class VenueSearcher {
 
       return venues
     } catch (error) {
+      return []
+    }
+  }
+
+  // #5: Multi-query search — search with diverse phrasings for venues single-keyword misses
+  private async multiQuerySearch(criteria: SearchCriteria): Promise<Venue[]> {
+    try {
+      const location = await this.geocodeLocation(criteria.location)
+      if (!location) return []
+
+      const radius = TIME_FILTERS[criteria.time].searchRadius * 1609
+      const vibeStr = (criteria.vibes || []).slice(0, 2).join(' ')
+      const cuisineStr = criteria.customCuisine || criteria.cuisine || ''
+
+      // Generate diverse query phrasings
+      const queries: string[] = [
+        `best date night spots ${criteria.location}`,
+        `fun things to do for couples ${criteria.location}`,
+        `${vibeStr} places near ${criteria.location}`,
+      ]
+      if (cuisineStr && cuisineStr !== 'any') {
+        queries.push(`best ${cuisineStr} restaurant ${criteria.location}`)
+      }
+      if (criteria.time === 'late') {
+        queries.push(`late night open now ${criteria.location}`)
+      }
+      if (criteria.occasion) {
+        queries.push(`${criteria.occasion} celebration venue ${criteria.location}`)
+      }
+
+      // Dedupe and limit to 4 queries
+      const uniqueQueries = [...new Set(queries)].slice(0, 4)
+      const venues: Venue[] = []
+
+      // Run in parallel batches of 2
+      for (let i = 0; i < uniqueQueries.length; i += 2) {
+        const batch = uniqueQueries.slice(i, i + 2)
+        const results = await Promise.all(
+          batch.map(async (query) => {
+            try {
+              const controller = new AbortController()
+              const timeoutId = setTimeout(() => controller.abort(), 8000)
+              const response = await fetch('/api/venues/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  action: 'google-text-search',
+                  query,
+                  lat: location.lat,
+                  lng: location.lng,
+                  radius: Math.min(radius, 50000)
+                }),
+                signal: controller.signal
+              })
+              clearTimeout(timeoutId)
+              if (!response.ok) return []
+              const data = await response.json()
+              return (data.results || []).slice(0, 3).map((place: any) =>
+                this.convertGooglePlaceToVenue(place, criteria)
+              )
+            } catch {
+              return []
+            }
+          })
+        )
+        venues.push(...results.flat())
+        if (i + 2 < uniqueQueries.length) {
+          await new Promise(resolve => setTimeout(resolve, 150))
+        }
+      }
+
+      return venues
+    } catch {
       return []
     }
   }
@@ -1613,15 +1736,15 @@ class VenueSearcher {
     }
   }
 
-  private async fetchDetailedVenueInfo(venue: Venue): Promise<Venue> {
+  private async fetchDetailedVenueInfo(venue: Venue, criteria?: SearchCriteria): Promise<Venue> {
     try {
       // Get detailed information from Google Places
       if (venue.id.startsWith('google-')) {
         const placeId = venue.id.replace('google-', '')
         const detailedInfo = await this.fetchGooglePlaceDetails(placeId)
         
-        // Update venue with detailed information
-        return {
+        // Basic field update
+        const updated: Venue = {
           ...venue,
           phone: detailedInfo.formatted_phone_number || venue.phone,
           website: detailedInfo.website || venue.website,
@@ -1630,8 +1753,15 @@ class VenueSearcher {
           reviewCount: detailedInfo.user_ratings_total || venue.reviewCount,
           priceRange: this.convertGooglePriceLevel(detailedInfo.price_level, venue.priceRange) || venue.priceRange,
           features: this.extractDetailedFeatures(detailedInfo),
-          description: this.generateDetailedDescription(detailedInfo)
+          description: detailedInfo.editorial_summary?.overview || this.generateDetailedDescription(detailedInfo),
+          photoCount: detailedInfo.photos?.length || 0
         }
+
+        // Apply full enhancement if we have criteria
+        if (criteria) {
+          return enhanceVenueWithScrapedData(updated, detailedInfo, criteria)
+        }
+        return updated
       }
       
       // For OpenStreetMap venues, try to fetch additional info
@@ -1805,8 +1935,8 @@ class VenueSearcher {
     return priceLevel ? levels[priceLevel - 1] || fallbackBudget || '$$' : fallbackBudget || '$$'
   }
 
-  // Scrape real pricing for all venues in parallel — fast with cache + fallback
-  private async scrapePricingForVenues(venues: Venue[]): Promise<Venue[]> {
+  // Scrape real pricing + full enhancement for all venues in parallel
+  private async scrapePricingForVenues(venues: Venue[], criteria?: SearchCriteria): Promise<Venue[]> {
     const now = Date.now()
 
     // Scrape each venue's pricing in parallel with individual 3s timeout
@@ -1818,17 +1948,19 @@ class VenueSearcher {
           return { ...venue, pricing: cached.pricing }
         }
 
-        // Scrape pricing with tight per-venue timeout
-        const scrapePromise = this.scrapeVenuePricing(venue)
-        const timeout = new Promise<VenuePricing>((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), 3000)
+        // Scrape pricing + enhancement with tight per-venue timeout
+        const scrapePromise = this.scrapeAndEnhanceVenue(venue, criteria)
+        const timeout = new Promise<Venue>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 3500)
         )
-        const pricing = await Promise.race([scrapePromise, timeout])
+        const enhanced = await Promise.race([scrapePromise, timeout])
 
-        // Cache the result
-        this.pricingCache.set(venue.id, { pricing, timestamp: now })
+        // Cache the pricing
+        if (enhanced.pricing) {
+          this.pricingCache.set(venue.id, { pricing: enhanced.pricing, timestamp: now })
+        }
 
-        return { ...venue, pricing }
+        return enhanced
       } catch {
         // Fallback: build estimate from priceRange and category
         const fallback = this.buildEstimatePricing(venue)
@@ -1839,11 +1971,17 @@ class VenueSearcher {
     return Promise.all(pricingPromises)
   }
 
-  // Scrape real pricing from Google Place Details (reviews + price_level)
-  private async scrapeVenuePricing(venue: Venue): Promise<VenuePricing> {
+  // Scrape pricing AND run full venue enhancement from Google Place Details
+  private async scrapeAndEnhanceVenue(venue: Venue, criteria?: SearchCriteria): Promise<Venue> {
     if (venue.id.startsWith('google-')) {
       const placeId = venue.id.replace('google-', '')
       const details = await this.fetchGooglePlaceDetails(placeId)
+
+      // Run full enhancement with all scraped data
+      let enhanced = venue
+      if (criteria) {
+        enhanced = enhanceVenueWithScrapedData(venue, details, criteria)
+      }
 
       const priceLevel = details.price_level || 0
       const reviews = details.reviews || []
@@ -1854,12 +1992,14 @@ class VenueSearcher {
         ? Math.round(dollarAmounts.reduce((a: number, b: number) => a + b, 0) / dollarAmounts.length)
         : 0
 
-      // Build pricing from scraped data
-      return this.buildScrapedPricing(venue.category, priceLevel, avgSpend, reviews)
+      // Build pricing from scraped data and attach to enhanced venue
+      const pricing = this.buildScrapedPricing(venue.category, priceLevel, avgSpend, reviews)
+      return { ...enhanced, pricing }
     }
 
-    // Non-Google venues: use estimate
-    return this.buildEstimatePricing(venue)
+    // Non-Google venues: use estimate pricing
+    const pricing = this.buildEstimatePricing(venue)
+    return { ...venue, pricing }
   }
 
   // Extract real dollar amounts mentioned in reviews ($15, $25, etc.)

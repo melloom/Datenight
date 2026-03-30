@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       }
 
       const { placeId } = body
-      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=formatted_phone_number,website,opening_hours,reviews,photos,url&key=${GOOGLE_PLACES_API_KEY}`
+      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=formatted_phone_number,website,opening_hours,current_opening_hours,reviews,photos,url,price_level,rating,user_ratings_total,editorial_summary,serves_breakfast,serves_lunch,serves_dinner,serves_beer,serves_wine,serves_vegetarian_food,reservable,dine_in,takeout,delivery,wheelchair_accessible_entrance,types,name,geometry&key=${GOOGLE_PLACES_API_KEY}`
       
       const fetchPromise = fetch(url).then(response => {
         if (!response.ok) {
