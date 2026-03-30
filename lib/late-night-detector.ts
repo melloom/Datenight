@@ -47,6 +47,13 @@ class LateNightDetector {
   private readonly CRITICAL_CUTOFF = 21 // 9 PM in 24-hour format
   private readonly MINIMUM_VENUES_REQUIRED = 3 // Minimum venues for a good date night
   
+  // Helper method to check if two dates are the same day
+  private isSameDay(date1: Date, date2: Date): boolean {
+    return date1.getFullYear() === date2.getFullYear() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getDate() === date2.getDate()
+  }
+  
   detectLateNightScenario(
     currentTime: Date, 
     searchResults: SearchResult, 
@@ -54,8 +61,14 @@ class LateNightDetector {
   ): LateNightDetection {
     const currentHour = currentTime.getHours()
     const currentMinute = currentTime.getMinutes()
-    const isTooLate = currentHour >= this.LATE_NIGHT_CUTOFF
-    const isCritical = currentHour >= this.CRITICAL_CUTOFF
+    
+    // Check if the planned date is today
+    const isPlannedForToday = criteria.plannedDate ? 
+      this.isSameDay(currentTime, criteria.plannedDate) : true // Default to true if no date specified
+    
+    // Only consider it "too late" if it's actually late AND they're planning for today
+    const isTooLate = isPlannedForToday && currentHour >= this.LATE_NIGHT_CUTOFF
+    const isCritical = isPlannedForToday && currentHour >= this.CRITICAL_CUTOFF
     
     // More accurate time until closing calculation
     const getTimeUntilClosing = () => {
@@ -85,27 +98,35 @@ class LateNightDetector {
     const minimumVenuesRequired = this.getMinimumVenuesRequired(criteria)
     
     const reasons: string[] = []
-    if (isTooLate) {
+    if (isTooLate && isPlannedForToday) {
       const timeString = `${currentHour > 12 ? currentHour - 12 : currentHour}:${currentMinute.toString().padStart(2, '0')} ${currentHour >= 12 ? 'PM' : 'AM'}`
       reasons.push(`It's ${timeString}`)
+      reasons.push('Limited venue availability after 8 PM')
     }
-    if (isCritical) reasons.push('Most venues close within 1-2 hours')
+    if (isCritical && isPlannedForToday) reasons.push('Most venues close within 1-2 hours')
     if (availableVenuesCount < minimumVenuesRequired) {
       reasons.push(`Only ${availableVenuesCount} venues available (need ${minimumVenuesRequired}+)`)
     }
-    if (criteria.time === 'late' && currentHour < 21) {
+    if (criteria.time === 'late' && currentHour < 21 && isPlannedForToday) {
       reasons.push('Late night venues may not be open yet')
     }
     
-    // Add more specific reasons based on time
-    if (currentHour >= 22) {
-      reasons.push('Most restaurants and bars are closed')
-    } else if (currentHour >= 20) {
-      reasons.push('Limited venue availability after 8 PM')
+    // If not planning for today, don't show late night alert
+    if (!isPlannedForToday) {
+      reasons.length = 0 // Clear reasons for future dates
+    }
+    
+    // Add more specific reasons based on time (only if planning for today)
+    if (isPlannedForToday) {
+      if (currentHour >= 22) {
+        reasons.push('Most restaurants and bars are closed')
+      } else if (currentHour >= 20) {
+        reasons.push('Limited venue availability after 8 PM')
+      }
     }
     
     return {
-      isTooLate: isTooLate || availableVenuesCount < minimumVenuesRequired,
+      isTooLate: isPlannedForToday ? (isTooLate || availableVenuesCount < minimumVenuesRequired) : false,
       currentTime,
       timeUntilClosing,
       availableVenuesCount,
