@@ -16,7 +16,6 @@ import {
   Shuffle,
   ChevronRight,
   ChevronDown,
-  ChevronDown,
   Utensils,
   Music,
   Palette,
@@ -31,7 +30,6 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import { validateCustomInput } from "@/lib/profanity-filter"
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 
 const BUDGET_OPTIONS = [
@@ -996,6 +994,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </div>
         </div>
       )}
+    </div>
     </div>
   )
 }
