@@ -17,6 +17,7 @@ next.user-config.*
 *.key
 *.pem
 *.p12
+*-firebase-adminsdk-*.json
 secrets/
 credentials/
 
