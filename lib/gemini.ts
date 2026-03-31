@@ -127,7 +127,7 @@ Focus on romance, atmosphere, and date-worthiness. Be specific and helpful.
     }
   ): Promise<DateRecommendation> {
     const venueList = venues.map(v => `${v.name} (${v.category})`).join(', ')
-    
+
     const prompt = `
 Create a perfect date night recommendation based on:
 
@@ -225,10 +225,10 @@ Focus on romantic, date-appropriate venues and hidden gems. Consider local cultu
       partySize?: number
     }
   ): Promise<string> {
-    const contextInfo = context.currentVenue 
+    const contextInfo = context.currentVenue
       ? `Current venue: ${context.currentVenue.name} - ${context.currentVenue.category} (${context.currentVenue.rating}⭐, ${context.currentVenue.priceRange})`
       : 'No venue selected'
-    
+
     const criteriaInfo = context.searchCriteria
       ? `Date plan: ${context.searchCriteria.location}, ${context.searchCriteria.budget} budget, ${context.searchCriteria.partySize} people, vibes: ${context.searchCriteria.vibes.join(', ')}`
       : 'No search criteria set'

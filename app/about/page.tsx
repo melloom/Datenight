@@ -6,8 +6,8 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-16 max-w-4xl">
-        <Link 
-          href="/" 
+        <Link
+          href="/"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -26,8 +26,8 @@ export default function AboutPage() {
             <section>
               <h2 className="font-serif text-2xl md:text-3xl mb-4">Our Mission</h2>
               <p className="text-muted-foreground leading-relaxed">
-                At Dat3Night, we believe every couple deserves amazing date experiences. 
-                We're dedicated to helping you discover the best restaurants, activities, and venues 
+                At Dat3Night, we believe every couple deserves amazing date experiences.
+                We're dedicated to helping you discover the best restaurants, activities, and venues
                 in your area, making date planning effortless and exciting.
               </p>
             </section>
@@ -65,12 +65,12 @@ export default function AboutPage() {
             <section>
               <h2 className="font-serif text-2xl md:text-3xl mb-4">Why Dat3Night?</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                We understand that planning the perfect date can be challenging. That's why we created 
-                Dat3Night - to simplify the process and help you focus on what matters most: spending 
+                We understand that planning the perfect date can be challenging. That's why we created
+                Dat3Night - to simplify the process and help you focus on what matters most: spending
                 quality time together.
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                Whether you're looking for a romantic dinner spot, an exciting activity, or something 
+                Whether you're looking for a romantic dinner spot, an exciting activity, or something
                 completely new, Dat3Night is here to help you discover and plan amazing experiences.
               </p>
             </section>

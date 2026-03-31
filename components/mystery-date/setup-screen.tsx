@@ -128,18 +128,18 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   // Check for alternative search criteria from late night suggestions
   useEffect(() => {
     if (hasAutoSubmitted.current) return
-    
+
     const alternativeCriteria = sessionStorage.getItem('alternativeSearchCriteria')
     if (alternativeCriteria) {
       try {
         const criteria = JSON.parse(alternativeCriteria)
-        
+
         // Clear the stored criteria immediately
         sessionStorage.removeItem('alternativeSearchCriteria')
-        
+
         // Mark that we've auto-submitted
         hasAutoSubmitted.current = true
-        
+
         // Auto-submit with the alternative criteria
         setTimeout(() => {
           onSubmit(criteria)
@@ -149,7 +149,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
       }
     }
   }, [onSubmit])
-  
+
   const [customCuisine, setCustomCuisine] = useState("")
   const [showCustomCuisine, setShowCustomCuisine] = useState(false)
   const [customActivity, setCustomActivity] = useState("")
@@ -425,12 +425,12 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
         const rect = modal.getBoundingClientRect()
         const modalHeight = rect.height
         const viewportHeight = window.innerHeight
-        
+
         // Calculate scroll position to center modal
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop
         const modalTop = rect.top + scrollTop
         const desiredScrollTop = modalTop - (viewportHeight - modalHeight) / 2
-        
+
         // Use instant scroll with no animation
         window.scrollTo(0, Math.max(0, desiredScrollTop))
       } else {
@@ -452,7 +452,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
     if (!location || location.trim().length === 0) {
       return true
     }
-    
+
     if (cuisine === "custom" && customCuisine) {
       const err = validateCustomInput(customCuisine)
       if (err) return true
@@ -466,21 +466,21 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
 
   const handleSubmit = () => {
     if (hasInputErrors()) return
-    
+
     // Calculate day of week and time based on date
     const dayOfWeek = selectedDate.toLocaleDateString('en-US', { weekday: 'long' })
     const isWeekend = selectedDate.getDay() === 0 || selectedDate.getDay() === 6 // Sunday or Saturday
-    
+
     // Calculate time based on whether it's weekday or weekend
     let plannedTime: string
     if (isWeekend) {
       // Weekend: Later times (8-10 PM)
       plannedTime = time === 'early' ? '20:00' : time === 'prime' ? '21:00' : '22:00'
     } else {
-      // Weekday: Earlier times (6-9 PM)  
+      // Weekday: Earlier times (6-9 PM)
       plannedTime = time === 'early' ? '18:00' : time === 'prime' ? '19:00' : '21:00'
     }
-    
+
     onSubmit({
       budget,
       location: location || "",
@@ -1133,7 +1133,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                           </button>
                         </div>
                       </div>
-                      
+
                       {/* Venue Preview */}
                       <div className="border-t border-border/60 pt-3">
                         <div className="text-xs font-medium text-muted-foreground mb-2">Venues ({plan.venues.length}):</div>
@@ -1164,7 +1164,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                     </div>
                     <div>
                       <div className="font-medium text-blue-600">
-                        {datePlanHistory.length > 0 ? 
+                        {datePlanHistory.length > 0 ?
                           new Set(datePlanHistory.map(p => p.location)).size : 0
                         }
                       </div>

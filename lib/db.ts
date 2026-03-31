@@ -140,10 +140,10 @@ export async function saveDate(userId: string, dateData: Omit<SavedDate, 'id' | 
   if (!rtdb) {
     throw new Error("Database not available")
   }
-  
+
   const datesRef = ref(rtdb, `users/${userId}/dates`)
   const newDateRef = push(datesRef)
-  
+
   await set(newDateRef, {
     ...dateData,
     createdAt: Date.now(),
@@ -157,7 +157,7 @@ export async function getUserDates(userId: string): Promise<SavedDate[]> {
   if (!rtdb) {
     return []
   }
-  
+
   const datesRef = query(
     ref(rtdb, `users/${userId}/dates`),
     orderByChild('createdAt'),
@@ -179,7 +179,7 @@ export async function updateDateStatus(userId: string, dateId: string, status: S
   if (!rtdb) {
     throw new Error("Database not available")
   }
-  
+
   await update(ref(rtdb, `users/${userId}/dates/${dateId}`), { status })
 }
 
@@ -187,7 +187,7 @@ export async function deleteDate(userId: string, dateId: string): Promise<void> 
   if (!rtdb) {
     throw new Error("Database not available")
   }
-  
+
   await remove(ref(rtdb, `users/${userId}/dates/${dateId}`))
 }
 
@@ -197,7 +197,7 @@ export async function saveFavorite(userId: string, venue: Venue): Promise<void> 
   if (!rtdb) {
     throw new Error("Database not available")
   }
-  
+
   const venueKey = venue.id.replace(/[.#$[\]]/g, '_') // Sanitize key for RTDB
   await set(ref(rtdb, `users/${userId}/favorites/${venueKey}`), {
     name: venue.name,
@@ -214,7 +214,7 @@ export async function removeFavorite(userId: string, venueId: string): Promise<v
   if (!rtdb) {
     throw new Error("Database not available")
   }
-  
+
   const venueKey = venueId.replace(/[.#$[\]]/g, '_')
   await remove(ref(rtdb, `users/${userId}/favorites/${venueKey}`))
 }
@@ -223,7 +223,7 @@ export async function getUserFavorites(userId: string): Promise<FavoriteVenueRec
   if (!rtdb) {
     return []
   }
-  
+
   const snapshot = await get(ref(rtdb, `users/${userId}/favorites`))
   if (!snapshot.exists()) return []
 
@@ -239,7 +239,7 @@ export async function isFavorite(userId: string, venueId: string): Promise<boole
   if (!rtdb) {
     return false
   }
-  
+
   const venueKey = venueId.replace(/[.#$[\]]/g, '_')
   const snapshot = await get(ref(rtdb, `users/${userId}/favorites/${venueKey}`))
   return snapshot.exists()
@@ -251,7 +251,7 @@ export async function savePreferences(userId: string, prefs: UserPreferences): P
   if (!rtdb) {
     throw new Error("Database not available")
   }
-  
+
   await set(ref(rtdb, `users/${userId}/preferences`), prefs)
 }
 
@@ -259,7 +259,7 @@ export async function getPreferences(userId: string): Promise<UserPreferences | 
   if (!rtdb) {
     return null
   }
-  
+
   const snapshot = await get(ref(rtdb, `users/${userId}/preferences`))
   if (!snapshot.exists()) return null
   return snapshot.val()

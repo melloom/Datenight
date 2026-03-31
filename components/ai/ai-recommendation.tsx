@@ -71,7 +71,7 @@ export function AIRecommendation({ venues, criteria }: AIRecommendationProps) {
       {/* Description */}
       <div className="space-y-2">
         <p className="text-sm text-foreground leading-relaxed">{recommendation.description}</p>
-        
+
         <div className="bg-card/50 rounded-xl p-3">
           <div className="flex items-center gap-2 mb-1">
             <Heart className="w-4 h-4 text-primary" />

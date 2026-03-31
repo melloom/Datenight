@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { 
-  LateNightResponse, 
-  AlternativeSuggestion, 
-  SameDayOption 
+import {
+  LateNightResponse,
+  AlternativeSuggestion,
+  SameDayOption
 } from "@/lib/late-night-detector"
 
 interface LateNightAlertProps {
@@ -19,15 +19,15 @@ interface LateNightAlertProps {
   isGenerating?: boolean
 }
 
-export function LateNightAlert({ 
-  response, 
-  onSuggestionSelect, 
-  onSameDaySelect, 
+export function LateNightAlert({
+  response,
+  onSuggestionSelect,
+  onSameDaySelect,
   onDismiss,
-  isGenerating = false 
+  isGenerating = false
 }: LateNightAlertProps) {
   const { detection, suggestions, sameDayOptions, message, urgency } = response
-  
+
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
       case 'critical': return 'bg-red-50 border-red-200 text-red-800'
@@ -37,7 +37,7 @@ export function LateNightAlert({
       default: return 'bg-gray-50 border-gray-200 text-gray-800'
     }
   }
-  
+
   const getUrgencyIcon = (urgency: string) => {
     switch (urgency) {
       case 'critical': return <AlertCircle className="h-5 w-5 text-red-600" />
@@ -47,7 +47,7 @@ export function LateNightAlert({
       default: return <AlertCircle className="h-5 w-5 text-gray-600" />
     }
   }
-  
+
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'immediate': return <Clock className="h-4 w-4" />
@@ -57,7 +57,7 @@ export function LateNightAlert({
       default: return <Star className="h-4 w-4" />
     }
   }
-  
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'delivery': return <Package className="h-4 w-4" />
@@ -67,7 +67,7 @@ export function LateNightAlert({
       default: return <Package className="h-4 w-4" />
     }
   }
-  
+
   return (
     <div className={`rounded-lg border p-4 mb-6 ${getUrgencyColor(urgency)}`}>
       {/* Header */}
@@ -87,9 +87,9 @@ export function LateNightAlert({
           </Button>
         )}
       </div>
-      
+
       <p className="text-sm mb-3">{message}</p>
-      
+
       {/* Detection Details */}
       {detection.reasons.length > 0 && (
         <div className="mb-4">
@@ -104,7 +104,7 @@ export function LateNightAlert({
           </ul>
         </div>
       )}
-      
+
       {/* Same Day Options */}
       {sameDayOptions.length > 0 && (
         <div className="mb-4">
@@ -173,7 +173,7 @@ export function LateNightAlert({
           </div>
         </div>
       )}
-      
+
       {/* Alternative Suggestions */}
       {suggestions.length > 0 && (
         <div>
@@ -186,11 +186,11 @@ export function LateNightAlert({
                     <div className="flex items-center gap-2">
                       {getCategoryIcon(suggestion.category)}
                       <CardTitle className="text-sm">{suggestion.title}</CardTitle>
-                      <Badge 
+                      <Badge
                         variant={suggestion.availability === 'now' ? 'default' : 'secondary'}
                         className="text-xs"
                       >
-                        {suggestion.availability === 'now' ? 'Available Now' : 
+                        {suggestion.availability === 'now' ? 'Available Now' :
                          suggestion.availability === 'tonight' ? 'Tonight' :
                          suggestion.availability === 'tomorrow' ? 'Tomorrow' : 'Weekend'}
                       </Badge>
@@ -234,7 +234,7 @@ export function LateNightAlert({
                       {suggestion.costEstimate}
                     </span>
                   </div>
-                  
+
                   {/* Tags */}
                   <div className="flex flex-wrap gap-1 mb-2">
                     {suggestion.tags.slice(0, 4).map((tag) => (
@@ -243,7 +243,7 @@ export function LateNightAlert({
                       </Badge>
                     ))}
                   </div>
-                  
+
                   {/* Pros */}
                   {suggestion.pros.length > 0 && (
                     <div>
@@ -264,17 +264,17 @@ export function LateNightAlert({
           </div>
         </div>
       )}
-      
+
       <Separator className="my-4 bg-white/30" />
-      
+
       {/* Footer */}
       <div className="flex items-center justify-between text-xs">
         <div className="flex items-center gap-2">
           <Clock className="h-3 w-3" />
           <span>
-            {detection.availableVenuesCount} venues found • 
-            {detection.timeUntilClosing > 0 ? 
-              ` ~${Math.floor(detection.timeUntilClosing / 60)}h until typical closing` : 
+            {detection.availableVenuesCount} venues found •
+            {detection.timeUntilClosing > 0 ?
+              ` ~${Math.floor(detection.timeUntilClosing / 60)}h until typical closing` :
               ' Most venues may be closed'
             }
           </span>
