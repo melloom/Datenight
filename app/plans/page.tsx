@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import {
@@ -58,7 +58,7 @@ function getStatusTone(status?: string) {
   return "text-slate-900"
 }
 
-export default function PlansPage() {
+function PlansPageContent() {
   const { user, loading } = useAuth()
   const searchParams = useSearchParams()
   const [pendingPlan, setPendingPlan] = useState<PlanInterval | null>(null)
@@ -476,5 +476,13 @@ export default function PlansPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+export default function PlansPage() {
+  return (
+    <Suspense fallback={null}>
+      <PlansPageContent />
+    </Suspense>
   )
 }
