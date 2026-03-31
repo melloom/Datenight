@@ -370,48 +370,72 @@ function formatItineraryForShare(steps: Step[], searchCriteria?: any): string {
   const vibes = searchCriteria?.vibes || []
   const vibeText = vibes.length > 0 ? vibes.slice(0, 2).join(' & ') : ''
 
-  // Personalized header
-  let header = "Hey! I planned something special for us "
-  if (vibeText && location) {
-    header += `— a ${vibeText} night in ${location} ✨`
-  } else if (location) {
-    header += `in ${location} tonight ✨`
-  } else {
-    header += `tonight ✨`
-  }
-  header += "\n\nHere's the plan:\n"
+  // Enhanced header with moon emoji
+  let header = "🌙 Date Night Plan\n━━━━━━━━━━━━━━━━━━\n"
 
-  // Build each stop
+  // Build each stop with proper formatting
   const body = sorted.map((s, i) => {
     const num = i + 1
     const emoji = s.category === "drinks" ? "🍸" : s.category === "dinner" ? "🍽️" : "🎯"
     const label = s.category === "drinks" ? "Drinks" : s.category === "dinner" ? "Dinner" : "Activity"
-    
-    let block = `\n${emoji} ${s.time} — ${s.place}`
-    block += `\n   ${label} · ${s.priceRange}`
-    if (s.address) block += `\n   📍 ${s.address}`
-    
-    // Add a personalized touch per category
-    if (s.description && s.description.length < 100) {
-      block += `\n   "${s.description}"`
+
+    let block = `\n${emoji} Stop ${num}: ${s.place}`
+    block += `\n⏰ ${s.time} · ${s.priceRange}`
+    if (s.address) block += `\n📍 ${s.address}`
+
+    // Use actual venue description if available, otherwise use a more personalized one
+    if (s.description && s.description.length > 10 && !s.description.includes("moderately priced")) {
+      block += `\n💬 ${s.description}`
+    } else {
+      // Generate more specific descriptions based on venue data and actual pricing
+      const highlights = s.highlights?.slice(0, 2).join(', ') || ''
+      const features = s.features?.slice(0, 2).join(', ') || ''
+      const vibe = s.vibe || ''
+
+      let desc = `${s.place} offers`
+      if (highlights) desc += ` ${highlights.toLowerCase()}`
+      else if (features) desc += ` ${features.toLowerCase()}`
+      else if (vibe) desc += ` a ${vibe.toLowerCase()} atmosphere`
+      else desc += ` excellent ${label.toLowerCase()} options`
+
+      desc += `.`
+
+      // Add actual pricing information if available
+      if (s.pricing) {
+        const pricing = s.pricing
+        if (s.category === 'dinner' && pricing.food) {
+          desc += ` Entrees typically $${pricing.food}-${pricing.food + 10}.`
+        } else if (s.category === 'drinks' && pricing.drinks) {
+          desc += ` Drinks around $${pricing.drinks}.`
+        } else if (s.category === 'activity' && pricing.tickets) {
+          desc += ` Tickets $${pricing.tickets}.`
+        }
+      }
+
+      // Add quality indicators
+      if (s.rating && s.rating >= 4.0) {
+        desc += ` Highly rated (${s.rating}⭐) for exceptional quality.`
+      } else if (s.rating && s.rating >= 3.5) {
+        desc += ` Well-rated (${s.rating}⭐) with positive reviews.`
+      }
+
+      if (s.hours && s.hours.includes('Currently open')) {
+        desc += ` Currently open and ready to welcome guests.`
+      }
+
+      block += `\n💬 ${desc}`
     }
-    if (s.reservationRecommended) block += `\n   📋 I'll make a reservation!`
-    
-    // Travel info to next stop
-    if (i < sorted.length - 1 && s.travelTimeToNext) {
-      block += `\n   ↓ ${s.travelTimeToNext} min${s.distanceToNext ? ` (${s.distanceToNext} mi)` : ''}`
+
+    // Add website link if available
+    if (s.website) {
+      block += `\n🔗 ${s.website}`
     }
-    
+
     return block
   }).join("\n")
 
-  // Personalized footer
-  let footer = "\n\n"
-  const dinnerStop = sorted.find(s => s.category === 'dinner')
-  if (dinnerStop?.reservationRecommended) {
-    footer += `I'll handle the reservation at ${dinnerStop.place}. `
-  }
-  footer += "Just be ready by " + sorted[0].time + "! 💜"
+  // Enhanced footer
+  const footer = "\n━━━━━━━━━━━━━━━━━━\n❤️ Have an amazing night!"
 
   return `${header}${body}${footer}`
 }
@@ -1812,6 +1836,14 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       pricingFetchedRef.current = false
     }
 
+    // Sort venues by logical date night flow: drinks first, then dinner, then activities
+    const sortedVenues = [...venues].sort((a, b) => {
+      const categoryOrder = { drinks: 1, dinner: 2, activity: 3 }
+      const aOrder = categoryOrder[a.category] || 4
+      const bOrder = categoryOrder[b.category] || 4
+      return aOrder - bOrder
+    })
+
     // Dynamic time slots — each venue gets a realistic duration, then travel time is added
     const startTimes: Record<string, string> = {
       early: "5:00 PM",
@@ -1831,7 +1863,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       return h * 60 + m // total minutes from midnight
     })()
 
-    for (let i = 0; i < venues.length; i++) {
+    for (let i = 0; i < sortedVenues.length; i++) {
       const hrs = Math.floor(runningTime / 60) % 24
       const mins = runningTime % 60
       const period = hrs >= 12 ? 'PM' : 'AM'
@@ -1841,16 +1873,16 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       // Add this venue's duration + a default 15 min travel buffer for slot calculation
       // (actual travel times get refined later via Google Maps API)
       const venueDuration = getActivityDuration({
-        category: venues[i].category,
-        tags: venues[i].tags || [],
-        place: venues[i].name,
-        pricing: venues[i].pricing,
-        duration: venues[i].duration
+        category: sortedVenues[i].category,
+        tags: sortedVenues[i].tags || [],
+        place: sortedVenues[i].name,
+        pricing: sortedVenues[i].pricing,
+        duration: sortedVenues[i].duration
       })
       runningTime += venueDuration + 15 // venue duration + travel buffer
     }
 
-    const convertedSteps: Step[] = venues.map((venue, index) => {
+    const convertedSteps: Step[] = sortedVenues.map((venue, index) => {
       const assignedTime = dynamicSlots[index] || dynamicSlots[dynamicSlots.length - 1]
 
       const step = {
@@ -1955,21 +1987,44 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         .then(res => res.ok ? res.json() : null)
         .then(result => {
           if (!result?.pricing) return
-          let pricingIdx = 0
-          const updatedVenues = venues.map(v => {
-            if (!v.pricing || !v.pricing.source) {
-              const p = result.pricing[pricingIdx++]
-              if (p) return { ...v, pricing: { ...p, lastUpdated: new Date().toISOString() } }
+          
+          // Update the sorted venues with new pricing data
+          const updatedSortedVenues = sortedVenues.map(v => {
+            // Find matching venue in the pricing results
+            const pricingIndex = venuesMissingPricing.findIndex(missing => 
+              missing.name === v.name && missing.address === v.address
+            )
+            if (pricingIndex >= 0 && result.pricing[pricingIndex]) {
+              return { ...v, pricing: { ...result.pricing[pricingIndex], lastUpdated: new Date().toISOString() } }
             }
             return v
           })
-          // Update steps with new pricing data and recalculate times with real durations
-          const updatedSteps = stepsWithTravel.map((step, i) => ({
-            ...step,
-            pricing: updatedVenues[i]?.pricing || step.pricing,
-            duration: updatedVenues[i]?.pricing?.duration || step.duration
-          }))
-          // Recalculate time slots now that we have real duration data
+          
+          // Recreate steps with updated pricing
+          const updatedConvertedSteps = updatedSortedVenues.map((venue, index) => {
+            const assignedTime = dynamicSlots[index] || dynamicSlots[dynamicSlots.length - 1]
+            return {
+              ...convertedSteps[index],
+              pricing: venue.pricing,
+              duration: venue.pricing?.duration || venue.duration
+            }
+          })
+
+          // Recalculate travel times
+          const updatedStepsWithTravel = updatedConvertedSteps.map((step, index) => {
+            if (index < updatedConvertedSteps.length - 1) {
+              const nextStep = updatedConvertedSteps[index + 1]
+              const travel = calculateTravelTime(step.coordinates, nextStep.coordinates)
+              return {
+                ...step,
+                travelTimeToNext: travel.minutes,
+                distanceToNext: travel.miles
+              }
+            }
+            return step
+          })
+
+          // Recalculate time slots with real duration data
           const firstStart = startTimes[timePref] || startTimes.prime
           let recalcTime = (() => {
             const [t, p] = firstStart.split(' ')
@@ -1978,20 +2033,33 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             if (p === 'AM' && hh === 12) hh = 0
             return hh * 60 + mm
           })()
-          for (let i = 0; i < updatedSteps.length; i++) {
+          
+          const finalSteps = updatedStepsWithTravel.map((step, i) => {
             const hrs = Math.floor(recalcTime / 60) % 24
             const mins = recalcTime % 60
             const period = hrs >= 12 ? 'PM' : 'AM'
             const displayHrs = hrs > 12 ? hrs - 12 : hrs === 0 ? 12 : hrs
-            updatedSteps[i] = { ...updatedSteps[i], time: `${displayHrs}:${mins.toString().padStart(2, '0')} ${period}` }
-            const dur = getActivityDuration(updatedSteps[i])
-            const travel = updatedSteps[i].travelTimeToNext || 15
-            recalcTime += dur + (i < updatedSteps.length - 1 ? travel : 0)
-          }
-          setSteps(updatedSteps)
-          // Propagate updated venues to parent
+            const newTime = `${displayHrs}:${mins.toString().padStart(2, '0')} ${period}`
+            const dur = getActivityDuration(step)
+            const travel = step.travelTimeToNext || 15
+            recalcTime += dur + (i < updatedStepsWithTravel.length - 1 ? travel : 0)
+            return { ...step, time: newTime }
+          })
+          
+          setSteps(finalSteps)
+          
+          // Propagate updated venues to parent (preserve original order for parent component)
           if (onVenuesUpdate) {
-            onVenuesUpdate(updatedVenues)
+            const updatedOriginalVenues = venues.map(originalVenue => {
+              const sortedIndex = sortedVenues.findIndex(sorted => 
+                sorted.name === originalVenue.name && sorted.address === originalVenue.address
+              )
+              if (sortedIndex >= 0) {
+                return updatedSortedVenues[sortedIndex]
+              }
+              return originalVenue
+            })
+            onVenuesUpdate(updatedOriginalVenues)
           }
         })
         .catch(() => { /* fallback to estimate-based pricing */ })
