@@ -100,7 +100,7 @@ interface DatePlanHistory {
   location: string
   budget: string
   vibes: string[]
-  venues: any[]
+  venues: Array<{ name?: string; category?: string }>
   totalCost?: number
   partySize?: number
   notes?: string
@@ -204,7 +204,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
       try {
         const parsed = JSON.parse(savedHistory)
         setDatePlanHistory(
-          parsed.map((item: any) => ({
+          parsed.map((item: Omit<DatePlanHistory, 'date'> & { date: string }) => ({
             ...item,
             date: new Date(item.date),
           }))
@@ -408,7 +408,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   // Load plan from history
   const loadPlanFromHistory = (plan: DatePlanHistory) => {
     setLocation(plan.location)
-    setBudget(plan.budget as any)
+    setBudget(plan.budget as Budget)
     setVibes(plan.vibes)
     setPartySize(plan.partySize || 2)
     setTime("prime")

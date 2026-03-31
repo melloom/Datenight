@@ -1,9 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { DynamicRetrievalMode, GoogleGenerativeAI } from '@google/generative-ai'
 import { z } from 'zod'
 import { scrapeMenuData, MenuData } from '@/lib/menu-scraper'
 import { canUsePremiumFeatures } from '@/lib/billing'
 import { verifyRequestUser, UnauthorizedError } from '@/lib/server-auth'
+
+type VenueCategory = 'drinks' | 'dinner' | 'activity'
+
+interface ApiVenue {
+  id?: string
+  placeId?: string
+  name: string
+  category: string
+  address?: string
+  priceRange?: string
+  tags?: string[]
+  coordinates?: { lat: number; lng: number }
+  website?: string
+  yelpBusinessId?: string
+  squareLocationId?: string
+  pricing?: { source?: string }
+  [key: string]: unknown
+}
+
+interface GooglePlace {
+  place_id: string
+  name: string
+  types?: string[]
+  rating?: number
+  user_ratings_total?: number
+  price_level?: number
+  formatted_address?: string
+  geometry?: { location?: { lat: number; lng: number } }
+  photos?: Array<{ photo_reference?: string }>
+  [key: string]: unknown
+}
+
+interface GooglePlaceDetails {
+  types?: string[]
+  photos?: Array<{ photo_reference?: string }>
+  name?: string
+  rating?: number
+  user_ratings_total?: number
+  price_level?: number
+  formatted_address?: string
+  formatted_phone_number?: string
+  website?: string
+  editorial_summary?: { overview?: string }
+  geometry?: { location?: { lat: number; lng: number } }
+  reservable?: boolean
+  wheelchair_accessible_entrance?: boolean
+  outdoor_seating?: boolean
+  reviews?: Array<{ text?: string }>
+}
+
+interface PricingResult {
+  tickets: number | null
+  food: number | null
+  drinks: number | null
+  activities: number | null
+  packages: unknown[]
+  duration: number
+  website?: string | null
+  bookingUrl?: string | null
+  source: string
+  lastUpdated?: string
+}
 
 const enhanceSearchSchema = z.object({
   action: z.literal('enhance-search'),
@@ -28,7 +90,7 @@ const analyzeVenueSchema = z.object({
 
 const recommendSchema = z.object({
   action: z.literal('recommend'),
-  venues: z.array(z.any()).max(50),
+  venues: z.array(z.record(z.unknown())).max(50),
   criteria: z.object({
     location: z.string().max(200),
     budget: z.string().max(50),
@@ -66,7 +128,7 @@ const swapVenueSchema = z.object({
     partySize: z.number().min(1).max(100),
     customRequests: z.string().optional()
   }),
-  currentPlan: z.array(z.any()).max(10),
+  currentPlan: z.array(z.record(z.unknown())).max(10),
   swapCategory: z.string().max(100)
 })
 
@@ -110,7 +172,7 @@ function getGroundedModel() {
   const genAI = new GoogleGenerativeAI(apiKey)
   return genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
-    tools: [{ googleSearchRetrieval: { dynamicRetrievalConfig: { mode: 'MODE_DYNAMIC' as any, dynamicThreshold: 0.3 } } }],
+    tools: [{ googleSearchRetrieval: { dynamicRetrievalConfig: { mode: DynamicRetrievalMode.MODE_DYNAMIC, dynamicThreshold: 0.3 } } }],
   })
 }
 
@@ -165,7 +227,7 @@ export async function POST(request: NextRequest) {
     if (validationResult && !validationResult.success) {
       return NextResponse.json({
         error: 'Invalid input',
-        details: (validationResult as any).error?.errors
+        details: validationResult.error?.errors || []
       }, { status: 400 })
     }
 
@@ -280,7 +342,8 @@ Provide a JSON response with these exact keys:
         })
       }
 
-      const venueList = venues.map((v: any) => `${v.name} (${v.category})`).join(', ')
+      const typedVenues = venues as ApiVenue[]
+      const venueList = typedVenues.map((v) => `${v.name} (${v.category})`).join(', ')
       const prompt = `Create a date night recommendation:
 Location: ${criteria.location}
 Budget: ${criteria.budget}
@@ -318,9 +381,10 @@ Provide JSON:
       const { venues } = body
 
       // Generate estimate-based pricing from venue priceRange
-      const generateEstimatePricing = (v: any) => {
+      const generateEstimatePricing = (v: ApiVenue): PricingResult => {
         const multipliers: Record<string, number> = { '$': 0.7, '$$': 1.0, '$$$': 1.8, '$$$$': 3.0 }
-        const mult = multipliers[v.priceRange] || 1.0
+        const key = v.priceRange || '$$'
+        const mult = multipliers[key] || 1.0
         const duration = estimateVenueDuration(v.category || 'activity', v.tags || [], v.name || '')
         if (v.category === 'dinner') {
           return { tickets: null, food: Math.round(25 * mult), drinks: Math.round(10 * mult), activities: null, packages: [], duration, source: 'estimate' }
@@ -332,10 +396,11 @@ Provide JSON:
       }
 
       // Step 1: Try scraping real pricing from Google Place Details in parallel
-      const scrapedPricing: (any | null)[] = await Promise.all(
-        venues.map(async (v: any) => {
+      const typedVenues = venues as ApiVenue[]
+      const scrapedPricing: Array<PricingResult | null> = await Promise.all(
+        typedVenues.map(async (v) => {
           // If venue already has scraped pricing, return it
-          if (v.pricing?.source === 'scraped') return v.pricing
+          if (v.pricing?.source === 'scraped') return v.pricing as PricingResult
 
           // Try Google Place Details for real pricing data
           if (v.placeId || (v.id && String(v.id).startsWith('google-'))) {
@@ -401,8 +466,8 @@ Provide JSON:
 
       // Step 3: Use AI for missing venues if available
       if (model && missingIndices.length > 0) {
-        const missingVenues = missingIndices.map(i => venues[i])
-        const venueDescriptions = missingVenues.map((v: any, idx: number) =>
+        const missingVenues = missingIndices.map(i => typedVenues[i])
+        const venueDescriptions = missingVenues.map((v, idx: number) =>
           `${idx + 1}. "${v.name}" (${v.category})${v.address ? ` at ${v.address}` : ''}${v.priceRange ? ` - Price range: ${v.priceRange}` : ''}`
         ).join('\n')
 
@@ -428,19 +493,19 @@ Return JSON array (same order):
           const aiPricing = JSON.parse(cleaned)
           if (Array.isArray(aiPricing)) {
             missingIndices.forEach((origIdx, aiIdx) => {
-              finalPricing[origIdx] = aiPricing[aiIdx] || generateEstimatePricing(venues[origIdx])
+              finalPricing[origIdx] = aiPricing[aiIdx] || generateEstimatePricing(typedVenues[origIdx])
             })
           }
         } catch {
           // AI failed — fill with estimates
           missingIndices.forEach(idx => {
-            finalPricing[idx] = generateEstimatePricing(venues[idx])
+              finalPricing[idx] = generateEstimatePricing(typedVenues[idx])
           })
         }
       } else {
         // No AI — fill remaining with estimates
         missingIndices.forEach(idx => {
-          finalPricing[idx] = generateEstimatePricing(venues[idx])
+            finalPricing[idx] = generateEstimatePricing(typedVenues[idx])
         })
       }
 
@@ -448,7 +513,7 @@ Return JSON array (same order):
       try {
         const menuEnhancedPricing = await Promise.all(
           finalPricing.map(async (pricing, idx) => {
-            const venue = venues[idx]
+            const venue = typedVenues[idx]
             if (!venue.website && !venue.yelpBusinessId && !venue.squareLocationId) {
               return pricing
             }
@@ -471,8 +536,8 @@ Return JSON array (same order):
               // Update pricing with real menu averages
               return {
                 ...pricing,
-                food: menuData.averagePrices.entrees || menuData.averagePrices.appetizers || pricing.food,
-                drinks: menuData.averagePrices.drinks || pricing.drinks,
+                food: menuData.averagePrices.entrees || menuData.averagePrices.appetizers || pricing?.food || null,
+                drinks: menuData.averagePrices.drinks || pricing?.drinks || null,
                 source: 'menu-scraped',
                 lastUpdated: menuData.lastUpdated
               }
@@ -490,7 +555,7 @@ Return JSON array (same order):
     }
 
     // ─── Google Maps Directions API for routing ─────────────────────────────────────
-    async function getDirectionsBetweenVenues(venues: any[]): Promise<{ [key: string]: { minutes: number; miles: number } }> {
+    async function getDirectionsBetweenVenues(venues: ApiVenue[]): Promise<Record<string, { minutes: number; miles: number }>> {
       const results: { [key: string]: { minutes: number; miles: number } } = {}
 
       for (let i = 0; i < venues.length - 1; i++) {
@@ -545,7 +610,7 @@ Return JSON array (same order):
       } catch { return null }
     }
 
-    async function searchGooglePlaces(query: string, lat: number, lng: number, radius: number = 12000): Promise<any[]> {
+    async function searchGooglePlaces(query: string, lat: number, lng: number, radius: number = 12000): Promise<GooglePlace[]> {
       try {
         const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&location=${lat},${lng}&radius=${radius}&key=${GOOGLE_API_KEY}`
         const res = await fetch(url)
@@ -555,7 +620,7 @@ Return JSON array (same order):
       } catch { return [] }
     }
 
-    async function fetchPlaceDetails(placeId: string): Promise<any> {
+    async function fetchPlaceDetails(placeId: string): Promise<GooglePlaceDetails | null> {
       try {
         const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=formatted_phone_number,website,opening_hours,reviews,photos,url,price_level,rating,user_ratings_total,editorial_summary,serves_beer,serves_wine,serves_vegetarian_food,reservable,dine_in,takeout,delivery,wheelchair_accessible_entrance,outdoor_seating,types,name,geometry&key=${GOOGLE_API_KEY}`
         const res = await fetch(url)
@@ -610,7 +675,7 @@ Return JSON array (same order):
       return ['$', '$$', '$$$', '$$$$'][((level || 2) - 1)] || '$$'
     }
 
-    function placeToVenue(place: any, details: any | null, forcedCategory?: string): any {
+    function placeToVenue(place: GooglePlace, details: GooglePlaceDetails | null, forcedCategory?: VenueCategory): ApiVenue {
       const d = details || {}
       const types = place.types || d.types || []
       const photos = d.photos || place.photos || []
@@ -653,11 +718,11 @@ Return JSON array (same order):
       queries: string[],
       excludeNames: string[],
       maxResults: number = 3
-    ): Promise<any[]> {
+    ): Promise<ApiVenue[]> {
       const geo = await geocodeLocation(location)
       if (!geo) return []
 
-      const allPlaces: any[] = []
+      const allPlaces: GooglePlace[] = []
       const seenIds = new Set<string>()
       const excludeLower = excludeNames.map(n => n.toLowerCase())
 
@@ -721,7 +786,7 @@ Return JSON array (same order):
     }
 
     // Select venues that are clustered together (within ~10 miles of each other)
-    function selectClusteredVenues(venues: any[], maxResults: number): any[] {
+    function selectClusteredVenues(venues: ApiVenue[], maxResults: number): ApiVenue[] {
       if (venues.length <= maxResults) return venues
 
       // Start with the highest-rated venue as anchor
@@ -844,15 +909,16 @@ Return JSON: {"queries": ["query1","query2","query3","query4"], "neighborhood": 
       const vibes = criteria?.vibes?.join(' ') || 'romantic'
       const loc = location || criteria?.location || 'the city'
       const currentPlanVenues = currentVenues || body.currentPlan || []
-      const excludeNames = currentPlanVenues.map((v: any) => v.name)
+      const typedCurrentPlanVenues = currentPlanVenues as ApiVenue[]
+      const excludeNames = typedCurrentPlanVenues.map((v) => v.name)
       const aiModel = groundedModel || model
 
       // Get the center of current venues for neighborhood targeting
       let neighborhoodHint = ''
-      const venuesWithCoords = currentPlanVenues.filter((v: any) => v.coordinates?.lat && v.coordinates?.lng)
+      const venuesWithCoords = typedCurrentPlanVenues.filter((v) => v.coordinates?.lat && v.coordinates?.lng)
       if (venuesWithCoords.length > 0) {
-        const avgLat = venuesWithCoords.reduce((s: number, v: any) => s + v.coordinates.lat, 0) / venuesWithCoords.length
-        const avgLng = venuesWithCoords.reduce((s: number, v: any) => s + v.coordinates.lng, 0) / venuesWithCoords.length
+        const avgLat = venuesWithCoords.reduce((s: number, v) => s + (v.coordinates?.lat || 0), 0) / venuesWithCoords.length
+        const avgLng = venuesWithCoords.reduce((s: number, v) => s + (v.coordinates?.lng || 0), 0) / venuesWithCoords.length
         neighborhoodHint = ` near coordinates ${avgLat.toFixed(4)},${avgLng.toFixed(4)}`
       }
 
@@ -907,16 +973,17 @@ Suggest 5 specific Google Maps search queries using real venue names or neighbor
       const customReq = criteria?.customRequests || body.customRequests || ''
       const loc = criteria?.location || ''
       const vibes = criteria?.vibes?.join(' ') || 'romantic'
-      const excludeNames = (currentPlan || []).map((v: any) => v.name)
+      const typedCurrentPlan = (currentPlan || []) as ApiVenue[]
+      const excludeNames = typedCurrentPlan.map((v) => v.name)
       const aiModel = groundedModel || model
 
       // Find the center of OTHER venues in the plan to search near them
-      const otherVenues = (currentPlan || []).filter((v: any) => v.name !== venue.name && v.coordinates?.lat && v.coordinates?.lng)
+      const otherVenues = typedCurrentPlan.filter((v) => v.name !== venue.name && v.coordinates?.lat && v.coordinates?.lng)
       let searchLat = 0
       let searchLng = 0
       if (otherVenues.length > 0) {
-        searchLat = otherVenues.reduce((s: number, v: any) => s + v.coordinates.lat, 0) / otherVenues.length
-        searchLng = otherVenues.reduce((s: number, v: any) => s + v.coordinates.lng, 0) / otherVenues.length
+        searchLat = otherVenues.reduce((s: number, v) => s + (v.coordinates?.lat || 0), 0) / otherVenues.length
+        searchLng = otherVenues.reduce((s: number, v) => s + (v.coordinates?.lng || 0), 0) / otherVenues.length
       }
 
       const typeMap: Record<string, string> = { dinner: 'restaurant', drinks: 'bar cocktail lounge', activity: 'entertainment fun' }
@@ -928,7 +995,7 @@ Suggest 5 specific Google Maps search queries using real venue names or neighbor
       // Use grounded AI to make smarter queries based on web search
       if (aiModel && (customReq || vibes)) {
         try {
-          const otherNames = otherVenues.map((v: any) => v.name).join(', ')
+          const otherNames = otherVenues.map((v) => v.name).join(', ')
           const result = await aiModel.generateContent(
             `Search the web for a replacement ${swapCategory} venue in ${loc} for a date night. Replacing "${venue.name}". User wants: "${customReq || 'something different'}". Vibes: ${vibes}, Budget: ${criteria?.budget || '$$'}.
 
@@ -943,9 +1010,9 @@ Suggest 3 Google Maps search queries using specific venue names. Return JSON: {"
       }
 
       // If we know where the other venues are, search near them specifically
-      let foundVenues: any[]
+      let foundVenues: ApiVenue[]
       if (searchLat && searchLng) {
-        const allPlaces: any[] = []
+        const allPlaces: GooglePlace[] = []
         const seenIds = new Set<string>()
         const searchResults = await Promise.all(
           searchQueries.slice(0, 3).map(q => searchGooglePlaces(q, searchLat, searchLng, 8000))
@@ -1035,7 +1102,8 @@ Suggest 3 Google Maps search queries using specific venue names. Return JSON: {"
         }
 
         // Use AI to suggest optimal ordering based on travel times and venue types
-        const venueDescriptions = venues.map((v: any, i: number) =>
+        const typedVenues = venues as ApiVenue[]
+        const venueDescriptions = typedVenues.map((v, i: number) =>
           `${i + 1}. ${v.name} (${v.category}) at ${v.address}`
         ).join('\n')
 
@@ -1072,7 +1140,7 @@ Return JSON:
         const optimization = JSON.parse(text)
 
         // Apply the optimal order
-        const optimizedVenues = optimization.optimalOrder.map((index: number) => venues[index])
+        const optimizedVenues = optimization.optimalOrder.map((index: number) => typedVenues[index])
 
         // Recalculate travel times for optimized order
         const optimizedTravelTimes = await getDirectionsBetweenVenues(optimizedVenues)

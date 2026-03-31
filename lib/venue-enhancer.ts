@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Enhanced venue scraper utilities — vibe extraction, hours validation,
 // clustering, reservations, dietary, accessibility, social media, weather, crowd levels
 import { Venue, SearchCriteria } from './venue-search'

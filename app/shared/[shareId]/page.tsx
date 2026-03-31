@@ -17,9 +17,16 @@ async function getSharedData(shareId: string) {
   }
 }
 
+type SharedMetadataData = {
+  venues?: Array<{ name?: string }>
+  location?: string
+  vibes?: string[]
+  plannedDate?: string
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ shareId: string }> }): Promise<Metadata> {
   const { shareId } = await params
-  const data = await getSharedData(shareId)
+  const data = (await getSharedData(shareId)) as SharedMetadataData | null
 
   if (!data || !data.venues) {
     return {
@@ -28,7 +35,7 @@ export async function generateMetadata({ params }: { params: Promise<{ shareId: 
     }
   }
 
-  const venueNames = data.venues.map((v: any) => v.name).filter(Boolean)
+  const venueNames = data.venues.map((v) => v.name).filter((name): name is string => Boolean(name))
   const location = data.location || ''
   const vibes = (data.vibes || []).join(', ')
   const plannedDate = data.plannedDate

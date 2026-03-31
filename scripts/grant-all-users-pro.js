@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { cert, getApps, initializeApp } = require('firebase-admin/app')
 const { getDatabase } = require('firebase-admin/database')
 

@@ -88,17 +88,21 @@ export function HorizontalScrollScene() {
 
   // Smooth animation loop using requestAnimationFrame
   const animate = useCallback(() => {
-    const ease = 0.08
-    animatedX.current += (targetX.current - animatedX.current) * ease
+    const step = () => {
+      const ease = 0.08
+      animatedX.current += (targetX.current - animatedX.current) * ease
 
-    // Only update state if the value changed meaningfully
-    if (Math.abs(animatedX.current - targetX.current) > 0.5) {
-      setDisplayX(animatedX.current)
-      rafId.current = requestAnimationFrame(animate)
-    } else {
-      animatedX.current = targetX.current
-      setDisplayX(targetX.current)
+      // Only update state if the value changed meaningfully
+      if (Math.abs(animatedX.current - targetX.current) > 0.5) {
+        setDisplayX(animatedX.current)
+        rafId.current = requestAnimationFrame(step)
+      } else {
+        animatedX.current = targetX.current
+        setDisplayX(targetX.current)
+      }
     }
+
+    step()
   }, [])
 
   const update = useCallback(() => {

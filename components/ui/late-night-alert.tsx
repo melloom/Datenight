@@ -247,7 +247,7 @@ export function LateNightAlert({
                   {/* Pros */}
                   {suggestion.pros.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium mb-1">Why it's great:</p>
+                      <p className="text-xs font-medium mb-1">Why it is great:</p>
                       <ul className="text-xs space-y-0.5">
                         {suggestion.pros.slice(0, 2).map((pro, index) => (
                           <li key={index} className="flex items-center gap-1">

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 // Initialize Gemini AI

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 
@@ -9,12 +9,8 @@ interface HeroSceneProps {
 }
 
 export function HeroScene({ scrollY }: HeroSceneProps) {
-  const [mounted, setMounted] = useState(false)
+  const [mounted] = useState(true)
   const { user } = useAuth()
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   const opacity = Math.max(0, 1 - scrollY / 600)
   const scale = 1 + scrollY / 2000

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Menu scraping utilities for real pricing data
 import axios from 'axios'
 

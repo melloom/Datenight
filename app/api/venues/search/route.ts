@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       })
 
       try {
-        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+          const data = await Promise.race([fetchPromise, timeoutPromise]) as unknown
         return NextResponse.json(data)
       } catch (error) {
         console.error('Google Places API error:', error)
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       })
 
       try {
-        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+          const data = await Promise.race([fetchPromise, timeoutPromise]) as unknown
         return NextResponse.json(data)
       } catch (error) {
         console.error('Google Text Search API error:', error)
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       })
 
       try {
-        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+          const data = await Promise.race([fetchPromise, timeoutPromise]) as unknown
         return NextResponse.json(data)
       } catch (error) {
         console.error('Google Geocode API error:', error)
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
       })
 
       try {
-        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+          const data = await Promise.race([fetchPromise, timeoutPromise]) as unknown
         return NextResponse.json(data)
       } catch (error) {
         console.error('Google Place Details API error:', error)
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
       })
 
       try {
-        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+          const data = await Promise.race([fetchPromise, timeoutPromise]) as unknown
         return NextResponse.json(data)
       } catch (error) {
         console.error('Foursquare API error:', error)
@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
       })
 
       try {
-        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+          const data = await Promise.race([fetchPromise, timeoutPromise]) as unknown
         return NextResponse.json(data)
       } catch (error) {
         console.error('Yelp Search API error:', error)
@@ -281,8 +281,8 @@ export async function POST(request: NextRequest) {
         return response.json()
       })
 
-      try {
-        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+        try {
+          const data = await Promise.race([fetchPromise, timeoutPromise]) as { businesses?: Array<{ id: string }> }
         // If we got a match, fetch full details including reviews
         if (data.businesses && data.businesses.length > 0) {
           const yelpId = data.businesses[0].id
@@ -350,7 +350,7 @@ export async function POST(request: NextRequest) {
       })
 
       try {
-        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+          const data = await Promise.race([fetchPromise, timeoutPromise]) as unknown
         return NextResponse.json(data)
       } catch (error) {
         console.error('Ticketmaster API error:', error)

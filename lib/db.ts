@@ -39,6 +39,18 @@ export interface DatePlanHistoryRecord {
   updatedAt: number
 }
 
+export interface FavoriteVenueRecord {
+  id?: string
+  name?: string
+  category?: string
+  rating?: number
+  priceRange?: string
+  address?: string
+  imageUrl?: string
+  savedAt?: number
+  [key: string]: unknown
+}
+
 function sanitizeRtdbKey(value: string): string {
   return value.replace(/[.#$[\]]/g, '_')
 }
@@ -207,7 +219,7 @@ export async function removeFavorite(userId: string, venueId: string): Promise<v
   await remove(ref(rtdb, `users/${userId}/favorites/${venueKey}`))
 }
 
-export async function getUserFavorites(userId: string): Promise<any[]> {
+export async function getUserFavorites(userId: string): Promise<FavoriteVenueRecord[]> {
   if (!rtdb) {
     return []
   }
@@ -215,7 +227,7 @@ export async function getUserFavorites(userId: string): Promise<any[]> {
   const snapshot = await get(ref(rtdb, `users/${userId}/favorites`))
   if (!snapshot.exists()) return []
 
-  const favorites: any[] = []
+  const favorites: FavoriteVenueRecord[] = []
   snapshot.forEach((child) => {
     favorites.push({ id: child.key, ...child.val() })
   })

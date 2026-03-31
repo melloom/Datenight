@@ -7,7 +7,7 @@ import {
   signInWithPopup,
   signOut as firebaseSignOut,
 } from "firebase/auth"
-import { ref, set, get, serverTimestamp } from "firebase/database"
+import { ref, set, get } from "firebase/database"
 import { auth, rtdb, googleProvider } from "@/lib/firebase"
 
 interface AuthContextType {
@@ -26,12 +26,11 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => Boolean(auth && rtdb))
 
   useEffect(() => {
     // Don't initialize Firebase auth if services are not available
     if (!auth || !rtdb) {
-      setLoading(false)
       return
     }
 
@@ -69,8 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       await signInWithPopup(auth, googleProvider)
-    } catch (error: any) {
-      if (error.code === "auth/popup-closed-by-user") {
+    } catch (error: unknown) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code?: string }).code === "auth/popup-closed-by-user"
+      ) {
         return
       }
       throw error

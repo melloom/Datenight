@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { Wine, UtensilsCrossed, Sparkles, Star, Clock, MapPin, DollarSign, AlertCircle, Heart, Users, Calendar, PiggyBank, Receipt, CheckCircle2, Loader2 } from "lucide-react"
 import { authJsonFetch } from "@/lib/client-auth-fetch"
 
@@ -219,13 +220,13 @@ export default function SharedItinerary({ shareId }: { shareId: string }) {
           <p className="text-sm text-muted-foreground">
             This date night plan doesn&apos;t exist or the link may be invalid.
           </p>
-          <a
+          <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
           >
             <Heart className="w-4 h-4" />
             Plan your own date night
-          </a>
+          </Link>
         </div>
       </div>
     )
@@ -242,13 +243,13 @@ export default function SharedItinerary({ shareId }: { shareId: string }) {
           <p className="text-sm text-muted-foreground">
             This date night plan has expired. Shared plans are available for 3 days after the planned date.
           </p>
-          <a
+          <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity"
           >
             <Heart className="w-4 h-4" />
             Plan your own date night
-          </a>
+          </Link>
         </div>
       </div>
     )
@@ -274,12 +275,12 @@ export default function SharedItinerary({ shareId }: { shareId: string }) {
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
               <Heart className="w-4 h-4 text-white fill-white" />
             </div>
             <span className="font-bold text-sm text-foreground">Mystery Date Night</span>
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -545,13 +546,13 @@ export default function SharedItinerary({ shareId }: { shareId: string }) {
 
         {/* CTA */}
         <div className="text-center pb-8">
-          <a
+          <Link
             href="/"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity shadow-lg"
           >
             <Heart className="w-4 h-4" />
             Plan your own date night
-          </a>
+          </Link>
         </div>
       </main>
     </div>

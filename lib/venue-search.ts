@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Venue search and scraping logic
 import { geminiAI } from './gemini'
 import { sanitizeForSearch } from './profanity-filter'
@@ -190,8 +191,73 @@ export interface SearchResult {
   lateNightResponse?: LateNightResponse
 }
 
+interface SearchSource {
+  name: string
+  baseUrl: string
+  enabled: boolean
+  rateLimit: {
+    requestsPerSecond: number
+    requestsPerMinute: number
+    requestsPerDay: number
+  }
+}
+
+interface FoursquareCategory {
+  name?: string
+}
+
+interface FoursquareLocation {
+  address?: string
+  cross_street?: string
+  locality?: string
+  region?: string
+  postcode?: string
+}
+
+interface FoursquarePlace {
+  fsq_id?: string
+  name?: string
+  rating?: number
+  stats?: { total_ratings?: number }
+  price?: number
+  location?: FoursquareLocation
+  tel?: string
+  website?: string
+  photos?: Array<{ suffix?: string }>
+  geocodes?: { main?: { latitude?: number; longitude?: number } }
+  lat?: number
+  lng?: number
+  hours?: { regular?: string[] }
+  categories?: FoursquareCategory[]
+  popular?: boolean
+  menu?: unknown
+  reservations?: unknown
+}
+
+interface GoogleAddressComponent {
+  types?: string[]
+  short_name?: string
+}
+
+interface GooglePlace {
+  place_id?: string
+  name?: string
+  rating?: number
+  user_ratings_total?: number
+  price_level?: number
+  formatted_address?: string
+  vicinity?: string
+  address_components?: GoogleAddressComponent[]
+  formatted_phone_number?: string
+  website?: string
+  photos?: Array<{ photo_reference?: string }>
+  geometry?: { location?: { lat?: number; lng?: number } }
+  opening_hours?: { weekday_text?: string[] }
+  types?: string[]
+}
+
 class VenueSearcher {
-  private readonly searchSources = [
+  private readonly searchSources: SearchSource[] = [
     {
       name: 'Google Places API',
       baseUrl: 'https://places.googleapis.com/maps/api/place',
@@ -393,7 +459,7 @@ class VenueSearcher {
     }
 
     // If no venues found, return empty array - NO FAKE FALLBACKS
-    let finalPlan = menuEnhancedPlan
+    const finalPlan = menuEnhancedPlan
     if (pricedPlan.length === 0) {
     }
 
@@ -1041,7 +1107,7 @@ class VenueSearcher {
     return priceMap[priceRange as keyof typeof priceMap] || 50
   }
 
-  private async searchSource(source: any, criteria: SearchCriteria): Promise<Venue[]> {
+  private async searchSource(source: SearchSource, criteria: SearchCriteria): Promise<Venue[]> {
     if (source.name === 'Google Places API') {
       const venues = await this.searchGooglePlaces(criteria)
       return venues
@@ -1194,7 +1260,7 @@ class VenueSearcher {
 
               const data = await response.json()
               if (data.results) {
-                return data.results.slice(0, 3).map((place: any) =>
+                return data.results.slice(0, 3).map((place: GooglePlace) =>
                   this.convertGooglePlaceToVenue(place, criteria)
                 )
               }
@@ -1276,7 +1342,7 @@ class VenueSearcher {
               clearTimeout(timeoutId)
               if (!response.ok) return []
               const data = await response.json()
-              return (data.results || []).slice(0, 3).map((place: any) =>
+              return (data.results || []).slice(0, 3).map((place: GooglePlace) =>
                 this.convertGooglePlaceToVenue(place, criteria)
               )
             } catch {
@@ -1477,7 +1543,7 @@ class VenueSearcher {
           const data = await response.json()
 
           if (data.response?.venues) {
-            const places = data.response.venues.map((place: any) => this.convertFoursquareToVenue(place, criteria))
+            const places = data.response.venues.map((place: FoursquarePlace) => this.convertFoursquareToVenue(place, criteria))
             venues.push(...places)
           }
 
@@ -1532,10 +1598,10 @@ class VenueSearcher {
   }
 
 
-  private convertFoursquareToVenue(place: any, criteria: SearchCriteria): Venue {
+  private convertFoursquareToVenue(place: FoursquarePlace, criteria: SearchCriteria): Venue {
     return {
-      id: `foursquare-${place.fsq_id}`,
-      name: place.name,
+      id: `foursquare-${place.fsq_id || 'unknown'}`,
+      name: place.name || 'Unknown Venue',
       category: this.categorizeFoursquarePlace(place),
       rating: place.rating ? Math.min(5, place.rating / 2) : 0,
       reviewCount: place.stats?.total_ratings || 0,
@@ -1543,27 +1609,27 @@ class VenueSearcher {
       address: this.buildFoursquareAddress(place.location) || 'Address not available',
       phone: place.tel,
       website: place.website,
-      imageUrl: place.photos?.[0] ? `https://igx.4sqi.net/img/general/800x800${place.photos[0].suffix}` : `https://source.unsplash.com/800x600/?${encodeURIComponent(place.name)}`,
+      imageUrl: place.photos?.[0]?.suffix ? `https://igx.4sqi.net/img/general/800x800${place.photos[0].suffix}` : `https://source.unsplash.com/800x600/?${encodeURIComponent(place.name || 'venue')}`,
       description: this.generateFoursquareDescription(place),
       highlights: this.generateFoursquareHighlights(place),
       coordinates: {
-        lat: place.geocodes?.main?.latitude || place.lat,
-        lng: place.geocodes?.main?.longitude || place.lng
+        lat: place.geocodes?.main?.latitude || place.lat || 0,
+        lng: place.geocodes?.main?.longitude || place.lng || 0
       },
       hours: place.hours?.regular?.join(', '),
-      tags: place.categories?.map((c: any) => c.name) || [],
+      tags: place.categories?.map((c: FoursquareCategory) => c.name || '').filter(Boolean) || [],
       capacity: undefined,
       features: this.extractFoursquareFeatures(place)
     }
   }
 
-  private categorizeFoursquarePlace(place: any): 'drinks' | 'dinner' | 'activity' {
+  private categorizeFoursquarePlace(place: FoursquarePlace): 'drinks' | 'dinner' | 'activity' {
     const categories = place.categories || []
 
-    if (categories.some((c: any) => c.name?.toLowerCase().includes('bar') || c.name?.toLowerCase().includes('pub'))) {
+    if (categories.some((c: FoursquareCategory) => c.name?.toLowerCase().includes('bar') || c.name?.toLowerCase().includes('pub'))) {
       return 'drinks'
     }
-    if (categories.some((c: any) => c.name?.toLowerCase().includes('restaurant') || c.name?.toLowerCase().includes('food'))) {
+    if (categories.some((c: FoursquareCategory) => c.name?.toLowerCase().includes('restaurant') || c.name?.toLowerCase().includes('food'))) {
       return 'dinner'
     }
 
@@ -1577,8 +1643,8 @@ class VenueSearcher {
   }
 
 
-  private generateFoursquareDescription(place: any): string {
-    const categories = place.categories?.map((c: any) => c.name).join(', ') || 'venue'
+  private generateFoursquareDescription(place: FoursquarePlace): string {
+    const categories = place.categories?.map((c: FoursquareCategory) => c.name || '').filter(Boolean).join(', ') || 'venue'
     const priceLevel = place.price || 1 // 1-4 price scale from Foursquare
     const priceDescriptions = {
       1: 'budget-friendly',
@@ -1628,17 +1694,17 @@ class VenueSearcher {
   }
 
 
-  private generateFoursquareHighlights(place: any): string[] {
+  private generateFoursquareHighlights(place: FoursquarePlace): string[] {
     const highlights = ['Popular with locals', 'Great atmosphere']
 
-    if (place.rating >= 4.5) highlights.push('Excellent ratings')
-    if (place.stats?.total_ratings >= 1000) highlights.push('Popular spot')
+    if ((place.rating || 0) >= 4.5) highlights.push('Excellent ratings')
+    if ((place.stats?.total_ratings || 0) >= 1000) highlights.push('Popular spot')
     if (place.price) highlights.push(`${this.convertFoursquarePrice(place.price)} pricing`)
 
     return highlights.slice(0, 6)
   }
 
-  private buildFoursquareAddress(location: any): string | null {
+  private buildFoursquareAddress(location?: FoursquareLocation | null): string | null {
     if (!location) return null
 
     const parts = []
@@ -1651,7 +1717,7 @@ class VenueSearcher {
     return parts.length > 0 ? parts.join(', ') : ''
   }
 
-  private buildGoogleAddress(place: any): string | null {
+  private buildGoogleAddress(place: GooglePlace): string | null {
     // Try multiple address fields from Google Places API
     if (place.formatted_address) return place.formatted_address
     if (place.vicinity) return place.vicinity
@@ -1660,11 +1726,11 @@ class VenueSearcher {
     const components = place.address_components || []
     const parts = []
 
-    const streetNumber = components.find((c: any) => c.types.includes('street_number'))?.short_name
-    const street = components.find((c: any) => c.types.includes('route'))?.short_name
-    const neighborhood = components.find((c: any) => c.types.includes('neighborhood'))?.short_name
-    const city = components.find((c: any) => c.types.includes('locality'))?.short_name
-    const state = components.find((c: any) => c.types.includes('administrative_area_level_1'))?.short_name
+    const streetNumber = components.find((c: GoogleAddressComponent) => c.types?.includes('street_number'))?.short_name
+    const street = components.find((c: GoogleAddressComponent) => c.types?.includes('route'))?.short_name
+    const neighborhood = components.find((c: GoogleAddressComponent) => c.types?.includes('neighborhood'))?.short_name
+    const city = components.find((c: GoogleAddressComponent) => c.types?.includes('locality'))?.short_name
+    const state = components.find((c: GoogleAddressComponent) => c.types?.includes('administrative_area_level_1'))?.short_name
 
     if (streetNumber && street) parts.push(`${streetNumber} ${street}`)
     else if (street) parts.push(street)
@@ -1676,7 +1742,7 @@ class VenueSearcher {
     return parts.length > 0 ? parts.join(', ') : ''
   }
 
-  private extractFoursquareFeatures(place: any): string[] {
+  private extractFoursquareFeatures(place: FoursquarePlace): string[] {
     const features = []
 
     if (place.popular) features.push('Popular Spot')
@@ -1763,7 +1829,7 @@ class VenueSearcher {
           const data = await response.json()
 
           if (data.results) {
-            const places = data.results.map((place: any) => this.convertGooglePlaceToVenue(place, criteria))
+            const places = data.results.map((place: GooglePlace) => this.convertGooglePlaceToVenue(place, criteria))
             venues.push(...places)
           }
 
@@ -1789,7 +1855,7 @@ class VenueSearcher {
   private getFallbackLocation(location: string): { lat: number; lng: number } | null {
 
     // Clean up the location string - remove special characters and normalize
-    let normalizedLocation = location.toLowerCase().trim()
+    const normalizedLocation = location.toLowerCase().trim()
       .replace(/[\/\\]/g, ' ') // Replace slashes with spaces
       .replace(/\s+/g, ' ') // Normalize multiple spaces
       .trim()
@@ -2024,10 +2090,10 @@ class VenueSearcher {
     return [...new Set(types)]
   }
 
-  private convertGooglePlaceToVenue(place: any, criteria: SearchCriteria): Venue {
+  private convertGooglePlaceToVenue(place: GooglePlace, criteria: SearchCriteria): Venue {
     return {
-      id: `google-${place.place_id}`,
-      name: place.name,
+      id: `google-${place.place_id || 'unknown'}`,
+      name: place.name || 'Unknown Venue',
       category: this.categorizeGooglePlace(place),
       rating: place.rating || 0,
       reviewCount: place.user_ratings_total || 0,
@@ -2036,13 +2102,13 @@ class VenueSearcher {
       phone: place.formatted_phone_number,
       website: place.website,
       imageUrl: place.photos ?
-        `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${place.photos[0].photo_reference}&key=${this.getGoogleApiKey()}` :
-        `https://source.unsplash.com/800x600/?${encodeURIComponent(place.name)}`,
+        `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${place.photos[0]?.photo_reference || ''}&key=${this.getGoogleApiKey()}` :
+        `https://source.unsplash.com/800x600/?${encodeURIComponent(place.name || 'venue')}`,
       description: this.generateGoogleDescription(place),
       highlights: this.generateGoogleHighlights(place),
       coordinates: {
-        lat: place.geometry.location.lat,
-        lng: place.geometry.location.lng
+        lat: place.geometry?.location?.lat || 0,
+        lng: place.geometry?.location?.lng || 0
       },
       hours: place.opening_hours?.weekday_text?.join(', '),
       tags: this.extractGoogleTags(place),

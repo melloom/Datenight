@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { MessageCircle, Send, Sparkles, X, Lightbulb } from "lucide-react"
 import { geminiAI } from "@/lib/gemini"
-import { Venue } from "@/lib/venue-search"
+import { SearchCriteria, Venue } from "@/lib/venue-search"
 
 interface Message {
   id: string
@@ -12,9 +12,13 @@ interface Message {
   timestamp: number
 }
 
+type AssistantSearchCriteria = Partial<SearchCriteria> & {
+  venues?: Venue[]
+}
+
 interface AIAssistantProps {
   currentVenue?: Venue
-  searchCriteria?: any
+  searchCriteria?: AssistantSearchCriteria | null
   isOpen: boolean
   onToggle: () => void
   screen?: 'setup' | 'loading' | 'itinerary'

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Sparkles, Heart, Clock, MapPin, DollarSign, Lightbulb } from "lucide-react"
-import { geminiAI } from "@/lib/gemini"
+import { DateRecommendation, geminiAI } from "@/lib/gemini"
 import { Venue, SearchCriteria } from "@/lib/venue-search"
 
 interface AIRecommendationProps {
@@ -11,7 +11,7 @@ interface AIRecommendationProps {
 }
 
 export function AIRecommendation({ venues, criteria }: AIRecommendationProps) {
-  const [recommendation, setRecommendation] = useState<any>(null)
+  const [recommendation, setRecommendation] = useState<DateRecommendation | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {

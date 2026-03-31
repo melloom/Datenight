@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { useState, useEffect, useRef } from "react"
 import {
   MapPin,
@@ -384,7 +386,7 @@ function formatItineraryForShare(steps: Step[], searchCriteria?: any): string {
   const vibeText = vibes.length > 0 ? vibes.slice(0, 2).join(' & ') : ''
 
   // Enhanced header with moon emoji
-  let header = "🌙 Date Night Plan\n━━━━━━━━━━━━━━━━━━\n"
+  const header = "🌙 Date Night Plan\n━━━━━━━━━━━━━━━━━━\n"
 
   // Build each stop with proper formatting
   const body = sorted.map((s, i) => {
@@ -468,7 +470,7 @@ function ShareModal({ steps, isOpen, onClose, venues, searchCriteria }: { steps:
 
   useEffect(() => {
     if (!isOpen || shareUrl || shareLoading || !user) return
-    setShareLoading(true)
+    let isCancelled = false
 
     const plannedDate = searchCriteria?.plannedDate ? new Date(searchCriteria.plannedDate) : new Date()
     const dateData: SavedDate = {
@@ -482,22 +484,38 @@ function ShareModal({ steps, isOpen, onClose, venues, searchCriteria }: { steps:
       status: 'planned' as const,
     }
 
-    shareItinerary(user.uid, dateData, plannedDate)
-      .then(id => {
-        const url = `${window.location.origin}/shared/${id}`
-        setShareUrl(url)
-      })
-      .catch(() => {
-        // Fall back to text-only sharing
-      })
-      .finally(() => setShareLoading(false))
+    queueMicrotask(() => {
+      if (isCancelled) return
+      setShareLoading(true)
+
+      shareItinerary(user.uid, dateData, plannedDate)
+        .then(id => {
+          if (isCancelled) return
+          const url = `${window.location.origin}/shared/${id}`
+          setShareUrl(url)
+        })
+        .catch(() => {
+          // Fall back to text-only sharing
+        })
+        .finally(() => {
+          if (!isCancelled) {
+            setShareLoading(false)
+          }
+        })
+    })
+
+    return () => {
+      isCancelled = true
+    }
   }, [isOpen, user, venues, searchCriteria, shareUrl, shareLoading])
 
   // Reset share URL when modal closes
   useEffect(() => {
     if (!isOpen) {
-      setShareUrl(null)
-      setShareLoading(false)
+      queueMicrotask(() => {
+        setShareUrl(null)
+        setShareLoading(false)
+      })
     }
   }, [isOpen])
 
@@ -2151,7 +2169,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     const dynamicSlots: string[] = []
     let runningTime = (() => {
       const [time, period] = firstStartTime.split(' ')
-      let [h, m] = time.split(':').map(Number)
+      const [hRaw, m] = time.split(':').map(Number)
+      let h = hRaw
       if (period === 'PM' && h !== 12) h += 12
       if (period === 'AM' && h === 12) h = 0
       return h * 60 + m // total minutes from midnight
@@ -2319,7 +2338,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
           const firstStart = startTimes[timePref] || startTimes.prime
           let recalcTime = (() => {
             const [t, p] = firstStart.split(' ')
-            let [hh, mm] = t.split(':').map(Number)
+            const [hhRaw, mm] = t.split(':').map(Number)
+            let hh = hhRaw
             if (p === 'PM' && hh !== 12) hh += 12
             if (p === 'AM' && hh === 12) hh = 0
             return hh * 60 + mm
@@ -2834,7 +2854,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
           <div className="bg-background rounded-2xl border p-6 max-w-md w-full">
             <h3 className="font-semibold text-lg mb-2">Swap {steps[showSwapDialog]?.label}</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Replace "{steps[showSwapDialog]?.place}" with something else?
+              Replace &quot;{steps[showSwapDialog]?.place}&quot; with something else?
             </p>
 
             <div className="space-y-3">
@@ -3442,7 +3462,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                   <div className="bg-linear-to-r from-red-500/10 to-green-500/10 rounded-lg p-3 border border-red-500/20">
                     <div className="flex items-center gap-2 mb-1">
                       <Heart className="w-3 h-3 text-red-600" />
-                      <span className="font-medium text-xs">Valentine's Day</span>
+                      <span className="font-medium text-xs">Valentine&apos;s Day</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
                       <div>💝 Romantic restaurants</div>

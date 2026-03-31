@@ -6,6 +6,7 @@ settings:
 
 overrides:
   serialize-javascript: 7.0.5
+  '@tootallnate/once': 3.0.1
 
 importers:
 
@@ -2154,8 +2155,8 @@ packages:
   '@tailwindcss/postcss@4.2.0':
     resolution: {integrity: sha512-u6YBacGpOm/ixPfKqfgrJEjMfrYmPD7gEFRoygS/hnQaRtV0VCBdpkx5Ouw9pnaLRwwlgGCuJw8xLpaR0hOrQg==}
 
-  '@tootallnate/once@2.0.0':
-    resolution: {integrity: sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A==}
+  '@tootallnate/once@3.0.1':
+    resolution: {integrity: sha512-VyMVKRrpHTT8PnotUeV8L/mDaMwD5DaAKCFLP73zAqAtvF0FCqky+Ki7BYbFCYQmqFyTe9316Ed5zS70QUR9eg==}
     engines: {node: '>= 10'}
 
   '@tootallnate/quickjs-emscripten@0.23.0':
@@ -7521,7 +7522,7 @@ snapshots:
       postcss: 8.5.6
       tailwindcss: 4.2.0
 
-  '@tootallnate/once@2.0.0':
+  '@tootallnate/once@3.0.1':
     optional: true
 
   '@tootallnate/quickjs-emscripten@0.23.0': {}
@@ -9339,7 +9340,7 @@ snapshots:
 
   http-proxy-agent@5.0.0:
     dependencies:
-      '@tootallnate/once': 2.0.0
+      '@tootallnate/once': 3.0.1
       agent-base: 6.0.2
       debug: 4.4.3
     transitivePeerDependencies:
