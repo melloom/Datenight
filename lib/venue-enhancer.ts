@@ -94,7 +94,7 @@ export function isOpenAtTime(openingHours: any, plannedDate?: Date, plannedTime?
 
 // ─── #4: Nearby venue clustering ────────────────────────────────────────────
 
-export function clusterNearbyVenues(venues: Venue[], maxWalkingMiles: number = 0.5): Venue[][] {
+export function clusterNearbyVenues(venues: Venue[], maxMiles: number = 0.5): Venue[][] {
   const clusters: Venue[][] = []
   const assigned = new Set<string>()
 
@@ -107,7 +107,7 @@ export function clusterNearbyVenues(venues: Venue[], maxWalkingMiles: number = 0
     for (const other of venues) {
       if (assigned.has(other.id)) continue
       const dist = haversine(venue.coordinates, other.coordinates)
-      if (dist <= maxWalkingMiles) {
+      if (dist <= maxMiles) {
         cluster.push(other)
         assigned.add(other.id)
       }
@@ -125,20 +125,71 @@ export function clusterNearbyVenues(venues: Venue[], maxWalkingMiles: number = 0
   })
 }
 
+// Try multiple radius tiers to find the tightest cluster with category diversity
+export function findBestCluster(venues: Venue[]): { cluster: Venue[]; radius: number } {
+  // Radius tiers: walkable → short drive → moderate drive
+  const radiusTiers = [
+    { radius: 0.5, label: 'walkable' },      // ~10 min walk
+    { radius: 1.0, label: 'very close' },     // ~3 min drive
+    { radius: 2.0, label: 'short drive' },    // ~5 min drive
+    { radius: 5.0, label: 'moderate drive' }, // ~12 min drive
+    { radius: 8.0, label: 'drive' },          // ~20 min drive
+  ]
+
+  for (const tier of radiusTiers) {
+    const clusters = clusterNearbyVenues(venues, tier.radius)
+
+    // Look for a cluster that has at least 2 category types and 3+ venues
+    for (const cluster of clusters) {
+      const categories = new Set(cluster.map(v => v.category))
+      if (categories.size >= 2 && cluster.length >= 3) {
+        return { cluster, radius: tier.radius }
+      }
+    }
+
+    // Accept a cluster with 2+ venues and 2+ categories at this tier
+    for (const cluster of clusters) {
+      const categories = new Set(cluster.map(v => v.category))
+      if (categories.size >= 2 && cluster.length >= 2) {
+        return { cluster, radius: tier.radius }
+      }
+    }
+  }
+
+  // Fallback: return all venues
+  return { cluster: venues, radius: 999 }
+}
+
 export function preferClusteredVenues(venues: Venue[], criteria: SearchCriteria): Venue[] {
   if (venues.length <= 3) return venues
 
-  const clusters = clusterNearbyVenues(venues)
+  // Find the tightest cluster with category diversity across multiple radius tiers
+  const { cluster, radius } = findBestCluster(venues)
 
-  // Find best cluster that has venue diversity (different categories)
-  for (const cluster of clusters) {
-    const categories = new Set(cluster.map(v => v.category))
-    if (categories.size >= 2 && cluster.length >= 2) {
-      // This cluster has at least 2 different category types — prefer it
-      const remaining = venues.filter(v => !cluster.includes(v))
-      // Put clustered venues first, then remaining
-      return [...cluster, ...remaining]
+  // If we found a good cluster, strongly prefer those venues
+  if (cluster.length >= 2) {
+    const remaining = venues.filter(v => !cluster.includes(v))
+
+    // Within the cluster, sort by category diversity + rating
+    const sortedCluster = [...cluster].sort((a, b) => {
+      // Prefer different categories first
+      const catOrder: Record<string, number> = { dinner: 0, drinks: 1, activity: 2 }
+      const catDiff = (catOrder[a.category] ?? 1) - (catOrder[b.category] ?? 1)
+      if (catDiff !== 0) return catDiff
+      return (b.rating || 0) - (a.rating || 0)
+    })
+
+    // Put clustered venues first, then remaining sorted by distance to cluster center
+    if (sortedCluster.length > 0 && sortedCluster[0].coordinates) {
+      const center = sortedCluster[0].coordinates
+      remaining.sort((a, b) => {
+        const distA = a.coordinates ? haversine(center, a.coordinates) : 999
+        const distB = b.coordinates ? haversine(center, b.coordinates) : 999
+        return distA - distB
+      })
     }
+
+    return [...sortedCluster, ...remaining]
   }
 
   return venues

@@ -2,7 +2,7 @@
 import { geminiAI } from './gemini'
 import { sanitizeForSearch } from './profanity-filter'
 import { lateNightDetector, LateNightResponse } from './late-night-detector'
-import { enhanceVenueWithScrapedData, preferClusteredVenues, calculateSeasonalFit } from './venue-enhancer'
+import { enhanceVenueWithScrapedData, preferClusteredVenues, calculateSeasonalFit, findBestCluster } from './venue-enhancer'
 
 export interface Venue {
   id: string
@@ -623,6 +623,40 @@ class VenueSearcher {
 
   private optimizeDatePlan(venues: Venue[], criteria: SearchCriteria): Venue[] {
 
+    // STEP 1: Try to find a tight cluster of venues that covers all categories
+    // This is the best outcome — walkable or very short drive between all stops
+    const { cluster, radius } = findBestCluster(venues)
+    
+    if (radius <= 5.0 && cluster.length >= 3) {
+      // Great cluster found! Pick one of each category from it
+      const clusterDrinks = cluster.filter(v => v.category === 'drinks')
+      const clusterDinner = cluster.filter(v => v.category === 'dinner')
+      const clusterActivity = cluster.filter(v => v.category === 'activity')
+      
+      const hasDiversity = 
+        (clusterDrinks.length > 0 ? 1 : 0) + 
+        (clusterDinner.length > 0 ? 1 : 0) + 
+        (clusterActivity.length > 0 ? 1 : 0) >= 2
+
+      if (hasDiversity) {
+        const selectedVenues: Venue[] = []
+        if (clusterDinner.length > 0) selectedVenues.push(clusterDinner[0])
+        if (clusterDrinks.length > 0) selectedVenues.push(clusterDrinks[0])
+        if (clusterActivity.length > 0) selectedVenues.push(clusterActivity[0])
+
+        // Fill remaining slots from cluster
+        if (selectedVenues.length < 3) {
+          const remaining = cluster
+            .filter(v => !selectedVenues.includes(v))
+            .slice(0, 3 - selectedVenues.length)
+          selectedVenues.push(...remaining)
+        }
+
+        return this.optimizeVenueOrder(selectedVenues.slice(0, 3), criteria.location)
+      }
+    }
+
+    // STEP 2: Fallback — pick per-category but enforce proximity
     // Group venues by category
     const drinks = venues.filter(v => v.category === 'drinks').slice(0, 5)
     const dinner = venues.filter(v => v.category === 'dinner').slice(0, 5)
