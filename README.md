@@ -119,4 +119,4 @@ Built with ❤️ by the Date Night Team
 
 ---
 
-**Live App:** [https://datenight.app](https://datenight.app)
+**Live App:** [https://dat3night.com](https://dat3night.com)

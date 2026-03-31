@@ -5,6 +5,7 @@ import { TutorialProvider } from '@/lib/tutorial-context'
 import { LegalProvider } from '@/lib/legal-context'
 import { TutorialOverlay } from '@/components/tutorial/tutorial-overlay'
 import { FullscreenToggle } from '@/components/fullscreen-toggle'
+import { getAppUrl } from '@/lib/utils'
 import './globals.css'
 
 const inter = Inter({ 
@@ -21,6 +22,8 @@ const geistMono = Geist_Mono({
   display: 'swap'
 });
 
+const appUrl = getAppUrl()
+
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -31,38 +34,40 @@ export const viewport = {
 }
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://datenight.app'),
+  metadataBase: new URL(appUrl),
   title: {
-    default: 'Date Night Planner - AI-Powered Date Ideas & Venue Recommendations',
-    template: '%s | Date Night Planner'
+    default: 'Dat3Night - AI Date Night Planner & Romantic Venue Recommendations',
+    template: '%s | Dat3Night'
   },
-  description: 'Discover the perfect date night with AI-powered recommendations. Find romantic restaurants, fun activities, and unique venues tailored to your preferences. Plan unforgettable dates effortlessly.',
+  description: 'Dat3Night uses AI to plan perfect date nights. Get personalized restaurant recommendations, fun couple activities, and unique venues based on your preferences. Create unforgettable dates in seconds.',
   keywords: [
+    'Dat3Night',
     'date night planner',
+    'AI date planner',
     'date ideas',
     'romantic restaurants',
-    'date night ideas',
     'couples activities',
-    'AI date planner',
+    'date night ideas',
     'venue recommendations',
-    'romantic date spots',
     'date planning app',
-    'relationship activities',
-    'dinner date ideas',
-    'fun date activities'
+    'romantic date spots',
+    'date night generator',
+    'AI dating assistant',
+    'fun couple activities',
+    'dinner date ideas'
   ],
-  authors: [{ name: 'Date Night Team' }],
-  creator: 'Date Night Planner',
-  publisher: 'Date Night Planner',
+  authors: [{ name: 'Dat3Night Team' }],
+  creator: 'Dat3Night',
+  publisher: 'Dat3Night',
   generator: 'Next.js',
-  applicationName: 'Date Night Planner',
+  applicationName: 'Dat3Night',
   referrer: 'strict-origin-when-cross-origin',
   category: 'Lifestyle',
   classification: 'Dating & Relationships',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Date Night',
+    title: 'Dat3Night',
   },
   formatDetection: {
     telephone: false,
@@ -72,26 +77,26 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://datenight.app',
-    siteName: 'Date Night Planner',
-    title: 'Date Night Planner - AI-Powered Date Ideas & Venue Recommendations',
-    description: 'Discover the perfect date night with AI-powered recommendations. Find romantic restaurants, fun activities, and unique venues tailored to your preferences.',
+    url: appUrl,
+    siteName: 'Dat3Night',
+    title: 'Dat3Night - AI Date Night Planner & Romantic Venue Recommendations',
+    description: 'Dat3Night uses AI to plan perfect date nights. Get personalized restaurant recommendations, fun couple activities, and unique venues based on your preferences.',
     images: [
       {
-        url: '/api/og?title=Plan+the+Perfect+Date+Night',
+        url: '/api/og?title=Plan+the+Perfect+Date+Night+with+Dat3Night',
         width: 1200,
         height: 630,
-        alt: 'Date Night Planner - AI-Powered Date Ideas',
+        alt: 'Dat3Night - AI Date Night Planner',
         type: 'image/png',
       }
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Date Night Planner - AI-Powered Date Ideas',
-    description: 'Discover the perfect date night with AI-powered recommendations. Find romantic restaurants and unique venues.',
-    images: ['/api/og?title=Plan+the+Perfect+Date+Night'],
-    creator: '@datenightapp',
+    title: 'Dat3Night - AI Date Night Planner',
+    description: 'Dat3Night uses AI to plan perfect date nights with personalized restaurant and venue recommendations.',
+    images: ['/api/og?title=Plan+the+Perfect+Date+Night+with+Dat3Night'],
+    creator: '@dat3night',
   },
   robots: {
     index: true,
@@ -166,7 +171,7 @@ export default function RootLayout({
       name: 'Date Night Planner',
       logo: {
         '@type': 'ImageObject',
-        url: 'https://datenight.app/android-chrome-512x512.png',
+        url: `${appUrl}/android-chrome-512x512.png`,
       },
     },
   }

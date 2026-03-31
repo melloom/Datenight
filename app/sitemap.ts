@@ -1,7 +1,8 @@
 import { MetadataRoute } from 'next'
+import { getAppUrl } from '@/lib/utils'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://datenight.app'
+  const baseUrl = getAppUrl()
   
   return [
     {

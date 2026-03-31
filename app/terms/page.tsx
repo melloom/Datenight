@@ -120,7 +120,7 @@ export default function TermsPage() {
               <h2 className="font-serif text-2xl md:text-3xl mb-4">Contact Information</h2>
               <p className="text-muted-foreground leading-relaxed">
                 If you have questions about these Terms of Service, please contact us at 
-                support@dat3night.app
+                contact@mellowsites.com
               </p>
             </section>
           </div>

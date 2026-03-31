@@ -97,7 +97,7 @@ export default function PrivacyPage() {
               <h2 className="font-serif text-2xl md:text-3xl mb-4">Contact Us</h2>
               <p className="text-muted-foreground leading-relaxed">
                 If you have questions about this Privacy Policy or how we handle your data, please 
-                contact us at privacy@dat3night.app
+                contact us at contact@mellowsites.com
               </p>
             </section>
           </div>

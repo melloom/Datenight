@@ -1752,8 +1752,13 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
       }
 
+      // Get domain from environment or browser hostname
+      const uidDomain = typeof window !== 'undefined' 
+        ? window.location.hostname 
+        : process.env.NEXT_PUBLIC_APP_URL?.replace(/https?:\/\//, '') || 'dat3night.com'
+
       icalContent += `BEGIN:VEVENT\n`
-      icalContent += `UID:${event.id}@datenight.app\n`
+      icalContent += `UID:${event.id}@${uidDomain}\n`
       icalContent += `DTSTART:${startTimeStr}\n`
       icalContent += `DTEND:${endTimeStr}\n`
       icalContent += `SUMMARY:${escapeText(event.title)}\n`

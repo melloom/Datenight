@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
   const venues = searchParams.get('venues') || ''
   const date = searchParams.get('date') || ''
 
+  // Get the current domain from the request
+  const host = request.headers.get('host') || 'datenight.app'
+
   // Parse venue names
   const venueList = venues ? venues.split('|').slice(0, 3) : []
   const vibeList = vibes ? vibes.split(',').slice(0, 4) : []
@@ -175,7 +178,7 @@ export async function GET(request: NextRequest) {
           {/* Footer */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '20px' }}>
             <span style={{ fontSize: '16px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
-              datenight.app
+              {host}
             </span>
             <span style={{ fontSize: '16px', color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
               AI-Powered Date Planning
