@@ -135,6 +135,14 @@ interface Step {
   isOpenAtPlannedTime?: boolean
   verifiedOpen?: boolean
   seasonalFit?: number
+  // Event-specific fields (Ticketmaster)
+  eventId?: string
+  eventDate?: string
+  eventTime?: string
+  venueName?: string
+  ticketUrl?: string
+  minPrice?: number
+  maxPrice?: number
 }
 
 // Calculate travel time between two coordinates
@@ -624,6 +632,47 @@ function StepCard({
                       {f}
                     </span>
                   ))}
+                </div>
+              )}
+
+              {/* Event Info (Ticketmaster) */}
+              {step.eventId && (
+                <div className="space-y-2 p-2.5 rounded-lg bg-violet-500/5 border border-violet-500/15">
+                  <div className="flex items-center gap-2 text-xs">
+                    <Ticket className="w-3.5 h-3.5 text-violet-500" />
+                    <span className="font-semibold text-violet-600 dark:text-violet-400">Live Event</span>
+                  </div>
+                  {step.eventDate && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Calendar className="w-3.5 h-3.5 shrink-0 text-violet-500/60" />
+                      <span>
+                        {new Date(step.eventDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        {step.eventTime && ` at ${new Date('2000-01-01T' + step.eventTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`}
+                      </span>
+                    </div>
+                  )}
+                  {step.venueName && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <MapPin className="w-3.5 h-3.5 shrink-0 text-violet-500/60" />
+                      <span>{step.venueName}</span>
+                    </div>
+                  )}
+                  {(step.minPrice !== undefined && step.minPrice > 0) && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Receipt className="w-3.5 h-3.5 shrink-0 text-violet-500/60" />
+                      <span>
+                        Tickets from <span className="font-medium text-foreground">${step.minPrice}</span>
+                        {step.maxPrice && step.maxPrice > step.minPrice && <span> – ${step.maxPrice}</span>}
+                      </span>
+                    </div>
+                  )}
+                  {step.ticketUrl && (
+                    <a href={step.ticketUrl} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-md bg-violet-500 text-white font-medium hover:bg-violet-600 transition-colors">
+                      <Ticket className="w-3 h-3" />
+                      Get Tickets
+                    </a>
+                  )}
                 </div>
               )}
 
@@ -1578,6 +1627,14 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         isOpenAtPlannedTime: venue.isOpenAtPlannedTime,
         verifiedOpen: venue.verifiedOpen,
         seasonalFit: venue.seasonalFit,
+        // Event-specific fields
+        eventId: venue.eventId,
+        eventDate: venue.eventDate,
+        eventTime: venue.eventTime,
+        venueName: venue.venueName,
+        ticketUrl: venue.ticketUrl,
+        minPrice: venue.minPrice,
+        maxPrice: venue.maxPrice,
       }
       return step
     })
