@@ -5,6 +5,12 @@
 [build.environment]
   NODE_VERSION = "20"
 
+[[redirects]]
+  from = "https://www.dat3night.com/*"
+  to = "https://dat3night.com/:splat"
+  status = 301
+  force = true
+
 # Next.js plugin handles most routing, but we need correct MIME types
 [[plugins]]
   package = "@netlify/plugin-nextjs"
