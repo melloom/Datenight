@@ -57,7 +57,8 @@ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
 NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
 GEMINI_API_KEY=your_gemini_api_key
 
-# Firebase Admin (server-side)
+# Firebase Admin (server-side secrets only)
+# Store these in your host secret manager or CI secrets. Do not commit JSON key files.
 FIREBASE_DATABASE_URL=https://your_project.firebaseio.com
 FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
 # or use the split vars instead of FIREBASE_SERVICE_ACCOUNT_KEY:

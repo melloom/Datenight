@@ -23,6 +23,105 @@ export interface UserPreferences {
   hasCompletedTutorial?: boolean
 }
 
+export interface DatePlanHistoryRecord {
+  id: string
+  date: string
+  location: string
+  budget: string
+  vibes: string[]
+  venues: Venue[]
+  totalCost?: number
+  partySize?: number
+  notes?: string
+  rating?: number
+  favorite?: boolean
+  createdAt: number
+  updatedAt: number
+}
+
+function sanitizeRtdbKey(value: string): string {
+  return value.replace(/[.#$[\]]/g, '_')
+}
+
+// --- Date Plan History ---
+
+export async function upsertDatePlanHistory(
+  userId: string,
+  history: {
+    id?: string
+    date: string
+    location: string
+    budget: string
+    vibes: string[]
+    venues: Venue[]
+    totalCost?: number
+    partySize?: number
+    notes?: string
+    rating?: number
+    favorite?: boolean
+  }
+): Promise<string> {
+  if (!rtdb) {
+    throw new Error("Database not available")
+  }
+
+  const historyId = sanitizeRtdbKey(history.id || Date.now().toString())
+  const historyRef = ref(rtdb, `users/${userId}/datePlanHistory/${historyId}`)
+
+  const existing = await get(historyRef)
+  const createdAt = existing.exists() ? (existing.val().createdAt || Date.now()) : Date.now()
+
+  await set(historyRef, {
+    ...history,
+    id: historyId,
+    createdAt,
+    updatedAt: Date.now(),
+  })
+
+  return historyId
+}
+
+export async function getDatePlanHistory(userId: string): Promise<DatePlanHistoryRecord[]> {
+  if (!rtdb) {
+    return []
+  }
+
+  const historyRef = query(
+    ref(rtdb, `users/${userId}/datePlanHistory`),
+    orderByChild('updatedAt'),
+    limitToLast(50)
+  )
+
+  const snapshot = await get(historyRef)
+  if (!snapshot.exists()) return []
+
+  const history: DatePlanHistoryRecord[] = []
+  snapshot.forEach((child) => {
+    history.push({ id: child.key!, ...child.val() })
+  })
+
+  return history.reverse()
+}
+
+export async function deleteDatePlanHistoryItem(userId: string, historyId: string): Promise<void> {
+  if (!rtdb) {
+    throw new Error("Database not available")
+  }
+
+  await remove(ref(rtdb, `users/${userId}/datePlanHistory/${sanitizeRtdbKey(historyId)}`))
+}
+
+export async function setDatePlanHistoryFavorite(userId: string, historyId: string, favorite: boolean): Promise<void> {
+  if (!rtdb) {
+    throw new Error("Database not available")
+  }
+
+  await update(ref(rtdb, `users/${userId}/datePlanHistory/${sanitizeRtdbKey(historyId)}`), {
+    favorite,
+    updatedAt: Date.now(),
+  })
+}
+
 // --- Saved Dates ---
 
 export async function saveDate(userId: string, dateData: Omit<SavedDate, 'id' | 'createdAt' | 'status'>): Promise<string> {

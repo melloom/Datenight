@@ -24,6 +24,7 @@ export function TutorialOverlay() {
   const [animating, setAnimating] = useState(false)
   const tooltipRef = useRef<HTMLDivElement>(null)
   const [placement, setPlacement] = useState<Placement>("bottom")
+  const [tooltipWidth, setTooltipWidth] = useState(320)
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number }>({
     top: 0,
     left: 0,
@@ -58,26 +59,30 @@ export function TutorialOverlay() {
 
     // trigger a small fade between steps
     if (prevStepRef.current !== currentStep) {
-      setAnimating(true)
-      const id = setTimeout(() => setAnimating(false), 200)
+      const startId = setTimeout(() => setAnimating(true), 0)
+      const endId = setTimeout(() => setAnimating(false), 200)
       prevStepRef.current = currentStep
-      return () => clearTimeout(id)
+      return () => {
+        clearTimeout(startId)
+        clearTimeout(endId)
+      }
     }
 
     if (!step?.target) {
-      setRect(null)
-      return
+      const id = setTimeout(measure, 0)
+      return () => clearTimeout(id)
     }
 
     const el = document.querySelector(step.target)
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" })
-      // measure after scroll settles
-      const id = setTimeout(measure, 350)
+    if (!el) {
+      const id = setTimeout(measure, 0)
       return () => clearTimeout(id)
-    } else {
-      setRect(null)
     }
+
+    el.scrollIntoView({ behavior: "smooth", block: "center" })
+    // measure after scroll settles
+    const id = setTimeout(measure, 350)
+    return () => clearTimeout(id)
   }, [isActive, currentStep, step, measure])
 
   // Re-measure on resize
@@ -95,6 +100,7 @@ export function TutorialOverlay() {
     if (!isActive) return
     const tt = tooltipRef.current
     if (!tt) return
+    setTooltipWidth(tt.offsetWidth)
 
     // Centre if no target
     if (!rect) {
@@ -165,9 +171,9 @@ export function TutorialOverlay() {
           rect.left + rect.width / 2 - tooltipPos.left,
           24
         ),
-        (tooltipRef.current?.offsetWidth ?? 320) - 24
+        tooltipWidth - 24
       )
-    : (tooltipRef.current?.offsetWidth ?? 320) / 2
+    : tooltipWidth / 2
 
   return (
     <div className="fixed inset-0 z-100" style={{ pointerEvents: "none" }}>

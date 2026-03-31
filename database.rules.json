@@ -15,6 +15,9 @@
         "dates": {
           ".write": "auth != null && auth.uid == $uid && (root.child('users/' + $uid + '/billing/entitlementActive').val() == true || root.child('users/' + $uid + '/billing/grandfathered').val() == true)"
         },
+        "datePlanHistory": {
+          ".write": "auth != null && auth.uid == $uid && (root.child('users/' + $uid + '/billing/entitlementActive').val() == true || root.child('users/' + $uid + '/billing/grandfathered').val() == true)"
+        },
         "favorites": {
           ".write": "auth != null && auth.uid == $uid && (root.child('users/' + $uid + '/billing/entitlementActive').val() == true || root.child('users/' + $uid + '/billing/grandfathered').val() == true)"
         }

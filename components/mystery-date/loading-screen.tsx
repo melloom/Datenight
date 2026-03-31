@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState } from "react"
 import { Wine, UtensilsCrossed, Sparkles, Check, MapPin, Database, Globe, Store } from "lucide-react"
-import { venueSearcher, Venue, SearchCriteria } from "@/lib/venue-search"
+import { venueSearcher, Venue, SearchCriteria, SearchResult } from "@/lib/venue-search"
 import { LateNightResponse } from "@/lib/late-night-detector"
 
 const STEPS = [
@@ -23,7 +23,25 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
   const [progress, setProgress] = useState(0)
   const [searchStatus, setSearchStatus] = useState("")
 
-  const stableOnComplete = useCallback(onComplete, [onComplete])
+  function selectVenuesForDate(venues: Venue[]): Venue[] {
+    const drinks = venues.filter(v => v.category === "drinks")
+    const dinner = venues.filter(v => v.category === "dinner")
+    const activities = venues.filter(v => v.category === "activity")
+
+    const selected = [
+      drinks.length > 0 ? drinks[Math.floor(Math.random() * Math.min(drinks.length, 3))] : null,
+      dinner.length > 0 ? dinner[Math.floor(Math.random() * Math.min(dinner.length, 3))] : null,
+      activities.length > 0 ? activities[Math.floor(Math.random() * Math.min(activities.length, 3))] : null,
+    ].filter(Boolean) as Venue[]
+
+    while (selected.length < 3 && venues.length > selected.length) {
+      const remaining = venues.filter(v => !selected.includes(v))
+      if (remaining.length === 0) break
+      selected.push(remaining[Math.floor(Math.random() * remaining.length)])
+    }
+
+    return selected.slice(0, 3)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -70,7 +88,7 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
           if (cancelled) return
           clearInterval(progressInterval)
           timers.forEach(clearTimeout)
-          stableOnComplete(searchResult, lateNightResponse)
+          onComplete(searchResult, lateNightResponse)
         }, 400)
       }, remaining)
     }
@@ -85,7 +103,7 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
           setTimeout(() => reject(new Error('Search timeout')), 45000) // 45s max
         )
         
-        const result = await Promise.race([searchPromise, timeoutPromise]) as any
+        const result = await Promise.race([searchPromise, timeoutPromise]) as SearchResult
 
         if (result.venues.length === 0) {
           setSearchStatus("❌ No venues found. Try a different location?")
@@ -113,27 +131,7 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
       clearInterval(progressInterval)
       timers.forEach(clearTimeout)
     }
-  }, [stableOnComplete, searchCriteria])
-
-  const selectVenuesForDate = (venues: Venue[]): Venue[] => {
-    const drinks = venues.filter(v => v.category === "drinks")
-    const dinner = venues.filter(v => v.category === "dinner")
-    const activities = venues.filter(v => v.category === "activity")
-
-    const selected = [
-      drinks.length > 0 ? drinks[Math.floor(Math.random() * Math.min(drinks.length, 3))] : null,
-      dinner.length > 0 ? dinner[Math.floor(Math.random() * Math.min(dinner.length, 3))] : null,
-      activities.length > 0 ? activities[Math.floor(Math.random() * Math.min(activities.length, 3))] : null,
-    ].filter(Boolean) as Venue[]
-
-    while (selected.length < 3 && venues.length > selected.length) {
-      const remaining = venues.filter(v => !selected.includes(v))
-      if (remaining.length === 0) break
-      selected.push(remaining[Math.floor(Math.random() * remaining.length)])
-    }
-
-    return selected.slice(0, 3)
-  }
+  }, [onComplete, searchCriteria])
 
   const statusTone =
     searchStatus.includes("❌") || searchStatus.includes("⏰")

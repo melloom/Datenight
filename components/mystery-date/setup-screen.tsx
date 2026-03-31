@@ -34,6 +34,12 @@ import Image from "next/image"
 import Link from "next/link"
 import { validateCustomInput } from "@/lib/profanity-filter"
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
+import { useAuth } from "@/lib/auth-context"
+import {
+  getDatePlanHistory,
+  deleteDatePlanHistoryItem,
+  setDatePlanHistoryFavorite,
+} from "@/lib/db"
 
 const BUDGET_OPTIONS = [
   { value: "$", label: "Casual", price: "$30-50", emoji: "🍕" },
@@ -107,6 +113,7 @@ interface SetupScreenProps {
 }
 
 export function SetupScreen({ onSubmit }: SetupScreenProps) {
+  const { user } = useAuth()
   const [isReady, setIsReady] = useState(false)
   const [budget, setBudget] = useState<Budget>("$$")
   const [location, setLocation] = useState("")
@@ -170,20 +177,45 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
     return () => window.cancelAnimationFrame(id)
   }, [])
 
-  // Load history from localStorage on mount
+  // Load history from Firebase for logged-in users, localStorage fallback for guests
   useEffect(() => {
-    const savedHistory = localStorage.getItem('datePlanHistory')
-    if (savedHistory) {
+    const loadHistory = async () => {
+      if (user) {
+        try {
+          const cloudHistory = await getDatePlanHistory(user.uid)
+          setDatePlanHistory(
+            cloudHistory.map((item) => ({
+              ...item,
+              date: new Date(item.date),
+            }))
+          )
+          return
+        } catch {
+          // Fall through to local fallback if cloud read fails.
+        }
+      }
+
+      const savedHistory = localStorage.getItem('datePlanHistory')
+      if (!savedHistory) {
+        setDatePlanHistory([])
+        return
+      }
+
       try {
         const parsed = JSON.parse(savedHistory)
-        setDatePlanHistory(parsed.map((item: any) => ({
-          ...item,
-          date: new Date(item.date)
-        })))
-      } catch (e) {
+        setDatePlanHistory(
+          parsed.map((item: any) => ({
+            ...item,
+            date: new Date(item.date),
+          }))
+        )
+      } catch {
+        setDatePlanHistory([])
       }
     }
-  }, [])
+
+    loadHistory()
+  }, [user])
 
   // Auto-scroll to modal when any modal opens
   useEffect(() => {
@@ -333,20 +365,44 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
     throw new Error('IP location service failed')
   }
 
+  const persistLocalHistory = (history: DatePlanHistory[]) => {
+    localStorage.setItem('datePlanHistory', JSON.stringify(history))
+  }
+
   // Delete history item
-  const deleteHistoryItem = (id: string) => {
+  const deleteHistoryItem = async (id: string) => {
     const updatedHistory = datePlanHistory.filter(item => item.id !== id)
     setDatePlanHistory(updatedHistory)
-    localStorage.setItem('datePlanHistory', JSON.stringify(updatedHistory))
+
+    if (user) {
+      try {
+        await deleteDatePlanHistoryItem(user.uid, id)
+      } catch {
+      }
+      return
+    }
+
+    persistLocalHistory(updatedHistory)
   }
 
   // Toggle favorite
-  const toggleFavorite = (id: string) => {
+  const toggleFavorite = async (id: string) => {
     const updatedHistory = datePlanHistory.map(item =>
       item.id === id ? { ...item, favorite: !item.favorite } : item
     )
     setDatePlanHistory(updatedHistory)
-    localStorage.setItem('datePlanHistory', JSON.stringify(updatedHistory))
+
+    if (user) {
+      const updatedItem = updatedHistory.find((item) => item.id === id)
+      if (!updatedItem) return
+      try {
+        await setDatePlanHistoryFavorite(user.uid, id, !!updatedItem.favorite)
+      } catch {
+      }
+      return
+    }
+
+    persistLocalHistory(updatedHistory)
   }
 
   // Load plan from history

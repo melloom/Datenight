@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react"
 import { getPreferences, savePreferences } from "@/lib/db"
 import { useAuth } from "@/lib/auth-context"
 
@@ -100,15 +100,11 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
   const [isFirstTime, setIsFirstTime] = useState(false)
   const { user } = useAuth()
 
-  useEffect(() => {
-    if (user) {
-      checkFirstTimeUser()
-    }
-  }, [user])
+  const checkFirstTimeUser = useCallback(async () => {
+    if (!user?.uid) return
 
-  const checkFirstTimeUser = async () => {
     try {
-      const prefs = await getPreferences(user!.uid)
+      const prefs = await getPreferences(user.uid)
       if (!prefs || !prefs.hasCompletedTutorial) {
         setIsFirstTime(true)
         setIsActive(true)
@@ -118,8 +114,17 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
       // Assume first time if we can't check
       setIsFirstTime(true)
       setIsActive(true)
+      setCurrentStep(0)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      void checkFirstTimeUser()
+    }, 0)
+
+    return () => clearTimeout(id)
+  }, [checkFirstTimeUser])
 
   const startTutorial = () => {
     setIsActive(true)
