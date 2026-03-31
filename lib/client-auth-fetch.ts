@@ -1,4 +1,4 @@
-import { auth } from '@/lib/firebase'
+import { auth, ensureFirebaseInitialized } from '@/lib/firebase'
 
 interface AuthJsonFetchOptions {
   init?: RequestInit
@@ -10,6 +10,10 @@ export async function authJsonFetch(
   body?: unknown,
   options?: AuthJsonFetchOptions
 ): Promise<Response> {
+  if (!auth) {
+    await ensureFirebaseInitialized()
+  }
+
   const token = auth?.currentUser ? await auth.currentUser.getIdToken(options?.forceRefreshToken ?? false) : null
 
   const method = options?.init?.method || 'POST'

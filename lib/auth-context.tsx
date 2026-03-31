@@ -11,7 +11,7 @@ import {
   signOut as firebaseSignOut,
 } from "firebase/auth"
 import { ref, set, get } from "firebase/database"
-import { auth, rtdb, googleProvider } from "@/lib/firebase"
+import { ensureFirebaseInitialized } from "@/lib/firebase"
 
 interface AuthContextType {
   user: User | null
@@ -29,52 +29,70 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(() => Boolean(auth && rtdb))
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Don't initialize Firebase auth if services are not available
-    if (!auth || !rtdb) {
-      return
+    let isMounted = true
+    let unsubscribe: (() => void) | undefined
+
+    const initializeAuth = async () => {
+      const { auth, rtdb } = await ensureFirebaseInitialized()
+
+      if (!isMounted) {
+        return
+      }
+
+      if (!auth || !rtdb) {
+        setLoading(false)
+        return
+      }
+
+      getRedirectResult(auth).then((result) => {
+        if (result?.user && isMounted) {
+          setUser(result.user)
+        }
+      }).catch(() => {
+        // Redirect result check failed — not critical
+      })
+
+      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (!isMounted) {
+          return
+        }
+
+        setUser(firebaseUser)
+        setLoading(false)
+
+        if (firebaseUser) {
+          const userRef = ref(rtdb, `users/${firebaseUser.uid}/profile`)
+          const snapshot = await get(userRef)
+
+          if (!snapshot.exists()) {
+            await set(userRef, {
+              displayName: firebaseUser.displayName || "Anonymous",
+              email: firebaseUser.email || "",
+              photoURL: firebaseUser.photoURL || "",
+              createdAt: Date.now(),
+              lastLogin: Date.now(),
+            })
+          } else {
+            await set(ref(rtdb, `users/${firebaseUser.uid}/profile/lastLogin`), Date.now())
+          }
+        }
+      })
     }
 
-    // Check for redirect result (fallback sign-in method)
-    getRedirectResult(auth).then((result) => {
-      if (result?.user) {
-        setUser(result.user)
-      }
-    }).catch(() => {
-      // Redirect result check failed — not critical
-    })
+    void initializeAuth()
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser)
-      setLoading(false)
-
-      if (firebaseUser && rtdb) {
-        // Update user profile in RTDB on login
-        const userRef = ref(rtdb, `users/${firebaseUser.uid}/profile`)
-        const snapshot = await get(userRef)
-
-        if (!snapshot.exists()) {
-          // First time user — create profile
-          await set(userRef, {
-            displayName: firebaseUser.displayName || "Anonymous",
-            email: firebaseUser.email || "",
-            photoURL: firebaseUser.photoURL || "",
-            createdAt: Date.now(),
-            lastLogin: Date.now(),
-          })
-        } else {
-          // Returning user — update last login
-          await set(ref(rtdb, `users/${firebaseUser.uid}/profile/lastLogin`), Date.now())
-        }
-      }
-    })
-
-    return () => unsubscribe()
+    return () => {
+      isMounted = false
+      unsubscribe?.()
+    }
   }, [])
 
   const signInWithGoogle = async () => {
+    const { auth, googleProvider } = await ensureFirebaseInitialized()
+
     if (!auth || !googleProvider) {
       throw new Error("Firebase authentication not available")
     }
@@ -108,6 +126,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
+    const { auth } = await ensureFirebaseInitialized()
+
     if (!auth) {
       throw new Error("Firebase authentication not available")
     }
