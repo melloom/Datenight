@@ -1,19 +1,35 @@
 import { auth } from '@/lib/firebase'
 
-export async function authJsonFetch(url: string, body: unknown, init?: RequestInit): Promise<Response> {
-  const token = auth?.currentUser ? await auth.currentUser.getIdToken() : null
+interface AuthJsonFetchOptions {
+  init?: RequestInit
+  forceRefreshToken?: boolean
+}
 
-  const headers = new Headers(init?.headers)
-  headers.set('Content-Type', 'application/json')
+export async function authJsonFetch(
+  url: string,
+  body?: unknown,
+  options?: AuthJsonFetchOptions
+): Promise<Response> {
+  const token = auth?.currentUser ? await auth.currentUser.getIdToken(options?.forceRefreshToken ?? false) : null
+
+  const method = options?.init?.method || 'POST'
+  const isBodyAllowed = method !== 'GET' && method !== 'HEAD'
+
+  const headers = new Headers(options?.init?.headers)
+  if (isBodyAllowed) {
+    headers.set('Content-Type', 'application/json')
+  }
 
   if (token) {
     headers.set('Authorization', `Bearer ${token}`)
   }
 
+  const shouldSendBody = isBodyAllowed && body !== undefined
+
   return fetch(url, {
-    ...init,
-    method: init?.method || 'POST',
+    ...options?.init,
+    method,
     headers,
-    body: JSON.stringify(body),
+    body: shouldSendBody ? JSON.stringify(body) : undefined,
   })
 }

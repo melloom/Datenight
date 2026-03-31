@@ -54,17 +54,17 @@ export async function createBillingPortalSession(): Promise<PortalResponse> {
 }
 
 export async function fetchBillingStatus(): Promise<BillingStatusResponse> {
-  const token = await import('@/lib/firebase').then((mod) => mod.auth?.currentUser?.getIdToken())
-
-  const headers = new Headers()
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`)
-  }
-
-  const res = await fetch('/api/stripe/status', {
-    method: 'GET',
-    headers,
+  let res = await authJsonFetch('/api/stripe/status', undefined, {
+    init: { method: 'GET' },
   })
+
+  if (res.status === 401) {
+    // Retry once with a forced token refresh to recover from stale/expired credentials.
+    res = await authJsonFetch('/api/stripe/status', undefined, {
+      init: { method: 'GET' },
+      forceRefreshToken: true,
+    })
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))

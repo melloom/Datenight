@@ -22,7 +22,15 @@ export async function verifyRequestUser(request: NextRequest): Promise<DecodedId
   const token = readBearerToken(request)
   try {
     return await getAdminAuth().verifyIdToken(token)
-  } catch {
-    throw new UnauthorizedError('Invalid auth token')
+  } catch (error: unknown) {
+    const code = typeof error === 'object' && error !== null && 'code' in error
+      ? String((error as { code?: string }).code)
+      : ''
+
+    if (code.startsWith('auth/')) {
+      throw new UnauthorizedError('Invalid auth token')
+    }
+
+    throw error
   }
 }
