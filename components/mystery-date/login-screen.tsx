@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Sparkles, MapPin, Wine } from "lucide-react"
+import { Sparkles, MapPin, Wine, ArrowLeft } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
@@ -49,6 +49,15 @@ export function LoginScreen() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-svh bg-background px-6 relative overflow-hidden">
+      {/* Back button */}
+      <Link 
+        href="/landing" 
+        className="absolute top-6 left-6 flex items-center gap-2 px-3 py-2 rounded-lg bg-card/50 hover:bg-card/80 border border-border/50 hover:border-border transition-all duration-200 text-sm text-muted-foreground hover:text-foreground z-20"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span>Back</span>
+      </Link>
+
       {/* Background glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-72 h-72 bg-primary/8 rounded-full blur-[100px]" />
