@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { z } from 'zod'
-import { scrapeMenuData, MenuData } from '../../../lib/menu-scraper'
+import { scrapeMenuData, MenuData } from '@/lib/menu-scraper'
 
 const enhanceSearchSchema = z.object({
   action: z.literal('enhance-search'),

@@ -3,7 +3,7 @@ import { geminiAI } from './gemini'
 import { sanitizeForSearch } from './profanity-filter'
 import { lateNightDetector, LateNightResponse } from './late-night-detector'
 import { enhanceVenueWithScrapedData, preferClusteredVenues, calculateSeasonalFit, findBestCluster } from './venue-enhancer'
-import { scrapeMenuData, MenuData } from './menu-scraper'
+import { MenuData } from './menu-scraper'
 
 export interface Venue {
   id: string
@@ -66,6 +66,10 @@ export interface Venue {
   combinedRating?: number // weighted avg of Google + Yelp
   seasonalFit?: number // 0-1 score for current season/weather
   duration?: number // estimated visit duration in minutes (scraped or estimated)
+  // Menu and API integration fields
+  menuData?: MenuData
+  yelpBusinessId?: string
+  squareLocationId?: string
   // Event-specific fields (for Ticketmaster events)
   eventId?: string
   eventDate?: string
@@ -74,10 +78,6 @@ export interface Venue {
   ticketUrl?: string
   minPrice?: number
   maxPrice?: number
-  // Menu scraping fields
-  menuData?: MenuData
-  yelpBusinessId?: string
-  squareLocationId?: string
 }
 
 export interface VenuePricing {
@@ -3875,13 +3875,16 @@ Be realistic and specific to ${venue.name} in ${venue.address}. Consider local p
           squareLocationId: venue.squareLocationId
         }
 
-        // Scrape menu data with timeout
-        const menuPromise = scrapeMenuData(menuVenueData)
-        const timeout = new Promise<MenuData | null>((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), 6000) // 6s timeout per venue
-        )
-
-        const menuData = await Promise.race([menuPromise, timeout])
+        // Scrape menu data with timeout (only on server)
+        let menuData: any = null
+        if (typeof window === 'undefined') {
+          const { scrapeMenuData } = await import('./menu-scraper')
+          const menuPromise = scrapeMenuData(menuVenueData)
+          const timeout = new Promise<any>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), 6000) // 6s timeout per venue
+          )
+          menuData = await Promise.race([menuPromise, timeout]).catch(() => null)
+        }
 
         if (menuData) {
           // Update pricing with real menu data if available

@@ -1,7 +1,5 @@
 // Menu scraping utilities for real pricing data
 import axios from 'axios'
-import * as cheerio from 'cheerio'
-import puppeteer from 'puppeteer'
 
 export interface MenuItem {
   name: string
@@ -54,6 +52,7 @@ export async function scrapeYelpMenu(businessId: string, apiKey: string): Promis
 export async function scrapeWebsiteMenu(url: string, source: string = 'website'): Promise<MenuData | null> {
   let browser
   try {
+    const puppeteer = (await import('puppeteer')).default
     browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
@@ -68,6 +67,7 @@ export async function scrapeWebsiteMenu(url: string, source: string = 'website')
     await new Promise(resolve => setTimeout(resolve, 2000))
 
     const content = await page.content()
+    const cheerio = await import('cheerio')
     const $ = cheerio.load(content)
 
     const menuItems: MenuItem[] = []
@@ -91,7 +91,7 @@ export async function scrapeWebsiteMenu(url: string, source: string = 'website')
     ]
 
     for (const selector of selectors) {
-      $(selector).each((_, element) => {
+      $(selector).each((index: number, element: any) => {
         const $el = $(element)
 
         // Extract name
@@ -246,7 +246,7 @@ export async function scrapeSquareMenu(locationId: string, accessToken: string):
 }
 
 // Helper functions
-function extractCategory($element: cheerio.Cheerio<any>, $: cheerio.CheerioAPI): string {
+function extractCategory($element: any, $: any): string {
   // Try to find category from parent elements
   const categorySelectors = ['.menu-category', '.category', '.section', 'h2', 'h3', 'h4']
   for (const selector of categorySelectors) {
