@@ -14,7 +14,7 @@ export function LoginScreen() {
   const [error, setError] = useState<string | null>(null)
   const [agree, setAgree] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  
+
   const canAgree = hasScrolledTerms && hasScrolledPrivacy
   const handleGoogleSignIn = async () => {
     if (!agree) {
@@ -50,8 +50,8 @@ export function LoginScreen() {
   return (
     <div className="flex flex-col items-center justify-center min-h-svh bg-background px-6 relative overflow-hidden">
       {/* Back button */}
-      <Link 
-        href="/landing" 
+      <Link
+        href="/landing"
         className="absolute flex items-center gap-2 px-3 py-2 rounded-lg bg-card/50 hover:bg-card/80 border border-border/50 hover:border-border transition-all duration-200 text-sm text-muted-foreground hover:text-foreground z-20"
         style={{
           top: "max(env(safe-area-inset-top, 0px), 1rem)",
@@ -123,12 +123,12 @@ export function LoginScreen() {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
             </div>
-            
+
             {/* Button Text */}
             <span className="text-base font-medium text-gray-700 group-hover:text-gray-900 transition-colors">
               {isLoading ? "Signing in..." : "Continue with Google"}
             </span>
-            
+
             {/* Loading spinner */}
             {isLoading && (
               <div className="absolute right-4">
@@ -149,9 +149,9 @@ export function LoginScreen() {
 
         <div className="space-y-3">
           <div className="flex items-start space-x-2">
-            <Checkbox 
-              id="terms" 
-              checked={agree} 
+            <Checkbox
+              id="terms"
+              checked={agree}
               onCheckedChange={handleCheckboxChange}
               disabled={!canAgree}
               className="mt-0.5 h-5 w-5 min-h-5 min-w-5 aspect-square rounded-full data-[state=checked]:rounded-full"
@@ -163,7 +163,7 @@ export function LoginScreen() {
               I agree to the <Link href="/legal/terms-of-service" className="underline">Terms of Service</Link> and <Link href="/legal/privacy-policy" className="underline">Privacy Policy</Link>.
             </label>
           </div>
-          
+
           {/* Scroll status indicators */}
           <div className="space-y-1 text-xs text-muted-foreground">
             <div className="flex items-center gap-2">
