@@ -312,16 +312,71 @@ function ReservationBadge() {
   )
 }
 
-function formatItineraryForShare(steps: Step[]): string {
-  const header = "🌙 Date Night Plan\n━━━━━━━━━━━━━━━━━━"
-  const body = steps.map((s, i) => {
-    const emoji = s.category === "drinks" ? "🍸" : s.category === "dinner" ? "🍽️" : "✨"
-    let block = `\n${emoji} Stop ${i + 1}: ${s.place}\n⏰ ${s.time} · ${s.priceRange}\n📍 ${s.address}`
-    if (s.reservationRecommended) block += "\n📋 Reservation recommended"
-    if (s.description) block += `\n💬 ${s.description}`
+function formatItineraryForShare(steps: Step[], searchCriteria?: any): string {
+  if (steps.length === 0) return "No plans yet!"
+
+  // Sort steps by time to guarantee chronological order
+  const sorted = [...steps].sort((a, b) => {
+    const parseTime = (t: string) => {
+      const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i)
+      if (!match) return 0
+      let h = parseInt(match[1])
+      const m = parseInt(match[2])
+      const period = match[3].toUpperCase()
+      if (period === 'PM' && h !== 12) h += 12
+      if (period === 'AM' && h === 12) h = 0
+      return h * 60 + m
+    }
+    return parseTime(a.time) - parseTime(b.time)
+  })
+
+  const location = searchCriteria?.location || ''
+  const vibes = searchCriteria?.vibes || []
+  const vibeText = vibes.length > 0 ? vibes.slice(0, 2).join(' & ') : ''
+
+  // Personalized header
+  let header = "Hey! I planned something special for us "
+  if (vibeText && location) {
+    header += `— a ${vibeText} night in ${location} ✨`
+  } else if (location) {
+    header += `in ${location} tonight ✨`
+  } else {
+    header += `tonight ✨`
+  }
+  header += "\n\nHere's the plan:\n"
+
+  // Build each stop
+  const body = sorted.map((s, i) => {
+    const num = i + 1
+    const emoji = s.category === "drinks" ? "🍸" : s.category === "dinner" ? "🍽️" : "🎯"
+    const label = s.category === "drinks" ? "Drinks" : s.category === "dinner" ? "Dinner" : "Activity"
+    
+    let block = `\n${emoji} ${s.time} — ${s.place}`
+    block += `\n   ${label} · ${s.priceRange}`
+    if (s.address) block += `\n   📍 ${s.address}`
+    
+    // Add a personalized touch per category
+    if (s.description && s.description.length < 100) {
+      block += `\n   "${s.description}"`
+    }
+    if (s.reservationRecommended) block += `\n   📋 I'll make a reservation!`
+    
+    // Travel info to next stop
+    if (i < sorted.length - 1 && s.travelTimeToNext) {
+      block += `\n   ↓ ${s.travelTimeToNext} min${s.distanceToNext ? ` (${s.distanceToNext} mi)` : ''}`
+    }
+    
     return block
   }).join("\n")
-  const footer = "\n━━━━━━━━━━━━━━━━━━\n❤️ Have an amazing night!"
+
+  // Personalized footer
+  let footer = "\n\n"
+  const dinnerStop = sorted.find(s => s.category === 'dinner')
+  if (dinnerStop?.reservationRecommended) {
+    footer += `I'll handle the reservation at ${dinnerStop.place}. `
+  }
+  footer += "Just be ready by " + sorted[0].time + "! 💜"
+
   return `${header}${body}${footer}`
 }
 
@@ -370,7 +425,7 @@ function ShareModal({ steps, isOpen, onClose, venues, searchCriteria }: { steps:
 
   if (!isOpen) return null
 
-  const shareText = formatItineraryForShare(steps)
+  const shareText = formatItineraryForShare(steps, searchCriteria)
   const shareTextWithLink = shareUrl ? `${shareText}\n\n🔗 View full plan: ${shareUrl}` : shareText
   const shareTextEncoded = encodeURIComponent(shareTextWithLink)
   const canNativeShare = typeof window !== "undefined" && !!window.navigator?.share
@@ -406,15 +461,19 @@ function ShareModal({ steps, isOpen, onClose, venues, searchCriteria }: { steps:
   }
 
   const handleSMS = () => {
+    const location = searchCriteria?.location || ''
+    const firstTime = steps.length > 0 ? steps[0].time : ''
     const smsBody = shareUrl
-      ? encodeURIComponent(`Check out our date night plan! 💜\n\n${shareUrl}`)
+      ? encodeURIComponent(`Hey! I planned a date night for us${location ? ` in ${location}` : ''} 💜${firstTime ? ` Be ready by ${firstTime}!` : ''}\n\nCheck out the full plan:\n${shareUrl}`)
       : shareTextEncoded
     window.open(`sms:?&body=${smsBody}`, "_blank")
   }
 
   const handleWhatsApp = () => {
+    const location = searchCriteria?.location || ''
+    const firstTime = steps.length > 0 ? steps[0].time : ''
     const waText = shareUrl
-      ? encodeURIComponent(`Check out our date night plan! 💜\n\n${shareUrl}`)
+      ? encodeURIComponent(`Hey! I planned a date night for us${location ? ` in ${location}` : ''} 💜${firstTime ? ` Be ready by ${firstTime}!` : ''}\n\nCheck out the full plan:\n${shareUrl}`)
       : shareTextEncoded
     window.open(`https://wa.me/?text=${waText}`, "_blank")
   }
@@ -1672,23 +1731,19 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       pricingFetchedRef.current = false
     }
 
-    // Time slots based on user's time preference and venue order
-    const timeSlots: Record<string, Record<string, string[]>> = {
-      early: { activity: ["5:00 PM", "5:30 PM", "6:00 PM"], dinner: ["6:30 PM", "7:00 PM", "7:30 PM"], drinks: ["8:00 PM", "8:30 PM", "9:00 PM"] },
-      prime: { activity: ["6:30 PM", "7:00 PM", "7:30 PM"], dinner: ["8:00 PM", "8:30 PM", "9:00 PM"], drinks: ["9:30 PM", "10:00 PM", "10:30 PM"] },
-      late:  { activity: ["8:30 PM", "9:00 PM", "9:30 PM"], dinner: ["10:00 PM", "10:30 PM", "11:00 PM"], drinks: ["11:00 PM", "11:30 PM", "12:00 AM"] }
+    // Time slots assigned SEQUENTIALLY by step position (stop 1 = earliest, stop 3 = latest)
+    // Each stop gets ~90 min + travel time between them
+    const sequentialSlots: Record<string, string[]> = {
+      early: ["5:00 PM", "6:45 PM", "8:30 PM"],
+      prime: ["6:30 PM", "8:15 PM", "10:00 PM"],
+      late:  ["8:30 PM", "10:15 PM", "11:45 PM"]
     }
     const timePref = searchCriteria?.time || 'prime'
-    const slots = timeSlots[timePref] || timeSlots.prime
-    const categoryCounters: Record<string, number> = { activity: 0, dinner: 0, drinks: 0 }
+    const orderedSlots = sequentialSlots[timePref] || sequentialSlots.prime
 
     const convertedSteps: Step[] = venues.map((venue, index) => {
-      const cat = venue.category || 'activity'
-      const catSlots = slots[cat] || slots.activity
-      const slotIndex = Math.min(categoryCounters[cat] || 0, catSlots.length - 1)
-      categoryCounters[cat] = (categoryCounters[cat] || 0) + 1
-      // For sequential venues, offset by step position if same category exhausted
-      const assignedTime = index === 0 ? catSlots[0] : catSlots[slotIndex] || catSlots[0]
+      // Assign time by step position — stop 1 always earliest, stop 3 always latest
+      const assignedTime = orderedSlots[Math.min(index, orderedSlots.length - 1)]
 
       const step = {
         id: index + 1,
