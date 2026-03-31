@@ -36,38 +36,25 @@ const ScrollableDocument: React.FC<ScrollableDocumentProps> = ({ children, onScr
   }, [onScrollEnd]);
 
   return (
-    <div 
-      ref={scrollRef} 
-      className="w-full h-[60vh] md:h-[70vh] lg:h-[70vh] max-h-[600px] min-h-[300px] md:min-h-[400px] overflow-y-auto bg-background"
-      style={{
-        // Safe area insets for notched devices
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        paddingLeft: 'env(safe-area-inset-left, 0px)',
-        paddingRight: 'env(safe-area-inset-right, 0px)',
-      }}
-    >
-      <div className="px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8 text-sm md:text-base">
-        {children}
-      </div>
-      
+    <div className="w-full flex flex-col">
       {/* Scroll indicator */}
       {!isScrolledToEnd && (
-        <div className="sticky bottom-0 left-0 right-0 bg-linear-to-t from-background to-transparent p-4 pointer-events-none">
-          <div className="text-center text-xs text-muted-foreground animate-pulse">
+        <div className="bg-background/80 backdrop-blur-sm border-b p-3 text-center">
+          <div className="text-xs text-muted-foreground animate-pulse">
             Scroll to bottom to continue ↓
           </div>
         </div>
       )}
       
-      {/* Completion indicator */}
-      {isScrolledToEnd && (
-        <div className="sticky bottom-0 left-0 right-0 bg-green-50 dark:bg-green-900/20 p-4 border-t border-green-200 dark:border-green-800">
-          <div className="text-center text-xs text-green-700 dark:text-green-300">
-            ✓ Document fully read
-          </div>
-        </div>
-      )}
+      {/* Document content */}
+      <div 
+        ref={scrollRef} 
+        className="flex-1 w-full h-[60vh] md:h-[70vh] lg:h-[70vh] max-h-[600px] min-h-[300px] md:min-h-[400px] overflow-y-auto bg-background"
+      >
+      <div className="px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8 text-sm md:text-base">
+        {children}
+      </div>
+      </div>
     </div>
   );
 };
