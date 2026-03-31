@@ -35,7 +35,7 @@ export function TestimonialScene() {
   const isInView = useInView(sectionRef, { threshold: 0.2 })
 
   return (
-    <section 
+    <section
       ref={sectionRef}
       className="relative py-8 md:py-32 overflow-hidden"
     >
@@ -52,7 +52,7 @@ export function TestimonialScene() {
         {/* Section header */}
         <div className="text-center mb-24">
           <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground mb-4 block">04 — Voices</span>
-          <h2 
+          <h2
             className={`font-serif text-4xl md:text-6xl transition-all duration-1000 ${
               isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
             }`}
@@ -73,12 +73,12 @@ export function TestimonialScene() {
             >
               {/* Quote mark */}
               <span className="font-serif text-8xl text-primary/20 leading-none block mb-4">&ldquo;</span>
-              
+
               {/* Quote */}
               <blockquote className="font-serif text-xl md:text-2xl lg:text-3xl leading-relaxed mb-8">
                 {testimonial.quote}
               </blockquote>
-              
+
               {/* Author */}
               <div className="flex items-center justify-between">
                 <div>

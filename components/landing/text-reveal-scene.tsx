@@ -10,13 +10,13 @@ export function TextRevealScene() {
   const words = ["Find", "amazing", "date", "ideas."]
 
   return (
-    <section 
+    <section
       ref={sectionRef}
       className="relative min-h-[80vh] md:min-h-screen flex items-center justify-center py-8 md:py-32 px-4"
     >
       {/* Background accent line */}
       <div className="absolute left-0 top-1/2 w-full h-px bg-border" />
-      
+
       <div className="relative max-w-6xl mx-auto">
         {/* Large decorative number */}
         <span className="absolute -left-8 md:-left-24 top-0 font-serif text-[20vw] text-muted/20 leading-none select-none">
@@ -29,8 +29,8 @@ export function TextRevealScene() {
             <span
               key={index}
               className={`inline-block mr-[0.3em] transition-all duration-700 ${
-                isInView 
-                  ? "opacity-100 translate-y-0 blur-0" 
+                isInView
+                  ? "opacity-100 translate-y-0 blur-0"
                   : "opacity-0 translate-y-12 blur-sm"
               }`}
               style={{ transitionDelay: `${index * 0.1}s` }}
@@ -45,7 +45,7 @@ export function TextRevealScene() {
         </h2>
 
         {/* Supporting text */}
-        <div 
+        <div
           className={`mt-16 md:mt-24 grid md:grid-cols-2 gap-8 transition-all duration-1000 delay-700 ${
             isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
@@ -53,20 +53,20 @@ export function TextRevealScene() {
           <div className="space-y-4">
             <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">The Problem</span>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Finding the perfect date spot is incredibly hard. Couples waste countless hours scrolling through generic lists, 
-              end up at the same predictable restaurants, and watch the excitement of their relationship fade into routine. 
-              The dating scene has become monotonous, with the same tired suggestions repeated everywhere, leaving you 
+              Finding the perfect date spot is incredibly hard. Couples waste countless hours scrolling through generic lists,
+              end up at the same predictable restaurants, and watch the excitement of their relationship fade into routine.
+              The dating scene has become monotonous, with the same tired suggestions repeated everywhere, leaving you
               frustrated and uninspired.
             </p>
           </div>
           <div className="space-y-4">
             <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Our Answer</span>
             <p className="text-lg text-foreground leading-relaxed">
-              Discover amazing restaurants, unique activities, and hidden gems tailored to your preferences. 
-              Our AI-powered recommendations help you plan perfect date nights that match your style, budget, and location. 
-              From cozy Italian trattorias to adventurous outdoor experiences, find the ideal spot for every mood and occasion. 
-              Save favorites, create custom itineraries, and turn ordinary evenings into extraordinary memories. 
-              With our smart filtering and personalized suggestions, you'll never run out of fresh ideas for keeping the spark alive. 
+              Discover amazing restaurants, unique activities, and hidden gems tailored to your preferences.
+              Our AI-powered recommendations help you plan perfect date nights that match your style, budget, and location.
+              From cozy Italian trattorias to adventurous outdoor experiences, find the ideal spot for every mood and occasion.
+              Save favorites, create custom itineraries, and turn ordinary evenings into extraordinary memories.
+              With our smart filtering and personalized suggestions, you'll never run out of fresh ideas for keeping the spark alive.
               Explore curated collections, get real-time availability, and receive notifications for special events and deals.
             </p>
           </div>

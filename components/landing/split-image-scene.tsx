@@ -34,7 +34,7 @@ export function SplitImageScene({ scrollY }: SplitImageSceneProps) {
   const isInView = useInView(sectionRef, { threshold: 0.2 })
 
   return (
-    <section 
+    <section
       ref={sectionRef}
       className="relative py-8 md:py-16 px-4"
     >
@@ -50,7 +50,7 @@ export function SplitImageScene({ scrollY }: SplitImageSceneProps) {
             <div className="w-16 h-px bg-primary" />
             <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">How It Works</span>
           </div>
-          <h2 
+          <h2
             className={`font-serif text-4xl md:text-6xl lg:text-7xl max-w-4xl transition-all duration-1000 ${
               isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
             }`}
@@ -63,7 +63,7 @@ export function SplitImageScene({ scrollY }: SplitImageSceneProps) {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-24 items-start">
           {/* Left: Sticky image */}
           <div className="lg:sticky lg:top-32">
-            <div 
+            <div
               className={`relative aspect-4/5 overflow-hidden transition-all duration-1000 delay-300 ${
                 isInView ? "opacity-100 scale-100" : "opacity-0 scale-95"
               }`}
@@ -85,7 +85,7 @@ export function SplitImageScene({ scrollY }: SplitImageSceneProps) {
           {/* Right: Features list */}
           <div className="space-y-16 md:space-y-24 lg:pt-32">
             {features.map((feature, index) => (
-              <div 
+              <div
                 key={feature.title}
                 className={`group transition-all duration-700 ${
                   isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
@@ -97,7 +97,7 @@ export function SplitImageScene({ scrollY }: SplitImageSceneProps) {
                   <span className="font-serif text-5xl md:text-7xl text-muted/30 group-hover:text-primary/50 transition-colors duration-500">
                     {String(index + 1).padStart(2, "0")}
                   </span>
-                  
+
                   {/* Content */}
                   <div className="pt-2">
                     <h3 className="font-serif text-2xl md:text-3xl mb-4">{feature.title}</h3>
@@ -110,7 +110,7 @@ export function SplitImageScene({ scrollY }: SplitImageSceneProps) {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Divider */}
                 {index < features.length - 1 && (
                   <div className="mt-16 md:mt-24 h-px bg-border" />

@@ -12,7 +12,7 @@ export function FinalScene() {
 
   return (
     <>
-    <section 
+    <section
       ref={sectionRef}
       className="relative min-h-[80vh] md:min-h-screen flex flex-col items-center justify-center py-8 md:py-32 px-4 overflow-hidden"
     >
@@ -20,9 +20,9 @@ export function FinalScene() {
       <div className="absolute inset-0">
         {/* Radial gradient */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--primary)_0%,transparent_70%)] opacity-10" />
-        
+
         {/* Grid lines */}
-        <div 
+        <div
           className="absolute inset-0 opacity-[0.03]"
           style={{
             backgroundImage: `
@@ -41,7 +41,7 @@ export function FinalScene() {
       {/* Content */}
       <div className="relative max-w-4xl mx-auto text-center">
         {/* Decorative line */}
-        <div 
+        <div
           className={`w-px h-16 bg-primary/40 mx-auto mb-10 transition-all duration-1000 ${
             isInView ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0"
           }`}
@@ -49,7 +49,7 @@ export function FinalScene() {
         />
 
         {/* Large text */}
-        <h2 
+        <h2
           className={`font-serif text-3xl md:text-7xl lg:text-9xl leading-[0.9] tracking-tight mb-6 md:mb-8 transition-all duration-1000 ${
             isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
           }`}
@@ -60,17 +60,17 @@ export function FinalScene() {
         </h2>
 
         {/* Subtext */}
-        <p 
+        <p
           className={`text-base md:text-xl text-muted-foreground max-w-lg mx-auto mb-10 md:mb-14 transition-all duration-1000 delay-200 ${
             isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          Discover amazing date spots, plan unforgettable nights, and create memories that last a lifetime. 
+          Discover amazing date spots, plan unforgettable nights, and create memories that last a lifetime.
           Join thousands of couples who have transformed their date nights with our intelligent recommendations and seamless planning tools.
         </p>
 
         {/* CTA Buttons */}
-        <div 
+        <div
           className={`flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-4 mb-14 md:mb-20 transition-all duration-1000 delay-300 ${
             isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
@@ -90,7 +90,7 @@ export function FinalScene() {
         </div>
 
         {/* Stats row */}
-        <div 
+        <div
           className={`flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8 md:gap-20 transition-all duration-1000 delay-500 ${
             isInView ? "opacity-100" : "opacity-0"
           }`}
@@ -120,14 +120,14 @@ export function FinalScene() {
           <div className="font-serif text-lg md:text-xl tracking-tight">
             Dat3Night
           </div>
-          
+
           <nav className="flex flex-wrap items-center justify-center gap-4 md:gap-8 text-xs md:text-sm text-muted-foreground">
             <a href="/about" className="hover:text-foreground transition-colors">About</a>
             <a href="/legal/privacy-policy" className="hover:text-foreground transition-colors">Privacy</a>
             <a href="/legal/terms-of-service" className="hover:text-foreground transition-colors">Terms</a>
             <a href="/contact" className="hover:text-foreground transition-colors">Contact</a>
           </nav>
-          
+
           <div className="text-sm text-muted-foreground">
             2026 Dat3Night. All rights reserved.
           </div>

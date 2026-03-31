@@ -161,7 +161,7 @@ export function HorizontalScrollScene() {
   }, [update])
 
   return (
-    <section 
+    <section
       ref={sectionRef}
       className="relative h-[300vh] md:h-[600vh]"
     >
@@ -179,7 +179,7 @@ export function HorizontalScrollScene() {
         </div>
 
         {/* Horizontal scroll container */}
-        <div 
+        <div
           ref={containerRef}
           className="flex py-4 md:py-6 items-center shrink-0"
           style={{
@@ -192,7 +192,7 @@ export function HorizontalScrollScene() {
         >
           {experiences.map((exp, index) => {
             return (
-              <div 
+              <div
                 key={exp.id}
                 className="shrink-0 group"
                 style={{ width: "min(85vw, 900px)" }}
@@ -206,7 +206,7 @@ export function HorizontalScrollScene() {
                   />
                   {/* Overlay */}
                   <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/10 to-transparent" />
-                  
+
                   {/* Content */}
                   <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8">
                     <span className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-primary mb-1 md:mb-2 block">
@@ -232,9 +232,9 @@ export function HorizontalScrollScene() {
         <div className="px-4 md:px-12 mt-4 md:mt-6 flex items-center gap-3 md:gap-4 shrink-0 pb-4">
           {/* Continuous progress bar */}
           <div className="flex-1 h-1 bg-border rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-primary rounded-full"
-              style={{ 
+              style={{
                 width: `${progress * 100}%`,
                 transition: "width 0.1s linear"
               }}
