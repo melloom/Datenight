@@ -25,12 +25,12 @@ const venueSearchSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
+
     const validationResult = venueSearchSchema.safeParse(body)
     if (!validationResult.success) {
-      return NextResponse.json({ 
-        error: 'Invalid input', 
-        details: validationResult.error.errors 
+      return NextResponse.json({
+        error: 'Invalid input',
+        details: validationResult.error.errors
       }, { status: 400 })
     }
 
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
       const keywordParam = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ''
       const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}${keywordParam}&key=${GOOGLE_PLACES_API_KEY}`
-      
+
       const fetchPromise = fetch(url).then(response => {
         if (!response.ok) {
           throw new Error(`Google API error: ${response.status}`)
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
       const locationParam = lat && lng ? `&location=${lat},${lng}&radius=${radius || 16000}` : ''
       const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}${locationParam}&key=${GOOGLE_PLACES_API_KEY}`
-      
+
       const fetchPromise = fetch(url).then(response => {
         if (!response.ok) {
           throw new Error(`Google API error: ${response.status}`)
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       }
 
       const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${GOOGLE_PLACES_API_KEY}`
-      
+
       const fetchPromise = fetch(url).then(response => {
         if (!response.ok) {
           throw new Error(`Google API error: ${response.status}`)
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
 
       const { placeId } = body
       const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=formatted_phone_number,website,opening_hours,current_opening_hours,reviews,photos,url,price_level,rating,user_ratings_total,editorial_summary,serves_breakfast,serves_lunch,serves_dinner,serves_beer,serves_wine,serves_vegetarian_food,reservable,dine_in,takeout,delivery,wheelchair_accessible_entrance,outdoor_seating,types,name,geometry&key=${GOOGLE_PLACES_API_KEY}`
-      
+
       const fetchPromise = fetch(url).then(response => {
         if (!response.ok) {
           throw new Error(`Google API error: ${response.status}`)
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
       }
 
       const url = `https://api.foursquare.com/v2/venues/search?ll=${lat},${lng}&radius=${radius}&query=${encodeURIComponent(query || '')}&client_id=${FOURSQUARE_CLIENT_ID}&client_secret=${FOURSQUARE_CLIENT_SECRET}&v=20231001`
-      
+
       const fetchPromise = fetch(url).then(response => {
         if (!response.ok) {
           throw new Error(`Foursquare API error: ${response.status}`)
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    
+
     if (action === 'overpass') {
       const { query: overpassQuery } = body
       if (!overpassQuery) {
