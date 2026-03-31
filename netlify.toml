@@ -3,7 +3,7 @@
   publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
 
 # Next.js plugin handles most routing, but we need correct MIME types
 [[plugins]]
