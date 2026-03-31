@@ -93,11 +93,21 @@ Current live plan setup:
 - Endpoint: /api/stripe/webhook
 - Required events:
 	- checkout.session.completed
+	- checkout.session.async_payment_succeeded
+	- checkout.session.async_payment_failed
+	- checkout.session.expired
 	- customer.subscription.created
 	- customer.subscription.updated
 	- customer.subscription.deleted
+	- customer.subscription.paused
+	- customer.subscription.resumed
+	- customer.subscription.trial_will_end
+	- invoice.paid
 	- invoice.payment_succeeded
 	- invoice.payment_failed
+	- invoice.finalization_failed
+	- invoice.marked_uncollectible
+	- invoice.voided
 
 For local testing, use Stripe CLI:
 

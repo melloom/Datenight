@@ -122,6 +122,50 @@ async function notifyPaymentFailed(invoice: Stripe.Invoice): Promise<void> {
   ])
 }
 
+async function notifyTrialWillEnd(subscription: Stripe.Subscription): Promise<void> {
+  if (!isBillingEmailConfigured()) {
+    return
+  }
+
+  const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id
+  if (!customerId) {
+    return
+  }
+
+  const customer = await getStripe().customers.retrieve(customerId)
+  if (!customer || customer.deleted || !customer.email) {
+    return
+  }
+
+  await Promise.all([
+    sendBillingEmail({
+      to: customer.email,
+      subject: 'Your DateNight Pro trial is ending soon',
+      text: 'Your trial is ending soon. Keep premium access by ensuring your payment method is up to date in Billing & Plans.',
+    }),
+    sendBillingTeamEmail(
+      'Trial ending soon',
+      `Trial ending soon for ${customer.email}. Subscription: ${subscription.id}`,
+    ),
+  ])
+}
+
+async function syncFromInvoiceEvent(invoice: Stripe.Invoice): Promise<void> {
+  const invoiceWithSubscription = invoice as Stripe.Invoice & {
+    subscription?: string | Stripe.Subscription | null
+  }
+  const subscriptionId = typeof invoiceWithSubscription.subscription === 'string'
+    ? invoiceWithSubscription.subscription
+    : invoiceWithSubscription.subscription?.id
+
+  if (!subscriptionId) {
+    return
+  }
+
+  const subscription = await getStripe().subscriptions.retrieve(subscriptionId)
+  await handleSubscriptionEvent(subscription)
+}
+
 export async function POST(request: NextRequest) {
   const signature = request.headers.get('stripe-signature')
   if (!signature) {
@@ -150,33 +194,54 @@ export async function POST(request: NextRequest) {
         await notifyCheckoutCompleted(session)
         break
       }
+      case 'checkout.session.async_payment_succeeded': {
+        const session = event.data.object as Stripe.Checkout.Session
+        await syncBillingFromCheckoutSession(session)
+        await notifyCheckoutCompleted(session)
+        break
+      }
+      case 'checkout.session.async_payment_failed': {
+        const session = event.data.object as Stripe.Checkout.Session
+        console.warn('Stripe async checkout payment failed', { sessionId: session.id })
+        break
+      }
+      case 'checkout.session.expired': {
+        const session = event.data.object as Stripe.Checkout.Session
+        console.info('Stripe checkout session expired', { sessionId: session.id })
+        break
+      }
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
-      case 'customer.subscription.deleted': {
+      case 'customer.subscription.deleted':
+      case 'customer.subscription.paused':
+      case 'customer.subscription.resumed': {
         await handleSubscriptionEvent(event.data.object as Stripe.Subscription)
+        break
+      }
+      case 'customer.subscription.trial_will_end': {
+        const subscription = event.data.object as Stripe.Subscription
+        await notifyTrialWillEnd(subscription)
+        await handleSubscriptionEvent(subscription)
         break
       }
       case 'invoice.paid':
       case 'invoice.payment_succeeded':
-      case 'invoice.payment_failed': {
+      case 'invoice.payment_failed':
+      case 'invoice.finalization_failed':
+      case 'invoice.marked_uncollectible':
+      case 'invoice.voided': {
         const invoice = event.data.object as Stripe.Invoice
         if (event.type === 'invoice.payment_failed') {
           await notifyPaymentFailed(invoice)
         }
-        const invoiceWithSubscription = invoice as Stripe.Invoice & {
-          subscription?: string | Stripe.Subscription | null
-        }
-        const subscriptionId = typeof invoiceWithSubscription.subscription === 'string'
-          ? invoiceWithSubscription.subscription
-          : invoiceWithSubscription.subscription?.id
-
-        if (subscriptionId) {
-          const subscription = await getStripe().subscriptions.retrieve(subscriptionId)
-          await handleSubscriptionEvent(subscription)
-        }
+        await syncFromInvoiceEvent(invoice)
         break
       }
       default: {
+        console.info('Stripe webhook event received but not explicitly handled', {
+          eventId: event.id,
+          eventType: event.type,
+        })
         break
       }
     }
