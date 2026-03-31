@@ -3,49 +3,51 @@ import React from 'react';
 const TermsOfService = () => {
   return (
     <div>
-      <div style={{ backgroundColor: 'yellow', padding: '1rem', marginBottom: '1rem' }}>
-        <strong>Disclaimer:</strong> This is a template and not legal advice. You should consult with a legal
-        professional to ensure this document meets your specific needs and complies with all applicable laws and
-        regulations.
-      </div>
+
 
       <h1>Terms of Service</h1>
       <p>Last updated: March 30, 2026</p>
       <p>
-        Welcome to Dat3Night. Please read these Terms of Service ("Terms", "Terms of Service") carefully before using the application (the "Service") operated by Dat3Night ("us", "we", or "our").
+        <strong>Welcome to Dat3Night!</strong> Please read these Terms of Service ("Terms") carefully before using our application (the "Service"). These terms are operated by Dat3Night ("us", "we", or "our").
       </p>
       <p>
-        Your access to and use of the Service is conditioned on your acceptance of and compliance with these Terms. These
-        Terms apply to all visitors, users, and others who access or use the Service. Your access to and use of the Service is also conditioned on your acceptance of and compliance with our Privacy Policy. Our Privacy Policy describes our policies and procedures on the collection, use and disclosure of your personal information when you use the Application or the Website and tells you about your privacy rights and how the law protects you. Please read our Privacy Policy carefully before using our Service.
+        Your ability to access and use the Service depends on your acceptance of and compliance with these Terms. These Terms apply to everyone who visits, uses, or accesses the Service.
       </p>
       <p>
-        By accessing or using the Service you agree to be bound by these Terms and our Privacy Policy. If you disagree with any part of the terms then you may not access the Service.
+        Your access and use of the Service also require you to accept and comply with our Privacy Policy. Our Privacy Policy explains our procedures and policies regarding the collection, use, and disclosure of your personal information when you use the application. It also informs you about your privacy rights and how the law protects you. We strongly advise you to read our Privacy Policy carefully before using our Service.
+      </p>
+      <p>
+        By using the Service, you agree to be bound by these Terms and our Privacy Policy. If you disagree with any part of these terms, you may not access the Service.
       </p>
 
       <h2>1. User Accounts</h2>
       <p>
-        When you create an account with us, you must provide us information that is accurate, complete, and current at all times. Failure to do so constitutes a breach of the Terms, which may result in immediate termination of your account on our Service.
+        When creating an account with us, you must provide information that is accurate, complete, and current. Failure to do so is a breach of these Terms, and it may result in the immediate termination of your account on our Service.
       </p>
       <p>
-        You are responsible for safeguarding the password that you use to access the Service and for any activities or actions under your password, whether your password is with our Service or a third-party social media service.
+        You are responsible for safeguarding the password you use to access the Service. You are also responsible for any activities or actions that occur under your password, whether with our Service or a third-party social media service.
       </p>
       <p>
-        You agree not to disclose your password to any third party. You must notify us immediately upon becoming aware of any breach of security or unauthorized use of your account.
+        You agree not to share your password with any third party. If you become aware of any security breach or unauthorized use of your account, you must notify us immediately.
       </p>
       <p>
-        You may not use as a username the name of another person or entity or that is not lawfully available for use, a name or trademark that is subject to any rights of another person or entity other than you without appropriate authorization, or a name that is otherwise offensive, vulgar or obscene.
+        You may not use a username that is the name of another person or entity, is not lawfully available for use, is a name or trademark subject to the rights of another person or entity without appropriate authorization, or is otherwise offensive, vulgar, or obscene.
       </p>
 
       <h2>2. User Content</h2>
       <p>
-        Our Service may allow you to post, link, store, share and otherwise make available certain information, text, graphics, videos, or other material ("User Content"). You are responsible for the User Content that you post to the Service, including its legality, reliability, and appropriateness.
+        Our Service allows you to post, link, store, share, and otherwise make available certain information, text, graphics, videos, or other material ("User Content"). You are solely responsible for the User Content you post, including its legality, reliability, and appropriateness.
       </p>
       <p>
-        By posting User Content to the Service, you grant us the right and license to use, modify, publicly perform, publicly display, reproduce, and distribute such User Content on and through the Service. You retain any and all of your rights to any User Content you submit, post or display on or through the Service and you are responsible for protecting those rights. You agree that this license includes the right for us to make your User Content available to other users of the Service, who may also use your User Content subject to these Terms.
+        By posting User Content, you grant us a license to use, modify, publicly perform, publicly display, reproduce, and distribute it on and through the Service. You retain all your rights to any User Content you submit, and you are responsible for protecting those rights. This license also allows us to make your User Content available to other users of the Service, who may use it subject to these Terms.
       </p>
       <p>
-        You represent and warrant that: (i) the User Content is yours (you own it) or you have the right to use it and grant us the rights and license as provided in these Terms, and (ii) the posting of your User Content on or through the Service does not violate the privacy rights, publicity rights, copyrights, contract rights or any other rights of any person.
+        You represent and warrant that:
       </p>
+      <ul>
+        <li>The User Content is yours (you own it), or you have the right to use it and grant us the rights and license as provided in these Terms.</li>
+        <li>The posting of your User Content on or through the Service does not violate the privacy rights, publicity rights, copyrights, contract rights, or any other rights of any person.</li>
+      </ul>
 
       <h2>3. Prohibited Activities</h2>
       <p>You agree not to use the Service for any unlawful purpose or to engage in any of the following prohibited activities:</p>
@@ -56,7 +58,7 @@ const TermsOfService = () => {
         <li>Using the Service to advertise or offer to sell goods and services.</li>
         <li>Circumventing, disabling, or otherwise interfering with security-related features of the Service, including features that prevent or restrict the use or copying of any Content or enforce limitations on the use of the Service and/or the Content contained therein.</li>
         <li>Engaging in unauthorized framing of or linking to the Service.</li>
-        <li>Trick, defraud, or mislead us and other users, especially in any attempt to learn sensitive account information such as user passwords.</li>
+        <li>Tricking, defrauding, or misleading us and other users, especially in any attempt to learn sensitive account information such as user passwords.</li>
         <li>Making improper use of our support services or submitting false reports of abuse or misconduct.</li>
         <li>Engaging in any automated use of the system, such as using scripts to send comments or messages, or using any data mining, robots, or similar data gathering and extraction tools.</li>
         <li>Interfering with, disrupting, or creating an undue burden on the Service or the networks or services connected to the Service.</li>
@@ -81,7 +83,7 @@ const TermsOfService = () => {
         The Service and its original content (excluding Content provided by you or other users), features, and functionality are and will remain the exclusive property of Dat3Night and its licensors.
       </p>
       <p>
-        The Service is protected by copyright, trademark, and other laws of both the [Your Jurisdiction] and foreign countries.
+        The Service is protected by copyright, trademark, and other laws of both Maryland, USA and foreign countries.
       </p>
       <p>
         Our trademarks and trade dress may not be used in connection with any product or service without the prior written consent of Dat3Night.
@@ -130,12 +132,12 @@ const TermsOfService = () => {
 
       <h2>9. Governing Law</h2>
       <p>
-        The laws of [Your Jurisdiction], excluding its conflicts of law rules, shall govern this Terms and your use of the Service. Your use of the Application may also be subject to other local, state, national, or international laws.
+        The laws of Maryland, USA, excluding its conflicts of law rules, shall govern this Terms and your use of the Service. Your use of the Application may also be subject to other local, state, national, or international laws.
       </p>
 
       <h2>10. Dispute Resolution</h2>
       <p>
-        If you have any concern or dispute about the Service, you agree to first try to resolve the dispute informally by contacting Dat3Night. If a dispute is not resolved within thirty (30) days, you or we may invoke binding arbitration. All claims arising out of or relating to these Terms or the Service will be litigated exclusively in the federal or state courts of [Your City, State], and you and Dat3Night consent to personal jurisdiction in those courts.
+        If you have any concern or dispute about the Service, you agree to first try to resolve the dispute informally by contacting Dat3Night. If a dispute is not resolved within thirty (30) days, you or we may invoke binding arbitration. All claims arising out of or relating to these Terms or the Service will be litigated exclusively in the federal or state courts of Baltimore, Maryland, and you and Dat3Night consent to personal jurisdiction in those courts.
       </p>
 
       <h2>11. Indemnification</h2>
