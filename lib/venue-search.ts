@@ -462,9 +462,26 @@ class VenueSearcher {
   }
 
   private isWithinDistance(venue: Venue, location: string, timeOfDay: string): boolean {
-    // For now, assume all venues are within reasonable distance
-    // In a real implementation, you'd calculate actual distance
-    return true
+    // Use the search radius from time filters as max distance
+    const maxRadius = TIME_FILTERS[timeOfDay]?.searchRadius || 10 // miles
+    
+    // If venue has no coordinates, allow it through (will be filtered later)
+    if (!venue.coordinates || (venue.coordinates.lat === 0 && venue.coordinates.lng === 0)) {
+      return true
+    }
+
+    // Check against cached geocode for the search location
+    const cached = this.geocodeCache.get(location)
+    if (!cached) return true // Can't check without user location coords
+
+    const distance = this.haversineDistance(
+      { lat: cached.lat, lng: cached.lng },
+      venue.coordinates
+    )
+
+    // Filter out venues beyond the search radius
+    // Add 50% buffer to be slightly lenient
+    return distance <= maxRadius * 1.5
   }
 
   private smartRank(venues: Venue[], criteria: SearchCriteria): Venue[] {
@@ -564,15 +581,25 @@ class VenueSearcher {
   }
 
   private calculateTravelBonus(venue: Venue, location: string): number {
-    // In a real implementation, calculate actual travel time
-    // For now, give bonus based on venue features
-    let bonus = 0
-    
-    if (venue.features?.includes('Popular Spot')) bonus += 0.05
-    if (venue.features?.includes('Outdoor Seating')) bonus += 0.05
-    if (venue.highlights?.includes('Great atmosphere')) bonus += 0.05
-    
-    return Math.min(bonus, 0.2)
+    // Use real distance to give bonus to closer venues
+    if (!venue.coordinates || (venue.coordinates.lat === 0 && venue.coordinates.lng === 0)) {
+      return 0.05 // small default bonus for unknown distance
+    }
+
+    const cached = this.geocodeCache.get(location)
+    if (!cached) return 0.05
+
+    const distance = this.haversineDistance(
+      { lat: cached.lat, lng: cached.lng },
+      venue.coordinates
+    )
+
+    // Closer venues get higher bonuses (max 0.15)
+    if (distance <= 3) return 0.15   // Within 3 miles — excellent
+    if (distance <= 5) return 0.12   // Within 5 miles — great
+    if (distance <= 8) return 0.08   // Within 8 miles — good
+    if (distance <= 12) return 0.04  // Within 12 miles — ok
+    return 0                          // Beyond 12 miles — no bonus
   }
 
   private calculateVibeScore(venue: Venue, vibes: string[]): number {
@@ -608,40 +635,96 @@ class VenueSearcher {
     const filteredActivity = this.applyCustomPreferencesFilter(activity, criteria)
     
 
+    // Max distance between any two venues (miles)
+    const maxInterVenueDistance = criteria.maxTravelTime
+      ? criteria.maxTravelTime / 2 // rough: 2 min per mile city driving
+      : TIME_FILTERS[criteria.time]?.searchRadius || 10
+
     // Select best venues for each category
     const selectedVenues: Venue[] = []
 
-    // Add best drinks venue
-    if (filteredDrinks.length > 0) {
-      selectedVenues.push(filteredDrinks[0])
-    } else if (drinks.length > 0) {
-      selectedVenues.push(drinks[0])
+    // Start with the best dinner venue (centerpiece of the date)
+    const bestDinner = filteredDinner[0] || dinner[0]
+    if (bestDinner) selectedVenues.push(bestDinner)
+
+    // Pick drinks venue closest to dinner
+    const drinksPool = filteredDrinks.length > 0 ? filteredDrinks : drinks
+    const bestDrinks = bestDinner
+      ? this.pickClosestVenue(drinksPool, bestDinner, maxInterVenueDistance)
+      : drinksPool[0]
+    if (bestDrinks) selectedVenues.push(bestDrinks)
+
+    // Pick activity venue closest to either dinner or drinks
+    const activityPool = filteredActivity.length > 0 ? filteredActivity : activity
+    const anchor = bestDinner || bestDrinks
+    const bestActivity = anchor
+      ? this.pickClosestVenue(activityPool, anchor, maxInterVenueDistance)
+      : activityPool[0]
+    if (bestActivity) selectedVenues.push(bestActivity)
+
+    // If we don't have enough venues, add the best remaining ones (nearby)
+    if (selectedVenues.length < 3) {
+      const remaining = venues
+        .filter(v => !selectedVenues.includes(v))
+      
+      // If we have an anchor venue, prefer nearby ones
+      const anchorVenue = selectedVenues[0]
+      if (anchorVenue) {
+        const nearbyRemaining = remaining
+          .filter(v => {
+            if (!v.coordinates || !anchorVenue.coordinates) return true
+            return this.haversineDistance(v.coordinates, anchorVenue.coordinates) <= maxInterVenueDistance
+          })
+          .slice(0, 3 - selectedVenues.length)
+        selectedVenues.push(...nearbyRemaining)
+      } else {
+        selectedVenues.push(...remaining.slice(0, 3 - selectedVenues.length))
+      }
     }
-
-    // Add best dinner venue
-    if (filteredDinner.length > 0) {
-      selectedVenues.push(filteredDinner[0])
-    } else if (dinner.length > 0) {
-      selectedVenues.push(dinner[0])
-    }
-
-    // Add best activity venue
-    if (filteredActivity.length > 0) {
-      selectedVenues.push(filteredActivity[0])
-    } else if (activity.length > 0) {
-      selectedVenues.push(activity[0])
-    }
-
-    // If we don't have enough venues, add the best remaining ones
-    const remaining = venues
-      .filter(v => !selectedVenues.includes(v))
-      .slice(0, 3 - selectedVenues.length)
-
-    selectedVenues.push(...remaining)
     
     
-    // Optimize order based on travel time (simplified)
+    // Optimize order based on travel time
     return this.optimizeVenueOrder(selectedVenues, criteria.location)
+  }
+
+  // Pick the venue from candidates that is closest to the anchor venue within max distance
+  private pickClosestVenue(candidates: Venue[], anchor: Venue, maxDistance: number): Venue | undefined {
+    if (candidates.length === 0) return undefined
+    if (!anchor.coordinates || (anchor.coordinates.lat === 0 && anchor.coordinates.lng === 0)) {
+      return candidates[0]
+    }
+
+    let bestVenue: Venue | undefined
+    let bestDistance = Infinity
+
+    for (const candidate of candidates) {
+      if (!candidate.coordinates || (candidate.coordinates.lat === 0 && candidate.coordinates.lng === 0)) {
+        // No coords — use as fallback if nothing else found
+        if (!bestVenue) bestVenue = candidate
+        continue
+      }
+
+      const dist = this.haversineDistance(anchor.coordinates, candidate.coordinates)
+      if (dist <= maxDistance && dist < bestDistance) {
+        bestDistance = dist
+        bestVenue = candidate
+      }
+    }
+
+    // If nothing within max distance, return the closest one overall
+    if (!bestVenue) {
+      let closestDist = Infinity
+      for (const candidate of candidates) {
+        if (!candidate.coordinates) continue
+        const dist = this.haversineDistance(anchor.coordinates, candidate.coordinates)
+        if (dist < closestDist) {
+          closestDist = dist
+          bestVenue = candidate
+        }
+      }
+    }
+
+    return bestVenue || candidates[0]
   }
 
   private optimizeVenueOrder(venues: Venue[], baseLocation: string): Venue[] {

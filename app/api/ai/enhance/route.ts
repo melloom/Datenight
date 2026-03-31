@@ -476,7 +476,7 @@ Return JSON array (same order):
       } catch { return null }
     }
 
-    async function searchGooglePlaces(query: string, lat: number, lng: number, radius: number = 16000): Promise<any[]> {
+    async function searchGooglePlaces(query: string, lat: number, lng: number, radius: number = 12000): Promise<any[]> {
       try {
         const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&location=${lat},${lng}&radius=${radius}&key=${GOOGLE_API_KEY}`
         const res = await fetch(url)
@@ -564,6 +564,16 @@ Return JSON array (same order):
           if (seenIds.has(place.place_id)) continue
           if (excludeLower.some(n => place.name.toLowerCase().includes(n) || n.includes(place.name.toLowerCase()))) continue
           seenIds.add(place.place_id)
+          
+          // Filter out venues too far from the search center (max 10 miles)
+          if (place.geometry?.location) {
+            const dist = haversineDistance(
+              geo,
+              { lat: place.geometry.location.lat, lng: place.geometry.location.lng }
+            )
+            if (dist > 10) continue // Skip venues more than 10 miles from search area
+          }
+          
           allPlaces.push(place)
         }
       }
@@ -576,7 +586,7 @@ Return JSON array (same order):
       })
 
       // Fetch details for top results
-      const topPlaces = allPlaces.slice(0, maxResults)
+      const topPlaces = allPlaces.slice(0, Math.max(maxResults * 2, 6)) // Get extra candidates
       const venues = await Promise.all(
         topPlaces.map(async (place) => {
           const details = await fetchPlaceDetails(place.place_id)
@@ -584,7 +594,62 @@ Return JSON array (same order):
         })
       )
 
-      return venues
+      // If returning multiple venues, enforce proximity between them
+      if (maxResults > 1 && venues.length > 1) {
+        return selectClusteredVenues(venues, maxResults)
+      }
+
+      return venues.slice(0, maxResults)
+    }
+
+    // Haversine distance calculation (miles)
+    function haversineDistance(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+      const R = 3959 // Earth radius in miles
+      const dLat = (b.lat - a.lat) * Math.PI / 180
+      const dLng = (b.lng - a.lng) * Math.PI / 180
+      const x = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2)
+      return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x))
+    }
+
+    // Select venues that are clustered together (within ~10 miles of each other)
+    function selectClusteredVenues(venues: any[], maxResults: number): any[] {
+      if (venues.length <= maxResults) return venues
+
+      // Start with the highest-rated venue as anchor
+      const anchor = venues[0]
+      const selected = [anchor]
+
+      // Add remaining venues sorted by distance to anchor, but only if close enough
+      const remaining = venues.slice(1)
+        .map(v => ({
+          venue: v,
+          distToAnchor: (anchor.coordinates && v.coordinates)
+            ? haversineDistance(anchor.coordinates, v.coordinates)
+            : 999
+        }))
+        .sort((a, b) => a.distToAnchor - b.distToAnchor)
+
+      for (const item of remaining) {
+        if (selected.length >= maxResults) break
+        // Only add if within 10 miles of anchor
+        if (item.distToAnchor <= 10) {
+          selected.push(item.venue)
+        }
+      }
+
+      // If we still need more, add the closest remaining regardless of distance
+      if (selected.length < maxResults) {
+        for (const item of remaining) {
+          if (selected.length >= maxResults) break
+          if (!selected.includes(item.venue)) {
+            selected.push(item.venue)
+          }
+        }
+      }
+
+      return selected
     }
 
     if (action === 'generate-venues') {
@@ -751,12 +816,13 @@ Return JSON array (same order):
         })
       }
 
+      let currentTotalTime = 0
+
       try {
         // Get real travel times between all venue pairs
         const travelTimes = await getDirectionsBetweenVenues(venues)
         
         // Calculate total travel time for current order
-        let currentTotalTime = 0
         for (let i = 0; i < venues.length - 1; i++) {
           const travel = travelTimes[`${i}-${i + 1}`]
           if (travel) currentTotalTime += travel.minutes
