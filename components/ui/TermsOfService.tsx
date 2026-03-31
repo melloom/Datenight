@@ -12,7 +12,7 @@ const TermsOfService = () => {
       <h1>Terms of Service</h1>
       <p>Last updated: March 30, 2026</p>
       <p>
-        Welcome to Dat3Night. Please read these Terms of Service ("Terms", "Terms of Service") carefully before using the application (the "Service") operated by Melloow ("us", "we", or "our").
+        Welcome to Dat3Night. Please read these Terms of Service ("Terms", "Terms of Service") carefully before using the application (the "Service") operated by Dat3Night ("us", "we", or "our").
       </p>
       <p>
         Your access to and use of the Service is conditioned on your acceptance of and compliance with these Terms. These
@@ -78,21 +78,21 @@ const TermsOfService = () => {
 
       <h2>4. Intellectual Property</h2>
       <p>
-        The Service and its original content (excluding Content provided by you or other users), features, and functionality are and will remain the exclusive property of Melloow and its licensors.
+        The Service and its original content (excluding Content provided by you or other users), features, and functionality are and will remain the exclusive property of Dat3Night and its licensors.
       </p>
       <p>
         The Service is protected by copyright, trademark, and other laws of both the [Your Jurisdiction] and foreign countries.
       </p>
       <p>
-        Our trademarks and trade dress may not be used in connection with any product or service without the prior written consent of Melloow.
+        Our trademarks and trade dress may not be used in connection with any product or service without the prior written consent of Dat3Night.
       </p>
 
       <h2>5. Links to Other Websites</h2>
       <p>
-        Our Service may contain links to third-party web sites or services that are not owned or controlled by Melloow.
+        Our Service may contain links to third-party web sites or services that are not owned or controlled by Dat3Night.
       </p>
       <p>
-        Melloow has no control over, and assumes no responsibility for, the content, privacy policies, or practices of any third party web sites or services. You further acknowledge and agree that Melloow shall not be responsible or liable, directly or indirectly, for any damage or loss caused or alleged to be caused by or in connection with the use of or reliance on any such content, goods or services available on or through any such web sites or services.
+        Dat3Night has no control over, and assumes no responsibility for, the content, privacy policies, or practices of any third party web sites or services. You further acknowledge and agree that Dat3Night shall not be responsible or liable, directly or indirectly, for any damage or loss caused or alleged to be caused by or in connection with the use of or reliance on any such content, goods or services available on or through any such web sites or services.
       </p>
       <p>
         We strongly advise you to read the terms and conditions and privacy policies of any third-party web sites or services that you visit.
@@ -108,10 +108,10 @@ const TermsOfService = () => {
 
       <h2>7. Limitation of Liability</h2>
       <p>
-        Notwithstanding any damages that you might incur, the entire liability of Melloow and any of its suppliers under any provision of this Terms and your exclusive remedy for all of the foregoing shall be limited to the amount actually paid by you through the Service or 100 USD if you haven't purchased anything through the Service.
+        Notwithstanding any damages that you might incur, the entire liability of Dat3Night and any of its suppliers under any provision of this Terms and your exclusive remedy for all of the foregoing shall be limited to the amount actually paid by you through the Service or 100 USD if you haven't purchased anything through the Service.
       </p>
       <p>
-        To the maximum extent permitted by applicable law, in no event shall Melloow or its suppliers be liable for any special, incidental, indirect, or consequential damages whatsoever (including, but not limited to, damages for loss of profits, for loss of data or other information, for business interruption, for personal injury, for loss of privacy arising out of or in any way related to the use of or inability to use the Service, third-party software and/or third-party hardware used with the Service, or otherwise in connection with any provision of this Terms), even if Melloow or any supplier has been advised of the possibility of such damages and even if the remedy fails of its essential purpose.
+        To the maximum extent permitted by applicable law, in no event shall Dat3Night or its suppliers be liable for any special, incidental, indirect, or consequential damages whatsoever (including, but not limited to, damages for loss of profits, for loss of data or other information, for business interruption, for personal injury, for loss of privacy arising out of or in any way related to the use of or inability to use the Service, third-party software and/or third-party hardware used with the Service, or otherwise in connection with any provision of this Terms), even if Dat3Night or any supplier has been advised of the possibility of such damages and even if the remedy fails of its essential purpose.
       </p>
       <p>
         Some states do not allow the exclusion of implied warranties or limitation of liability for incidental or consequential damages, which means that some of the above limitations may not apply. In these states, each party's liability will be limited to the greatest extent permitted by law.
@@ -119,10 +119,10 @@ const TermsOfService = () => {
 
       <h2>8. "AS IS" and "AS AVAILABLE" Disclaimer</h2>
       <p>
-        The Service is provided to you "AS IS" and "AS AVAILABLE" and with all faults and defects without warranty of any kind. To the maximum extent permitted under applicable law, Melloow, on its own behalf and on behalf of its affiliates and its and their respective licensors and service providers, expressly disclaims all warranties, whether express, implied, statutory or otherwise, with respect to the Service, including all implied warranties of merchantability, fitness for a particular purpose, title and non-infringement, and warranties that may arise out of course of dealing, course of performance, usage or trade practice. Without limitation to the foregoing, Melloow provides no warranty or undertaking, and makes no representation of any kind that the Service will meet your requirements, achieve any intended results, be compatible or work with any other software, applications, systems or services, operate without interruption, meet any performance or reliability standards or be error free or that any errors or defects can or will be corrected.
+        The Service is provided to you "AS IS" and "AS AVAILABLE" and with all faults and defects without warranty of any kind. To the maximum extent permitted under applicable law, Dat3Night, on its own behalf and on behalf of its affiliates and its and their respective licensors and service providers, expressly disclaims all warranties, whether express, implied, statutory or otherwise, with respect to the Service, including all implied warranties of merchantability, fitness for a particular purpose, title and non-infringement, and warranties that may arise out of course of dealing, course of performance, usage or trade practice. Without limitation to the foregoing, Dat3Night provides no warranty or undertaking, and makes no representation of any kind that the Service will meet your requirements, achieve any intended results, be compatible or work with any other software, applications, systems or services, operate without interruption, meet any performance or reliability standards or be error free or that any errors or defects can or will be corrected.
       </p>
       <p>
-        Without limiting the foregoing, neither Melloow nor any of Melloow's provider makes any representation or warranty of any kind, express or implied: (i) as to the operation or availability of the Service, or the information, content, and materials or products included thereon; (ii) that the Service will be uninterrupted or error-free; (iii) as to the accuracy, reliability, or currency of any information or content provided through the Service; or (iv) that the Service, its servers, the content, or e-mails sent from or on behalf of Melloow are free of viruses, scripts, trojan horses, worms, malware, timebombs or other harmful components.
+        Without limiting the foregoing, neither Dat3Night nor any of Dat3Night's provider makes any representation or warranty of any kind, express or implied: (i) as to the operation or availability of the Service, or the information, content, and materials or products included thereon; (ii) that the Service will be uninterrupted or error-free; (iii) as to the accuracy, reliability, or currency of any information or content provided through the Service; or (iv) that the Service, its servers, the content, or e-mails sent from or on behalf of Dat3Night are free of viruses, scripts, trojan horses, worms, malware, timebombs or other harmful components.
       </p>
       <p>
         Some jurisdictions do not allow the exclusion of certain types of warranties or limitations on applicable statutory rights of a consumer, so some or all of the above exclusions and limitations may not apply to you. But in such a case the exclusions and limitations set forth in this section shall be applied to the greatest extent enforceable under applicable law.
@@ -135,12 +135,12 @@ const TermsOfService = () => {
 
       <h2>10. Dispute Resolution</h2>
       <p>
-        If you have any concern or dispute about the Service, you agree to first try to resolve the dispute informally by contacting Melloow. If a dispute is not resolved within thirty (30) days, you or we may invoke binding arbitration. All claims arising out of or relating to these Terms or the Service will be litigated exclusively in the federal or state courts of [Your City, State], and you and Melloow consent to personal jurisdiction in those courts.
+        If you have any concern or dispute about the Service, you agree to first try to resolve the dispute informally by contacting Dat3Night. If a dispute is not resolved within thirty (30) days, you or we may invoke binding arbitration. All claims arising out of or relating to these Terms or the Service will be litigated exclusively in the federal or state courts of [Your City, State], and you and Dat3Night consent to personal jurisdiction in those courts.
       </p>
 
       <h2>11. Indemnification</h2>
       <p>
-        You agree to indemnify and hold Melloow and its parents, subsidiaries, affiliates, officers, employees, agents, partners, and licensors (if any) harmless from any claim or demand, including reasonable attorneys' fees, due to or arising out of your: (a) use of the Service; (b) violation of these Terms or any law or regulation; or (c) violation of any right of a third party.
+        You agree to indemnify and hold Dat3Night and its parents, subsidiaries, affiliates, officers, employees, agents, partners, and licensors (if any) harmless from any claim or demand, including reasonable attorneys' fees, due to or arising out of your: (a) use of the Service; (b) violation of these Terms or any law or regulation; or (c) violation of any right of a third party.
       </p>
 
       <h2>12. Severability and Waiver</h2>
