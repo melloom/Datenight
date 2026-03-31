@@ -257,7 +257,7 @@ class VenueSearcher {
       ).filter(v => v !== 'custom:') // Remove empty custom vibes
     }
 
-    
+
     // Log date/time availability information
     if (criteria.plannedDate) {
     }
@@ -279,13 +279,13 @@ class VenueSearcher {
     const constraints = this.calculateConstraints(criteria)
 
     // Search from multiple sources in parallel with timeout protection
-    
+
     const searchPromises = this.searchSources
       .filter(source => source.enabled)
       .map(async source => {
         try {
           // Add timeout to prevent hanging
-          const timeoutPromise = new Promise<Venue[]>((_, reject) => 
+          const timeoutPromise = new Promise<Venue[]>((_, reject) =>
             setTimeout(() => reject(new Error('Search timeout')), 15000) // 15s timeout
           )
           const venues = await Promise.race([
@@ -310,7 +310,7 @@ class VenueSearcher {
 
     // Wait for all searches to complete with overall timeout
     const searchResults = await Promise.all([
-      ...searchPromises, 
+      ...searchPromises,
       Promise.race([
         activitySearchPromise,
         new Promise<Venue[]>(resolve => setTimeout(() => resolve([]), 10000))
@@ -340,7 +340,7 @@ class VenueSearcher {
       try {
         // Reduce AI processing to only top 5 venues for speed
         const aiPromise = this.enhanceVenuesWithAI(filteredVenues.slice(0, 5), criteria)
-        const timeoutPromise = new Promise<Venue[]>(resolve => 
+        const timeoutPromise = new Promise<Venue[]>(resolve =>
           setTimeout(() => resolve(filteredVenues.slice(0, 5)), 8000) // 8s timeout
         )
         aiEnhancedVenues = await Promise.race([aiPromise, timeoutPromise])
@@ -403,7 +403,7 @@ class VenueSearcher {
 
     // Check for late night scenario and generate alternatives
     const currentTime = new Date()
-    
+
     // Use all available venues for late night detection, not just the final plan
     const searchResultForDetection = {
       venues: allVenues, // Use all found venues, not just the final plan
@@ -421,7 +421,7 @@ class VenueSearcher {
 
     // Run late night detection on all available venues
     const detection = lateNightDetector.detectLateNightScenario(currentTime, searchResultForDetection, criteria)
-    
+
     let lateNightResponse: LateNightResponse | undefined
     if (detection.isTooLate) {
       const suggestions = lateNightDetector.generateAlternativeSuggestions(detection, criteria)
@@ -483,7 +483,7 @@ class VenueSearcher {
   private isWithinDistance(venue: Venue, location: string, timeOfDay: string): boolean {
     // Use the search radius from time filters as max distance
     const maxRadius = TIME_FILTERS[timeOfDay]?.searchRadius || 10 // miles
-    
+
     // If venue has no coordinates, allow it through (will be filtered later)
     if (!venue.coordinates || (venue.coordinates.lat === 0 && venue.coordinates.lng === 0)) {
       return true
@@ -581,7 +581,7 @@ class VenueSearcher {
     const priceLevels: Record<string, number> = { '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 }
     const venueLevel = priceLevels[venue.priceRange] || 2
     const budgetLevel = priceLevels[budget] || 2
-    
+
     // Perfect match gets 1.0, one level off gets 0.7, two levels off gets 0.3
     const diff = Math.abs(venueLevel - budgetLevel)
     if (diff === 0) return 1.0
@@ -592,11 +592,11 @@ class VenueSearcher {
 
   private calculateTimeScore(venue: Venue, timeOfDay: string): number {
     if (!venue.hours) return 0.5
-    
+
     // Check if venue is open during the preferred time
     const timeFilter = TIME_FILTERS[timeOfDay]
     const isOpen = this.checkIfOpen(venue.hours, timeFilter.timeRange)
-    
+
     return isOpen ? 1.0 : 0.2
   }
 
@@ -624,7 +624,7 @@ class VenueSearcher {
 
   private calculateVibeScore(venue: Venue, vibes: string[]): number {
     if (!venue.vibe || vibes.length === 0) return 0.5
-    
+
     let score = 0
     for (const vibe of vibes) {
       if (venue.vibe.toLowerCase().includes(vibe.toLowerCase())) {
@@ -637,7 +637,7 @@ class VenueSearcher {
         score += 0.2
       }
     }
-    
+
     return Math.min(score, 1.0)
   }
 
@@ -646,16 +646,16 @@ class VenueSearcher {
     // STEP 1: Try to find a tight cluster of venues that covers all categories
     // This is the best outcome — walkable or very short drive between all stops
     const { cluster, radius } = findBestCluster(venues)
-    
+
     if (radius <= 5.0 && cluster.length >= 3) {
       // Great cluster found! Pick one of each category from it
       const clusterDrinks = cluster.filter(v => v.category === 'drinks')
       const clusterDinner = cluster.filter(v => v.category === 'dinner')
       const clusterActivity = cluster.filter(v => v.category === 'activity')
-      
-      const hasDiversity = 
-        (clusterDrinks.length > 0 ? 1 : 0) + 
-        (clusterDinner.length > 0 ? 1 : 0) + 
+
+      const hasDiversity =
+        (clusterDrinks.length > 0 ? 1 : 0) +
+        (clusterDinner.length > 0 ? 1 : 0) +
         (clusterActivity.length > 0 ? 1 : 0) >= 2
 
       if (hasDiversity) {
@@ -681,13 +681,13 @@ class VenueSearcher {
     const drinks = venues.filter(v => v.category === 'drinks').slice(0, 5)
     const dinner = venues.filter(v => v.category === 'dinner').slice(0, 5)
     const activity = venues.filter(v => v.category === 'activity').slice(0, 5)
-    
+
 
     // Apply custom preference filtering
     const filteredDrinks = this.applyCustomPreferencesFilter(drinks, criteria)
     const filteredDinner = this.applyCustomPreferencesFilter(dinner, criteria)
     const filteredActivity = this.applyCustomPreferencesFilter(activity, criteria)
-    
+
 
     // Max distance between any two venues (miles)
     const maxInterVenueDistance = criteria.maxTravelTime
@@ -720,7 +720,7 @@ class VenueSearcher {
     if (selectedVenues.length < 3) {
       const remaining = venues
         .filter(v => !selectedVenues.includes(v))
-      
+
       // If we have an anchor venue, prefer nearby ones
       const anchorVenue = selectedVenues[0]
       if (anchorVenue) {
@@ -735,8 +735,8 @@ class VenueSearcher {
         selectedVenues.push(...remaining.slice(0, 3 - selectedVenues.length))
       }
     }
-    
-    
+
+
     // Optimize order based on travel time
     return this.optimizeVenueOrder(selectedVenues, criteria.location)
   }
@@ -851,8 +851,8 @@ class VenueSearcher {
 
   private matchesVibe(venue: Venue, vibes: string[]): boolean {
     if (!venue.vibe || vibes.length === 0) return true
-    
-    return vibes.some(vibe => 
+
+    return vibes.some(vibe =>
       venue.vibe?.toLowerCase().includes(vibe.toLowerCase()) ||
       venue.tags.some(tag => tag.toLowerCase().includes(vibe.toLowerCase())) ||
       venue.highlights.some(highlight => highlight.toLowerCase().includes(vibe.toLowerCase()))
@@ -861,31 +861,31 @@ class VenueSearcher {
 
   private isInTimeRange(venue: Venue, criteria: SearchCriteria): boolean {
     if (!venue.hours) return true // Assume open if no hours specified
-    
+
     const timeFilter = TIME_FILTERS[criteria.time]
-    
+
     // Check if venue is open during the planned time
     const isOpenDuringTime = this.checkIfOpen(venue.hours, timeFilter.timeRange)
-    
+
     // If we have specific date/time information, do additional checks
     if (criteria.plannedDate && criteria.dayOfWeek) {
       // Check if venue is open on the specific day of week
       const isOpenOnDay = this.checkIfOpenOnDay(venue.hours, criteria.dayOfWeek)
-      
+
       // If we have a specific time, check availability at that time
       let isOpenAtSpecificTime = true
       if (criteria.plannedTime) {
         isOpenAtSpecificTime = this.checkIfOpenAtTime(venue.hours, criteria.plannedTime)
       }
-      
+
       const isAvailable = isOpenDuringTime && isOpenOnDay && isOpenAtSpecificTime
-      
+
       if (!isAvailable) {
       }
-      
+
       return isAvailable
     }
-    
+
     return isOpenDuringTime
   }
 
@@ -894,18 +894,18 @@ class VenueSearcher {
     // This is a simplified check - in real implementation, you'd parse actual opening hours
     const dayAbbreviations = {
       'Monday': 'Mon',
-      'Tuesday': 'Tue', 
+      'Tuesday': 'Tue',
       'Wednesday': 'Wed',
       'Thursday': 'Thu',
       'Friday': 'Fri',
       'Saturday': 'Sat',
       'Sunday': 'Sun'
     }
-    
+
     const dayAbbr = dayAbbreviations[dayOfWeek as keyof typeof dayAbbreviations] || dayOfWeek.substring(0, 3)
-    
+
     // Simple check - if hours contain the day abbreviation, assume it's open
-    return hours.toLowerCase().includes(dayAbbr.toLowerCase()) || 
+    return hours.toLowerCase().includes(dayAbbr.toLowerCase()) ||
            hours.toLowerCase().includes('daily') ||
            hours.toLowerCase().includes('all days')
   }
@@ -914,41 +914,41 @@ class VenueSearcher {
     // Check if venue is open at specific time (HH:MM format)
     // This is a simplified implementation
     const [targetHour] = specificTime.split(':').map(Number)
-    
+
     // Look for time patterns in hours string
     const timeMatches = hours.match(/(\d{1,2}):(\d{2})\s*(?:AM|PM|am|pm)?\s*-\s*(\d{1,2}):(\d{2})\s*(?:AM|PM|am|pm)?/g)
-    
+
     if (!timeMatches) return true // Assume open if no specific hours found
-    
+
     for (const match of timeMatches) {
       const timeRange = match.match(/(\d{1,2}):(\d{2})\s*(?:AM|PM|am|pm)?\s*-\s*(\d{1,2}):(\d{2})\s*(?:AM|PM|am|pm)?/)
       if (timeRange) {
         let [, openHour, , closeHour] = timeRange.map(Number)
-        
+
         // Convert to 24-hour format if needed
         if (hours.toLowerCase().includes('pm') && openHour < 12) openHour += 12
         if (hours.toLowerCase().includes('pm') && closeHour < 12) closeHour += 12
         if (hours.toLowerCase().includes('am') && openHour === 12) openHour = 0
         if (hours.toLowerCase().includes('am') && closeHour === 12) closeHour = 0
-        
+
         // Check if target time is within range
         if (targetHour >= openHour && targetHour < closeHour) {
           return true
         }
       }
     }
-    
+
     return false
   }
 
   private async fetchDetailedInformation(venues: Venue[]): Promise<Venue[]> {
-    
+
     const detailedVenues = []
     const batchSize = 5 // Process in batches to avoid rate limits
-    
+
     for (let i = 0; i < venues.length; i += batchSize) {
       const batch = venues.slice(i, i + batchSize)
-      
+
       // Process batch in parallel
       const batchPromises = batch.map(async (venue) => {
         try {
@@ -957,16 +957,16 @@ class VenueSearcher {
           return venue // Return original venue if details fetch fails
         }
       })
-      
+
       const batchResults = await Promise.all(batchPromises)
       detailedVenues.push(...batchResults)
-      
+
       // Add delay between batches to avoid rate limits
       if (i + batchSize < venues.length) {
         await new Promise(resolve => setTimeout(resolve, 1000))
       }
     }
-    
+
     return detailedVenues
   }
 
@@ -1046,7 +1046,7 @@ class VenueSearcher {
       const venues = await this.searchGooglePlaces(criteria)
       return venues
     }
-    
+
     if (source.name === 'OpenStreetMap Overpass') {
       const venues = await this.searchOpenStreetMap(criteria)
       return venues
@@ -1066,7 +1066,7 @@ class VenueSearcher {
 
     const now = Date.now()
     const queue = this.requestQueue.get(sourceName) || []
-    
+
     // Remove requests older than 1 minute
     const recentRequests = queue.filter((time: number) => now - time < 60000)
     this.requestQueue.set(sourceName, recentRequests)
@@ -1075,7 +1075,7 @@ class VenueSearcher {
     if (recentRequests.length >= source.rateLimit.requestsPerMinute) {
       const oldestRequest = Math.min(...recentRequests)
       const waitTime = 60000 - (now - oldestRequest)
-      
+
       if (waitTime > 0) {
         await new Promise(resolve => setTimeout(resolve, waitTime))
         return this.checkRateLimit(sourceName)
@@ -1163,11 +1163,11 @@ class VenueSearcher {
           batch.map(async (term) => {
             try {
               const searchQuery = `${term} near ${criteria.location}`
-              
+
               // Add timeout to the fetch request
               const controller = new AbortController()
               const timeoutId = setTimeout(() => controller.abort(), 12000) // 12 second timeout
-              
+
               const response = await fetch('/api/venues/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1337,7 +1337,7 @@ class VenueSearcher {
         const events = data._embedded?.events || []
 
         // Convert Ticketmaster events to Venue format
-        const converted = events.slice(0, 3).map((event: any) => 
+        const converted = events.slice(0, 3).map((event: any) =>
           this.convertTicketmasterEventToVenue(event, criteria)
         )
         venues.push(...converted)
@@ -1357,7 +1357,7 @@ class VenueSearcher {
     const venue = event._embedded?.venues?.[0] || {}
     const priceRanges = event.priceRanges || []
     const images = event.images || []
-    
+
     // Extract price info
     const minPrice = priceRanges.length > 0 ? Math.min(...priceRanges.map((p: any) => p.min || 0)) : 0
     const maxPrice = priceRanges.length > 0 ? Math.max(...priceRanges.map((p: any) => p.max || 0)) : 0
@@ -1449,7 +1449,7 @@ class VenueSearcher {
           // Add timeout to the fetch request
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), 12000) // 12 second timeout
-          
+
           const response = await fetch('/api/venues/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1498,10 +1498,10 @@ class VenueSearcher {
     }
   }
 
-  
+
   private getFoursquareCategories(criteria: SearchCriteria): string[] {
     const categories = []
-    
+
     // Keep only essential categories to avoid rate limiting
     if (criteria.time === 'early') {
       categories.push('4d4b7105d754a06374d80012') // Food
@@ -1527,11 +1527,11 @@ class VenueSearcher {
         categories.push('4bf58dd8d48988d163941735') // Park
       }
     }
-    
+
     return [...new Set(categories)]
   }
 
-  
+
   private convertFoursquareToVenue(place: any, criteria: SearchCriteria): Venue {
     return {
       id: `foursquare-${place.fsq_id}`,
@@ -1559,14 +1559,14 @@ class VenueSearcher {
 
   private categorizeFoursquarePlace(place: any): 'drinks' | 'dinner' | 'activity' {
     const categories = place.categories || []
-    
+
     if (categories.some((c: any) => c.name?.toLowerCase().includes('bar') || c.name?.toLowerCase().includes('pub'))) {
       return 'drinks'
     }
     if (categories.some((c: any) => c.name?.toLowerCase().includes('restaurant') || c.name?.toLowerCase().includes('food'))) {
       return 'dinner'
     }
-    
+
     return 'activity'
   }
 
@@ -1582,13 +1582,13 @@ class VenueSearcher {
     const priceLevel = place.price || 1 // 1-4 price scale from Foursquare
     const priceDescriptions = {
       1: 'budget-friendly',
-      2: 'moderately priced', 
+      2: 'moderately priced',
       3: 'upscale',
       4: 'fine dining'
     }
-    
+
     let description = `${place.name} is a ${categories} offering ${priceDescriptions[priceLevel as keyof typeof priceDescriptions] || 'moderately priced'} dining and entertainment.`
-    
+
     // Add specific details based on venue type
     if (categories?.toLowerCase().includes('cinema') || categories?.toLowerCase().includes('movie theater')) {
       description += ` Enjoy the latest blockbuster films with state-of-the-art digital projection and comfortable seating.`
@@ -1618,36 +1618,36 @@ class VenueSearcher {
       description += ` Great atmosphere for conversation with craft cocktails and quality beverages.`
       description += ` Drinks typically range from $8-15 for cocktails and $5-8 for beer and wine.`
     }
-    
+
     // Add popular times or features
     if (place.popular) {
       description += ` This is a popular local spot that's often busy, especially on weekends.`
     }
-    
+
     return description
   }
 
 
   private generateFoursquareHighlights(place: any): string[] {
     const highlights = ['Popular with locals', 'Great atmosphere']
-    
+
     if (place.rating >= 4.5) highlights.push('Excellent ratings')
     if (place.stats?.total_ratings >= 1000) highlights.push('Popular spot')
     if (place.price) highlights.push(`${this.convertFoursquarePrice(place.price)} pricing`)
-    
+
     return highlights.slice(0, 6)
   }
 
   private buildFoursquareAddress(location: any): string | null {
     if (!location) return null
-    
+
     const parts = []
     if (location.address) parts.push(location.address)
     if (location.cross_street) parts.push(location.cross_street)
     if (location.locality) parts.push(location.locality)
     if (location.region) parts.push(location.region)
     if (location.postcode) parts.push(location.postcode)
-    
+
     return parts.length > 0 ? parts.join(', ') : ''
   }
 
@@ -1655,35 +1655,35 @@ class VenueSearcher {
     // Try multiple address fields from Google Places API
     if (place.formatted_address) return place.formatted_address
     if (place.vicinity) return place.vicinity
-    
+
     // Build from components if available
     const components = place.address_components || []
     const parts = []
-    
+
     const streetNumber = components.find((c: any) => c.types.includes('street_number'))?.short_name
     const street = components.find((c: any) => c.types.includes('route'))?.short_name
     const neighborhood = components.find((c: any) => c.types.includes('neighborhood'))?.short_name
     const city = components.find((c: any) => c.types.includes('locality'))?.short_name
     const state = components.find((c: any) => c.types.includes('administrative_area_level_1'))?.short_name
-    
+
     if (streetNumber && street) parts.push(`${streetNumber} ${street}`)
     else if (street) parts.push(street)
-    
+
     if (neighborhood && !parts.includes(neighborhood)) parts.push(neighborhood)
     if (city && !parts.includes(city)) parts.push(city)
     if (state && !parts.includes(state)) parts.push(state)
-    
+
     return parts.length > 0 ? parts.join(', ') : ''
   }
 
   private extractFoursquareFeatures(place: any): string[] {
     const features = []
-    
+
     if (place.popular) features.push('Popular Spot')
     if (place.hours) features.push('Has Hours')
     if (place.menu) features.push('Menu Available')
     if (place.reservations) features.push('Reservations')
-    
+
     return features
   }
 
@@ -1706,7 +1706,7 @@ class VenueSearcher {
         if (!fallbackLocation) {
           return []
         }
-        
+
         // Continue with fallback location
         return this.searchGooglePlacesWithLocation(criteria, fallbackLocation)
       }
@@ -1728,11 +1728,11 @@ class VenueSearcher {
       for (const placeType of placeTypes) {
         try {
           const cuisineKeyword = criteria.customCuisine || (criteria.cuisine && criteria.cuisine !== 'any' ? criteria.cuisine : '')
-          
+
           // Add timeout to the fetch request
           const controller = new AbortController()
           const timeoutId = setTimeout(() => controller.abort(), 12000) // 12 second timeout
-          
+
           const response = await fetch('/api/venues/search', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1787,13 +1787,13 @@ class VenueSearcher {
   }
 
   private getFallbackLocation(location: string): { lat: number; lng: number } | null {
-    
+
     // Clean up the location string - remove special characters and normalize
     let normalizedLocation = location.toLowerCase().trim()
       .replace(/[\/\\]/g, ' ') // Replace slashes with spaces
       .replace(/\s+/g, ' ') // Normalize multiple spaces
       .trim()
-    
+
     // Specific city/area coordinates for better accuracy
     const cityCoordinates: Record<string, { lat: number; lng: number }> = {
       'severn': { lat: 39.2334, lng: -76.6954 },
@@ -1818,19 +1818,19 @@ class VenueSearcher {
       'hampden baltimore': { lat: 39.3319, lng: -76.6476 },
       'charles village baltimore': { lat: 39.3269, lng: -76.6176 },
     }
-    
+
     // Check for specific city first
     if (cityCoordinates[normalizedLocation]) {
       return cityCoordinates[normalizedLocation]
     }
-    
+
     // Check if location contains Baltimore keywords
-    if (normalizedLocation.includes('baltimore') || 
-        normalizedLocation.includes('loyola') || 
+    if (normalizedLocation.includes('baltimore') ||
+        normalizedLocation.includes('loyola') ||
         normalizedLocation.includes('notre dame')) {
       return { lat: 39.2904, lng: -76.6122 }
     }
-    
+
     // US state → largest/most popular city coordinates
     const stateCoordinates: Record<string, { lat: number; lng: number; city: string }> = {
       'alabama': { lat: 33.5207, lng: -86.8025, city: 'Birmingham' },
@@ -1990,7 +1990,7 @@ class VenueSearcher {
 
   private getGooglePlaceTypes(criteria: SearchCriteria): string[] {
     const types = []
-    
+
     // Add types based on search criteria
     if (criteria.time === 'early') {
       types.push('restaurant', 'cafe')
@@ -2020,7 +2020,7 @@ class VenueSearcher {
         types.push('point_of_interest')
       }
     }
-    
+
     return [...new Set(types)]
   }
 
@@ -2035,7 +2035,7 @@ class VenueSearcher {
       address: this.buildGoogleAddress(place) || 'Address not available',
       phone: place.formatted_phone_number,
       website: place.website,
-      imageUrl: place.photos ? 
+      imageUrl: place.photos ?
         `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${place.photos[0].photo_reference}&key=${this.getGoogleApiKey()}` :
         `https://source.unsplash.com/800x600/?${encodeURIComponent(place.name)}`,
       description: this.generateGoogleDescription(place),
@@ -2057,7 +2057,7 @@ class VenueSearcher {
       if (venue.id.startsWith('google-')) {
         const placeId = venue.id.replace('google-', '')
         const detailedInfo = await this.fetchGooglePlaceDetails(placeId)
-        
+
         // Basic field update
         const updated: Venue = {
           ...venue,
@@ -2078,7 +2078,7 @@ class VenueSearcher {
         }
         return updated
       }
-      
+
       // For OpenStreetMap venues, try to fetch additional info
       return await this.enrichOSMVVenue(venue)
     } catch (error) {
@@ -2103,11 +2103,11 @@ class VenueSearcher {
 
   private extractDetailedFeatures(place: any): string[] {
     const features = []
-    
+
     // Extract from reviews
     if (place.reviews) {
       const reviewTexts = place.reviews.map((review: any) => review.text).join(' ').toLowerCase()
-      
+
       if (reviewTexts.includes('parking')) features.push('Parking Available')
       if (reviewTexts.includes('outdoor')) features.push('Outdoor Seating')
       if (reviewTexts.includes('wifi')) features.push('Free WiFi')
@@ -2116,7 +2116,7 @@ class VenueSearcher {
       if (reviewTexts.includes('family')) features.push('Family Friendly')
       if (reviewTexts.includes('reservation')) features.push('Reservations Recommended')
     }
-    
+
     // Extract from place types
     if (place.types) {
       if (place.types.includes('outdoor_seating')) features.push('Outdoor Seating')
@@ -2124,13 +2124,13 @@ class VenueSearcher {
       if (place.types.includes('takeout')) features.push('Takeout Available')
       if (place.types.includes('wheelchair_accessible_entrance')) features.push('Wheelchair Accessible')
     }
-    
+
     return [...new Set(features)] // Remove duplicates
   }
 
   private generateDetailedDescription(place: any): string {
     let description = place.name || 'A local venue'
-    
+
     // Add cuisine information
     if (place.types?.includes('restaurant')) {
       description += ' is a restaurant'
@@ -2138,7 +2138,7 @@ class VenueSearcher {
       if (place.reviews) {
         const cuisineKeywords = ['italian', 'chinese', 'mexican', 'thai', 'japanese', 'american', 'french', 'indian']
         const reviewText = place.reviews.map((r: any) => r.text).join(' ').toLowerCase()
-        
+
         for (const cuisine of cuisineKeywords) {
           if (reviewText.includes(cuisine)) {
             description += ` serving ${cuisine.charAt(0).toUpperCase() + cuisine.slice(1)} cuisine`
@@ -2151,21 +2151,21 @@ class VenueSearcher {
     } else if (place.types?.includes('night_club')) {
       description += ' is a nightclub'
     }
-    
+
     // Add rating-based description
     if (place.rating >= 4.5) {
       description += ' with excellent customer reviews'
     } else if (place.rating >= 4.0) {
       description += ' with good customer reviews'
     }
-    
+
     // Add popular times information
     if (place.opening_hours?.popular_times) {
       description += ' and is especially popular during evening hours'
     }
-    
+
     description += '.'
-    
+
     return description
   }
 
@@ -2173,10 +2173,10 @@ class VenueSearcher {
     try {
       // Try to find website and additional info from web search
       const searchQuery = `${venue.name} ${venue.address} website menu prices`
-      
+
       // This would require a web scraping API or search API
       // For now, we'll enhance with some basic web-based information
-      
+
       return {
         ...venue,
         description: this.enhanceDescription(venue),
@@ -2189,7 +2189,7 @@ class VenueSearcher {
 
   private enhanceDescription(venue: Venue): string {
     let enhanced = venue.description
-    
+
     // Add more specific details based on venue type and location
     if (venue.category === 'drinks') {
       enhanced += ' Features an extensive drink menu and knowledgeable bartenders.'
@@ -2198,13 +2198,13 @@ class VenueSearcher {
     } else if (venue.category === 'activity') {
       enhanced += ' Provides unique entertainment experiences in a welcoming environment.'
     }
-    
+
     return enhanced
   }
 
   private enhanceHighlights(venue: Venue): string[] {
     const enhanced = [...venue.highlights]
-    
+
     // Add category-specific highlights
     if (venue.category === 'drinks') {
       enhanced.push('Craft Cocktails', 'Expert Bartenders')
@@ -2213,13 +2213,13 @@ class VenueSearcher {
     } else if (venue.category === 'activity') {
       enhanced.push('Unique Experience', 'Entertainment Focus')
     }
-    
+
     return enhanced.slice(0, 6) // Keep max 6 highlights
   }
 
   private categorizeGooglePlace(place: any): 'drinks' | 'dinner' | 'activity' {
     const types = place.types || []
-    
+
     // Drinks
     if (types.includes('bar') || types.includes('night_club') || types.includes('liquor_store')) {
       return 'drinks'
@@ -2241,7 +2241,7 @@ class VenueSearcher {
     if (types.some((t: string) => activityTypes.includes(t))) {
       return 'activity'
     }
-    
+
     return 'activity'
   }
 
@@ -2535,7 +2535,7 @@ class VenueSearcher {
       if (venue.id.startsWith('google-')) {
         const placeId = venue.id.replace('google-', '')
         const details = await this.fetchGooglePlaceDetails(placeId)
-        
+
         // Extract pricing information from reviews
         if (details.reviews) {
           const priceMentions = this.extractPriceFromReviews(details.reviews)
@@ -2543,11 +2543,11 @@ class VenueSearcher {
             return this.determinePriceFromMentions(priceMentions)
           }
         }
-        
+
         // Fall back to Google's price level
         return this.convertGooglePriceLevel(details.price_level)
       }
-      
+
       // For other venues, try web-based pricing detection
       return await this.fetchWebPricing(venue)
     } catch (error) {
@@ -2557,16 +2557,16 @@ class VenueSearcher {
 
   private extractPriceFromReviews(reviews: any[]): string[] {
     const priceKeywords: string[] = []
-    
+
     reviews.forEach(review => {
       const text = review.text?.toLowerCase() || ''
-      
+
       // Look for price mentions in reviews
       const priceMatches = text.match(/\$\d+/g) // $15, $25, etc.
       if (priceMatches) {
         priceKeywords.push(...priceMatches)
       }
-      
+
       // Look for price level mentions
       if (text.includes('expensive') || text.includes('pricey')) {
         priceKeywords.push('expensive')
@@ -2578,54 +2578,54 @@ class VenueSearcher {
         priceKeywords.push('very expensive')
       }
     })
-    
+
     return priceKeywords
   }
 
   private determinePriceFromMentions(mentions: string[]): string {
     const prices = mentions.filter(m => m.match(/\$\d+/)).map(m => parseInt(m.replace('$', '')))
-    
+
     if (prices.length > 0) {
       const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length
-      
+
       if (avgPrice < 20) return '$'
       if (avgPrice < 40) return '$$'
       if (avgPrice < 80) return '$$$'
       return '$$$$'
     }
-    
+
     // Check for descriptive mentions
     if (mentions.includes('very expensive')) return '$$$$'
     if (mentions.includes('expensive')) return '$$$'
     if (mentions.includes('affordable')) return '$$'
-    
+
     return '$$' // Default
   }
 
   private async fetchWebPricing(venue: Venue): Promise<string> {
     // This would integrate with a web scraping API to fetch menu prices
     // For now, return enhanced estimation based on venue characteristics
-    
+
     let priceScore = 2 // Default to $$
-    
+
     // Adjust based on venue features
     if (venue.features.includes('Fine Dining')) priceScore += 1
     if (venue.features.includes('Romantic Atmosphere')) priceScore += 1
     if (venue.features.includes('Casual')) priceScore -= 1
     if (venue.features.includes('Family Friendly')) priceScore -= 1
-    
+
     // Adjust based on rating
     if (venue.rating >= 4.7) priceScore += 1
     if (venue.rating < 4.0) priceScore -= 1
-    
+
     // Adjust based on location (urban vs suburban)
     if (venue.address.includes('downtown') || venue.address.includes('city center')) {
       priceScore += 1
     }
-    
+
     const priceRanges = ['$', '$$', '$$$', '$$$$']
     const finalPrice = priceRanges[Math.max(0, Math.min(3, priceScore))]
-    
+
     return finalPrice
   }
 
@@ -2635,12 +2635,12 @@ class VenueSearcher {
     const priceDescriptions = {
       1: 'budget-friendly',
       2: 'moderately priced',
-      3: 'upscale', 
+      3: 'upscale',
       4: 'fine dining'
     }
-    
+
     let description = `${place.name || 'A local venue'} offers ${priceDescriptions[priceLevel as keyof typeof priceDescriptions]} dining and entertainment.`
-    
+
     // Add specific details based on venue type
     if (types.includes('movie_theater') || types.includes('cinema')) {
       description += ` This cinema features the latest releases with modern projection and sound systems.`
@@ -2672,29 +2672,29 @@ class VenueSearcher {
     } else {
       description += ` A popular local venue perfect for date nights and entertainment.`
     }
-    
+
     // Add additional details
     if (place.rating >= 4.5) {
       description += ` Highly rated by customers for exceptional quality.`
     }
-    
+
     if (place.opening_hours?.open_now) {
       description += ` Currently open and ready to welcome guests.`
     }
-    
+
     return description
   }
 
   private generateGoogleHighlights(place: any): string[] {
     const highlights = []
-    
+
     if (place.rating >= 4.5) highlights.push('Excellent ratings')
     if (place.user_ratings_total >= 1000) highlights.push('Popular spot')
     if (place.price_level) highlights.push(`${this.convertGooglePriceLevel(place.price_level)} pricing`)
     if (place.opening_hours?.open_now) highlights.push('Open now')
     if (place.types?.includes('outdoor_seating')) highlights.push('Outdoor seating')
     if (place.types?.includes('delivery')) highlights.push('Delivery available')
-    
+
     return highlights.slice(0, 6)
   }
 
@@ -2704,13 +2704,13 @@ class VenueSearcher {
 
   private extractGoogleFeatures(place: any): string[] {
     const features = []
-    
+
     if (place.types?.includes('outdoor_seating')) features.push('Outdoor Seating')
     if (place.types?.includes('delivery')) features.push('Delivery Available')
     if (place.types?.includes('takeout')) features.push('Takeout Available')
     if (place.types?.includes('wheelchair_accessible_entrance')) features.push('Wheelchair Accessible')
     if (place.opening_hours?.open_now) features.push('Currently Open')
-    
+
     return features
   }
 
@@ -2724,7 +2724,7 @@ class VenueSearcher {
     const timeFilter = TIME_FILTERS[timeOfDay]
     if (!timeFilter) return venues
 
-    
+
     return venues.filter(venue => {
       // Check if venue meets minimum rating for this time (skip if not yet enriched)
       if (venue.rating > 0 && venue.rating < timeFilter.minRating) {
@@ -2757,14 +2757,14 @@ class VenueSearcher {
     // Simple check - in production you'd use a proper opening hours parser
     try {
       // Look for common opening patterns
-      const hasEveningHours = hours.includes('evening') || 
-                            hours.includes('night') || 
+      const hasEveningHours = hours.includes('evening') ||
+                            hours.includes('night') ||
                             hours.includes('late') ||
                             hours.includes('dusk') ||
                             hours.includes('sunset')
 
-      const hasWeekendHours = hours.includes('weekend') || 
-                             hours.includes('sat') || 
+      const hasWeekendHours = hours.includes('weekend') ||
+                             hours.includes('sat') ||
                              hours.includes('sun')
 
       // For simplicity, assume venues with evening/night keywords are open
@@ -2790,7 +2790,7 @@ class VenueSearcher {
     if (venue.tags.includes('sports_bar')) return 'sports_bar'
     if (venue.tags.includes('fast_food')) return 'fast_food'
     if (venue.tags.includes('family_restaurant')) return 'family_restaurant'
-    
+
     return 'general'
   }
 
@@ -2803,13 +2803,13 @@ class VenueSearcher {
 
     for (let i = 0; i < queries.length; i++) {
       const query = queries[i]
-      
+
       try {
         // Add delay except for first query
         if (i > 0) {
           await new Promise(resolve => setTimeout(resolve, queryDelay))
         }
-        
+
 
         // Use server-side API route to avoid CORS issues
         const response = await fetch('/api/venues/search', {
@@ -2876,7 +2876,7 @@ out count;
 
   private buildOverpassQueries(criteria: SearchCriteria): string[] {
     const queries = []
-    
+
     // Extract location name for simpler queries
     const locationName = this.extractLocationName(criteria.location)
     const stateName = this.extractStateName(criteria.location)
@@ -2919,7 +2919,7 @@ out count;
 
   private extractStateName(location: string): string {
     const parts = location.split(',').map(part => part.trim().toLowerCase())
-    
+
     // Look for state in the location parts
     for (const part of parts) {
       if (part === 'maryland' || part === 'md') {
@@ -2930,7 +2930,7 @@ out count;
       }
       // Add more states as needed
     }
-    
+
     return 'Maryland' // Default to Maryland for this area
   }
 
@@ -2939,12 +2939,12 @@ out count;
     const radius = timeOfDay === 'late' ? 15 : 8 // miles
     const latDelta = radius / 69 // Approximate miles per degree latitude
     const lngDelta = radius / (Math.cos(lat * Math.PI / 180) * 69) // Adjust for longitude
-    
+
     const south = lat - latDelta
     const north = lat + latDelta
     const west = lng - lngDelta
     const east = lng + lngDelta
-    
+
     return `${south},${west},${north},${east}`
   }
 
@@ -2992,7 +2992,7 @@ out count;
 
     // Extract city from location string (e.g., "Loyola/Notre Dame, Baltimore, Maryland" -> "Baltimore")
     const parts = location.split(',').map(part => part.trim())
-    
+
     // Try to find the city (usually the second part or before the state)
     for (const part of parts) {
       const partLower = part.toLowerCase().trim()
@@ -3000,11 +3000,11 @@ out count;
       if (usStates.has(partLower) || part.includes('/') || part.length < 3) {
         continue
       }
-      
+
       // This is likely the city
       return part
     }
-    
+
     // Fallback to second to last part, or first part
     return parts[parts.length - 2] || parts[0] || "New York"
   }
@@ -3016,7 +3016,7 @@ out count;
 
     data.elements.forEach((element: any) => {
       const tags = element.tags || {}
-      
+
       // Skip if missing name
       if (!tags.name) return
 
@@ -3078,7 +3078,7 @@ out count;
 
   private extractVenueFeatures(tags: any): string[] {
     const features = []
-    
+
     // Common venue features
     if (tags.outdoor_seating) features.push('Outdoor Seating')
     if (tags.parking) features.push('Parking Available')
@@ -3091,7 +3091,7 @@ out count;
     if (tags.music) features.push('Live Music')
     if (tags.cuisine) features.push(`Cuisine: ${tags.cuisine}`)
     if (tags.smoking) features.push(tags.smoking === 'no' ? 'Non-Smoking' : 'Smoking Area')
-    
+
     return features
   }
 
@@ -3101,12 +3101,12 @@ out count;
       const capacity = parseInt(tags.capacity.toString())
       return isNaN(capacity) ? undefined : capacity
     }
-    
+
     if (tags.seats) {
       const seats = parseInt(tags.seats.toString())
       return isNaN(seats) ? undefined : seats
     }
-    
+
     return undefined
   }
 
@@ -3118,25 +3118,25 @@ out count;
 
     // Drinks
     if (amenity === 'bar' || amenity === 'pub' || amenity === 'nightclub') return 'drinks'
-    
+
     // Dinner
     if (amenity === 'restaurant' || amenity === 'ice_cream') return 'dinner'
-    
+
     // Activity — entertainment amenities
     if (['arts_centre', 'cinema', 'theatre', 'bowling_alley', 'casino', 'community_centre'].includes(amenity)) return 'activity'
-    
+
     // Activity — leisure types
     if (leisure && ['sports_centre', 'fitness_centre', 'miniature_golf', 'ice_rink',
         'water_park', 'bowling_alley', 'escape_game', 'amusement_arcade',
         'stadium', 'dance', 'park', 'garden'].includes(leisure)) return 'activity'
-    
+
     // Activity — tourism types
     if (tourism && ['museum', 'gallery', 'aquarium', 'zoo', 'theme_park',
         'attraction', 'viewpoint'].includes(tourism)) return 'activity'
-    
+
     // Activity — sport types
     if (sport && ['bowling', 'climbing', 'skating'].includes(sport)) return 'activity'
-    
+
     // Default categorization based on tags
     if (tags.cuisine) return 'dinner'
     if (tags.bar) return 'drinks'
@@ -3146,13 +3146,13 @@ out count;
   private generateRating(tags: any): number {
     // Generate more realistic ratings based on venue characteristics
     let baseRating = 3.5 + Math.random() * 1.5 // 3.5 to 5.0
-    
+
     // Boost rating for venues with good features
     if (tags.reservation) baseRating += 0.2
     if (tags.outdoor_seating) baseRating += 0.1
     if (tags.wifi) baseRating += 0.1
     if (tags.cuisine && !tags.cuisine.includes('fast')) baseRating += 0.2
-    
+
     // Cap at 5.0
     return Math.min(baseRating, 5.0)
   }
@@ -3160,12 +3160,12 @@ out count;
   private generateReviewCount(tags: any): number {
     // Generate realistic review counts based on venue type and location
     let baseCount = Math.floor(Math.random() * 400) + 50 // 50 to 450
-    
+
     // Boost reviews for popular venues
     if (tags.reservation) baseCount += Math.floor(Math.random() * 200)
     if (tags.outdoor_seating) baseCount += Math.floor(Math.random() * 100)
     if (tags.cuisine && tags.cuisine.includes('fine')) baseCount += Math.floor(Math.random() * 300)
-    
+
     return baseCount
   }
 
@@ -3173,27 +3173,27 @@ out count;
     const venueType = tags.amenity || 'venue'
     const cuisine = tags.cuisine ? `serving ${tags.cuisine}` : ''
     const features = []
-    
+
     if (tags.outdoor_seating) features.push('outdoor seating')
     if (tags.wifi) features.push('free WiFi')
     if (tags.live_music) features.push('live music')
     if (tags.reservation) features.push('reservation service')
-    
+
     const featureText = features.length > 0 ? ` with ${features.join(', ')}` : ''
-    
+
     return `A popular local ${venueType}${cuisine ? ` ${cuisine}` : ''}${featureText}. Known for its welcoming atmosphere and quality service.`
   }
 
   private generateHighlights(tags: any): string[] {
     const highlights = ['Popular with locals', 'Great atmosphere']
-    
+
     if (tags.outdoor_seating) highlights.push('Outdoor seating available')
     if (tags.live_music || tags.music) highlights.push('Live music on weekends')
     if (tags.central) highlights.push('Central location')
     if (tags.parking) highlights.push('Parking available')
     if (tags.wifi) highlights.push('Free WiFi')
     if (tags.reservation) highlights.push('Reservations recommended')
-    
+
     // Add 2-3 more highlights based on venue type
     const extraHighlights = [
       'Friendly staff',
@@ -3207,14 +3207,14 @@ out count;
       'Date night perfect',
       'Group friendly'
     ]
-    
+
     // Add random highlights to reach 4-6 total
     while (highlights.length < 5 && extraHighlights.length > 0) {
       const randomIndex = Math.floor(Math.random() * extraHighlights.length)
       const highlight = extraHighlights.splice(randomIndex, 1)[0]
       highlights.push(highlight)
     }
-    
+
     return highlights.slice(0, 6)
   }
 
@@ -3278,11 +3278,11 @@ out count;
     return `https://source.unsplash.com/800x600/?${seed},venue&sig=${Math.random().toString(36).substr(2, 9)}`
   }
 
-  
-  
+
+
   private extractTags(tags: any): string[] {
-    return Object.keys(tags).filter(key => 
-      !key.startsWith('addr:') && 
+    return Object.keys(tags).filter(key =>
+      !key.startsWith('addr:') &&
       !key.startsWith('opening_hours') &&
       typeof tags[key] === 'string' &&
       tags[key].length < 50 &&
@@ -3303,7 +3303,7 @@ out count;
   }
 
   private rankVenues(venues: Venue[], criteria: SearchCriteria): Venue[] {
-    
+
     return venues.sort((a, b) => {
       let scoreA = 0
       let scoreB = 0
@@ -3346,7 +3346,7 @@ out count;
 
       const totalScoreA = scoreA
       const totalScoreB = scoreB
-      
+
 
       return totalScoreB - totalScoreA // Sort descending
     })
@@ -3374,12 +3374,12 @@ out count;
 
   private getVibeMatchScore(venue: Venue, userVibes: string[]): number {
     let score = 0.5 // Base score
-    
+
     // Match venue features with user vibes
     userVibes.forEach(vibe => {
       switch (vibe) {
         case 'romantic':
-          if (venue.features.includes('Romantic Atmosphere') || 
+          if (venue.features.includes('Romantic Atmosphere') ||
               venue.features.includes('Intimate Setting') ||
               venue.description.toLowerCase().includes('romantic')) {
             score += 0.3
@@ -3423,7 +3423,7 @@ out count;
     const ranges = ['$', '$$', '$$$', '$$$$']
     const venueIndex = ranges.indexOf(venuePrice)
     const userIndex = ranges.indexOf(userBudget)
-    
+
     if (venueIndex === userIndex) return 1.0
     if (Math.abs(venueIndex - userIndex) === 1) return 0.7
     if (Math.abs(venueIndex - userIndex) === 2) return 0.4
@@ -3437,7 +3437,7 @@ out count;
 
   private calculateCustomPreferencesScore(venue: Venue, criteria: SearchCriteria): number {
     let score = 0.5 // Base score
-    
+
     // Time gap preferences
     if (criteria.timeGapPreference === 'short' || criteria.maxTravelTime) {
       // For venues that would result in shorter travel times, give higher scores
@@ -3447,11 +3447,11 @@ out count;
         score += 0.3
       }
     }
-    
+
     // Custom requests parsing
     if (criteria.customRequests) {
       const customLower = criteria.customRequests.toLowerCase()
-      
+
       // Walking distance preference
       if (customLower.includes('walking distance') || customLower.includes('walkable')) {
         // Prefer venues in dense urban areas (this is a simplified approach)
@@ -3459,21 +3459,21 @@ out count;
           score += 0.3
         }
       }
-      
+
       // Less travel preference
-      if (customLower.includes('less travel') || customLower.includes('minimize travel') || 
+      if (customLower.includes('less travel') || customLower.includes('minimize travel') ||
           customLower.includes('closer time gaps') || customLower.includes('shorter travel')) {
         // Prefer venues that are likely to be closer together
         score += 0.2
       }
-      
-      // More variety preference  
+
+      // More variety preference
       if (customLower.includes('more variety') || customLower.includes('different areas')) {
         // Reward venues in different neighborhoods/areas
         score += 0.2
       }
     }
-    
+
     // Venue density preference
     if (criteria.venueDensity === 'concentrated') {
       // Prefer venues in central locations
@@ -3484,7 +3484,7 @@ out count;
       // Prefer venues in different areas
       score += 0.1
     }
-    
+
     return Math.min(score, 1.0)
   }
 
@@ -3495,11 +3495,11 @@ out count;
 
     return venues.filter(venue => {
       let score = 0
-      
+
       // Custom requests filtering
       if (criteria.customRequests) {
         const customLower = criteria.customRequests.toLowerCase()
-        
+
         // Walking distance preference - prefer downtown/central venues
         if (customLower.includes('walking distance') || customLower.includes('walkable')) {
           if (venue.address && (venue.address.includes('Downtown') || venue.address.includes('City Center') || venue.address.includes('Center'))) {
@@ -3508,22 +3508,22 @@ out count;
             score -= 0.5
           }
         }
-        
+
         // Less travel/closer time gaps - prefer venues in same general area
-        if (customLower.includes('less travel') || customLower.includes('minimize travel') || 
+        if (customLower.includes('less travel') || customLower.includes('minimize travel') ||
             customLower.includes('closer time gaps') || customLower.includes('shorter travel')) {
           // This is simplified - in reality we'd calculate distances between venues
           if (venue.address && venue.address.length < 30) { // Shorter addresses might indicate more central locations
             score += 0.5
           }
         }
-        
+
         // More variety - prefer venues in different areas
         if (customLower.includes('more variety') || customLower.includes('different areas')) {
           score += 0.3 // All venues get a small boost for variety preference
         }
       }
-      
+
       // Venue density preference
       if (criteria.venueDensity === 'concentrated') {
         if (venue.address && (venue.address.includes('Downtown') || venue.address.includes('Center'))) {
@@ -3537,7 +3537,7 @@ out count;
           score += 0.5
         }
       }
-      
+
       // Keep venues that meet minimum score threshold
       return score >= 0
     })
@@ -3545,7 +3545,7 @@ out count;
 
   private buildCustomPreferencesPrompt(criteria: SearchCriteria): string {
     const preferences = []
-    
+
     // Time gap preferences
     if (criteria.timeGapPreference === 'short') {
       preferences.push('User prefers venues with short travel times between locations (under 10 minutes)')
@@ -3554,19 +3554,19 @@ out count;
     } else if (criteria.timeGapPreference === 'long') {
       preferences.push('User is comfortable with longer travel times between venues (20+ minutes)')
     }
-    
+
     // Maximum travel time
     if (criteria.maxTravelTime) {
       preferences.push(`User wants maximum travel time of ${criteria.maxTravelTime} minutes between venues`)
     }
-    
+
     // Venue density preference
     if (criteria.venueDensity === 'concentrated') {
       preferences.push('User prefers venues concentrated in one area to minimize travel')
     } else if (criteria.venueDensity === 'spread_out') {
       preferences.push('User prefers venues spread out across different areas for variety')
     }
-    
+
     // Special occasion preferences
     if (criteria.occasion) {
       if (criteria.occasion === 'birthday') {
@@ -3581,7 +3581,7 @@ out count;
         preferences.push('User wants surprise elements - include hidden gems, unique experiences, and unexpected delights')
       }
     }
-    
+
     // Seasonal preferences
     if (criteria.season && criteria.season !== 'any') {
       if (criteria.season === 'winter') {
@@ -3594,7 +3594,7 @@ out count;
         preferences.push('User wants spring activities - botanical gardens, outdoor brunch, flower festivals, patio dining')
       }
     }
-    
+
     // Holiday-specific preferences
     if (criteria.holiday) {
       if (criteria.holiday === 'valentine') {
@@ -3607,53 +3607,53 @@ out count;
         preferences.push('User wants New Year\'s Eve venues - countdown events, party venues, celebration spots, late-night venues')
       }
     }
-    
+
     // Surprise elements
     if (criteria.surpriseElements) {
       preferences.push('User wants surprise elements and hidden gems - include unique, lesser-known venues with special features or unexpected delights')
     }
-    
+
     // Custom theme
     if (criteria.theme) {
       preferences.push(`User wants a ${criteria.theme} theme - select venues that match this atmosphere and style`)
     }
-    
+
     // Custom requests
     if (criteria.customRequests) {
       // Parse common phrases from custom requests
       const customLower = criteria.customRequests.toLowerCase()
-      
+
       if (customLower.includes('closer time gaps') || customLower.includes('shorter travel')) {
         preferences.push('User specifically requested closer time gaps between venues')
       }
-      
+
       if (customLower.includes('walking distance') || customLower.includes('walkable')) {
         preferences.push('User prefers venues within walking distance of each other')
       }
-      
+
       if (customLower.includes('less travel') || customLower.includes('minimize travel')) {
         preferences.push('User wants to minimize travel time between venues')
       }
-      
+
       if (customLower.includes('more variety') || customLower.includes('different areas')) {
         preferences.push('User wants variety in locations and venue types')
       }
-      
+
       // Add the full custom request for AI to interpret
       preferences.push(`User specifically requested: "${criteria.customRequests}"`)
     }
-    
+
     // Add vibe and budget context
     if (criteria.vibes.includes('romantic')) {
       preferences.push('User wants romantic venues suitable for dates')
     }
-    
+
     if (criteria.budget === '$') {
       preferences.push('User prefers budget-friendly options')
     } else if (criteria.budget === '$$$$') {
       preferences.push('User wants upscale, premium venues')
     }
-    
+
     return preferences.length > 0 ? preferences.join('. ') + '.' : 'No specific custom preferences provided.'
   }
 
@@ -3661,7 +3661,7 @@ out count;
   private enhanceVenuesForOccasion(venues: Venue[], criteria: SearchCriteria): Venue[] {
     return venues.map(venue => {
       const enhanced = { ...venue }
-      
+
       // Add special occasion features
       if (criteria.occasion === 'birthday') {
         enhanced.features = [...(enhanced.features || []), 'Birthday packages available', 'Celebration friendly']
@@ -3673,7 +3673,7 @@ out count;
         enhanced.features = [...(enhanced.features || []), 'Seasonal decorations', 'Holiday specials', 'Festive atmosphere']
         enhanced.highlights = [...(enhanced.highlights || []), 'Holiday themed', 'Seasonal celebrations']
       }
-      
+
       // Add seasonal features
       if (criteria.season === 'winter') {
         enhanced.features = [...(enhanced.features || []), 'Cozy winter atmosphere', 'Warm and inviting']
@@ -3687,13 +3687,13 @@ out count;
         enhanced.features = [...(enhanced.features || []), 'Autumn ambiance', 'Seasonal decorations']
         enhanced.highlights = [...(enhanced.highlights || []), 'Fall atmosphere', 'Seasonal charm']
       }
-      
+
       // Add surprise elements
       if (criteria.surpriseElements) {
         enhanced.features = [...(enhanced.features || []), 'Hidden gem', 'Unique experience', 'Surprise element']
         enhanced.highlights = [...(enhanced.highlights || []), 'Unexpected delight', 'Hidden treasure']
       }
-      
+
       return enhanced
     })
   }
@@ -3701,7 +3701,7 @@ out count;
   // Get seasonal activity suggestions
   private getSeasonalActivities(criteria: SearchCriteria): string[] {
     const activities: string[] = []
-    
+
     if (criteria.season === 'winter') {
       activities.push('ice skating', 'holiday markets', 'cozy fireplaces', 'winter festivals', 'hot chocolate tours')
     } else if (criteria.season === 'summer') {
@@ -3711,14 +3711,14 @@ out count;
     } else if (criteria.season === 'spring') {
       activities.push('botanical gardens', 'flower festivals', 'outdoor brunch', 'spring markets', 'picnic spots')
     }
-    
+
     return activities
   }
 
   // Get holiday-specific venue types
   private getHolidayVenueTypes(criteria: SearchCriteria): string[] {
     const venueTypes: string[] = []
-    
+
     if (criteria.holiday === 'valentine') {
       venueTypes.push('romantic restaurants', 'chocolate shops', 'flower gardens', 'wine bars', 'intimate cafes')
     } else if (criteria.holiday === 'christmas') {
@@ -3728,7 +3728,7 @@ out count;
     } else if (criteria.holiday === 'new-year') {
       venueTypes.push('party venues', 'countdown events', 'late-night restaurants', 'celebration spots', 'firework viewing areas')
     }
-    
+
     return venueTypes
   }
 
@@ -3745,7 +3745,7 @@ Address: ${venue.address}
 
 Provide realistic pricing in USD for this specific venue type. Consider:
 - Movie theaters: ticket prices, food, drinks
-- Bowling alleys: lane rental, shoe rental, food, drinks  
+- Bowling alleys: lane rental, shoe rental, food, drinks
 - Escape rooms: per person pricing, group packages
 - Restaurants: typical entree prices, drink prices, appetizers
 - Bars: drink prices, appetizer prices
@@ -3772,7 +3772,7 @@ Be realistic and specific to ${venue.name} in ${venue.address}. Consider local p
 
       const text = await geminiAI.generateContent(prompt)
       const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
-      
+
       try {
         const pricing = JSON.parse(cleaned)
         return {
@@ -3793,14 +3793,14 @@ Be realistic and specific to ${venue.name} in ${venue.address}. Consider local p
     if (venue.pricing && venue.pricing.lastUpdated) {
       const lastUpdated = new Date(venue.pricing.lastUpdated)
       const daysSinceUpdate = (Date.now() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24)
-      
+
       if (daysSinceUpdate < 7) { // Use cached data if less than 7 days old
         return venue
       }
     }
 
     const pricing = await this.scrapeVenuePricing(venue)
-    
+
     return {
       ...venue,
       pricing: pricing || undefined
@@ -3817,7 +3817,7 @@ Be realistic and specific to ${venue.name} in ${venue.address}. Consider local p
     // Process venues in batches to avoid rate limits
     for (let i = 0; i < venues.length; i += 3) {
       const batch = venues.slice(i, i + 3)
-      
+
       const batchPromises = batch.map(async (venue) => {
         try {
           const analysis = await geminiAI.analyzeVenue({

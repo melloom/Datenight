@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { z } from 'zod'
-import { scrapeMenuData } from '../../../lib/menu-scraper'
+import { scrapeMenuData, MenuData } from '../../../lib/menu-scraper'
 
 const enhanceSearchSchema = z.object({
   action: z.literal('enhance-search'),
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     if (validationResult && !validationResult.success) {
       return NextResponse.json({
         error: 'Invalid input',
-        details: (validationResult as any).error?.errors 
+        details: (validationResult as any).error?.errors
       }, { status: 400 })
     }
 
@@ -477,23 +477,23 @@ Return JSON array (same order):
     // ─── Google Maps Directions API for routing ─────────────────────────────────────
     async function getDirectionsBetweenVenues(venues: any[]): Promise<{ [key: string]: { minutes: number; miles: number } }> {
       const results: { [key: string]: { minutes: number; miles: number } } = {}
-      
+
       for (let i = 0; i < venues.length - 1; i++) {
         const from = venues[i]
         const to = venues[i + 1]
-        
+
         if (from.coordinates?.lat && from.coordinates?.lng && to.coordinates?.lat && to.coordinates?.lng) {
           try {
             const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${from.coordinates.lat},${from.coordinates.lng}&destination=${to.coordinates.lat},${to.coordinates.lng}&mode=driving&key=${GOOGLE_API_KEY}`
             const res = await fetch(url)
-            
+
             if (res.ok) {
               const data = await res.json()
               if (data.status === 'OK' && data.routes?.[0]?.legs?.[0]) {
                 const leg = data.routes[0].legs[0]
                 const minutes = Math.round(leg.duration.value / 60)
                 const miles = leg.distance.value / 1609.34 // meters to miles
-                
+
                 results[`${i}-${i + 1}`] = { minutes, miles: Math.round(miles * 10) / 10 }
               }
             }
@@ -510,12 +510,12 @@ Return JSON array (same order):
             const distance = R * c
             const avgSpeed = 25 // mph city average
             const minutes = Math.round((distance / avgSpeed) * 60)
-            
+
             results[`${i}-${i + 1}`] = { minutes, miles: Math.round(distance * 10) / 10 }
           }
         }
       }
-      
+
       return results
     }
 
@@ -656,7 +656,7 @@ Return JSON array (same order):
           if (seenIds.has(place.place_id)) continue
           if (excludeLower.some(n => place.name.toLowerCase().includes(n) || n.includes(place.name.toLowerCase()))) continue
           seenIds.add(place.place_id)
-          
+
           // Filter out venues too far from the search center (max 10 miles)
           if (place.geometry?.location) {
             const dist = haversineDistance(
@@ -665,7 +665,7 @@ Return JSON array (same order):
             )
             if (dist > 10) continue // Skip venues more than 10 miles from search area
           }
-          
+
           allPlaces.push(place)
         }
       }
@@ -1012,7 +1012,7 @@ Suggest 3 Google Maps search queries using specific venue names. Return JSON: {"
       try {
         // Get real travel times between all venue pairs
         const travelTimes = await getDirectionsBetweenVenues(venues)
-        
+
         // Calculate total travel time for current order
         for (let i = 0; i < venues.length - 1; i++) {
           const travel = travelTimes[`${i}-${i + 1}`]
@@ -1020,7 +1020,7 @@ Suggest 3 Google Maps search queries using specific venue names. Return JSON: {"
         }
 
         // Use AI to suggest optimal ordering based on travel times and venue types
-        const venueDescriptions = venues.map((v: any, i: number) => 
+        const venueDescriptions = venues.map((v: any, i: number) =>
           `${i + 1}. ${v.name} (${v.category}) at ${v.address}`
         ).join('\n')
 
@@ -1058,7 +1058,7 @@ Return JSON:
 
         // Apply the optimal order
         const optimizedVenues = optimization.optimalOrder.map((index: number) => venues[index])
-        
+
         // Recalculate travel times for optimized order
         const optimizedTravelTimes = await getDirectionsBetweenVenues(optimizedVenues)
         let optimizedTotalTime = 0
