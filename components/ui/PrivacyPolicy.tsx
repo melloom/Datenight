@@ -4,7 +4,7 @@ import ScrollableDocument from './ScrollableDocument';
 const PrivacyPolicy = () => {
   return (
     <ScrollableDocument onScrollEnd={() => {}}>
-      <div className="prose prose-sm md:prose-base max-w-none">
+      <div className="prose prose-sm max-w-none leading-relaxed">
 
 
       <h1>Privacy Policy</h1>

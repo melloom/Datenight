@@ -4,7 +4,7 @@ import ScrollableDocument from './ScrollableDocument';
 const TermsOfService = () => {
   return (
     <ScrollableDocument onScrollEnd={() => {}}>
-      <div className="prose prose-sm md:prose-base max-w-none">
+      <div className="prose prose-sm max-w-none leading-relaxed">
 
 
       <h1>Terms of Service</h1>

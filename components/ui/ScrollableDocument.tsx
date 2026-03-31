@@ -38,7 +38,7 @@ const ScrollableDocument: React.FC<ScrollableDocumentProps> = ({ children, onScr
   return (
     <div 
       ref={scrollRef} 
-      className="w-full h-[70vh] max-h-[600px] min-h-[400px] overflow-y-auto bg-card rounded-lg border shadow-sm"
+      className="w-full h-[60vh] md:h-[70vh] lg:h-[70vh] max-h-[600px] min-h-[300px] md:min-h-[400px] overflow-y-auto bg-background"
       style={{
         // Safe area insets for notched devices
         paddingTop: 'env(safe-area-inset-top, 0px)',
@@ -47,7 +47,7 @@ const ScrollableDocument: React.FC<ScrollableDocumentProps> = ({ children, onScr
         paddingRight: 'env(safe-area-inset-right, 0px)',
       }}
     >
-      <div className="p-4 md:p-6 lg:p-8">
+      <div className="px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8 text-sm md:text-base">
         {children}
       </div>
       

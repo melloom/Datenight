@@ -18,8 +18,15 @@ export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header with Back button */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b">
-        <div className="flex items-center gap-4 px-4 py-3">
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b" 
+           style={{
+             paddingTop: 'env(safe-area-inset-top, 0px)',
+           }}>
+        <div className="flex items-center gap-4 px-4 py-3" 
+             style={{
+               paddingLeft: 'max(env(safe-area-inset-left, 0px), 1rem)',
+               paddingRight: 'max(env(safe-area-inset-right, 0px), 1rem)',
+             }}>
           <Link 
             href="/login"
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
@@ -32,7 +39,7 @@ export default function PrivacyPolicyPage() {
       </div>
 
       {/* Document content */}
-      <div className="p-4">
+      <div className="px-4 pb-4">
         <ScrollableDocument onScrollEnd={handleScrollEnd}>
           <PrivacyPolicy />
         </ScrollableDocument>
