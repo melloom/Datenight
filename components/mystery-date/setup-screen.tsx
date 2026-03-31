@@ -28,7 +28,8 @@ import {
   CalendarDays,
   Trash2,
   Menu,
-  CreditCard
+  CreditCard,
+  LogOut
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -113,7 +114,7 @@ interface SetupScreenProps {
 }
 
 export function SetupScreen({ onSubmit }: SetupScreenProps) {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const [isReady, setIsReady] = useState(false)
   const [budget, setBudget] = useState<Budget>("$$")
   const [location, setLocation] = useState("")
@@ -447,6 +448,14 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
     setCuisine(CUISINE_OPTIONS[Math.floor(Math.random() * CUISINE_OPTIONS.length)].id)
   }
 
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      setShowMobileMenu(false)
+    } catch {
+    }
+  }
+
   const hasInputErrors = () => {
     // Check if location is provided
     if (!location || location.trim().length === 0) {
@@ -601,6 +610,16 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
               <CreditCard className="w-3.5 h-3.5" />
               Billing & Plans
             </Link>
+
+            {user && (
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-rose-400/70 py-2.5 text-xs font-medium text-rose-700 transition-all active:scale-[0.98] hover:bg-rose-50"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Log Out
+              </button>
+            )}
           </div>
         )}
 
@@ -635,6 +654,15 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
             <CreditCard className="w-3.5 h-3.5" />
             Billing & Plans
           </Link>
+          {user && (
+            <button
+              onClick={handleSignOut}
+              className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-rose-400/70 bg-white/70 py-2.5 text-xs font-semibold text-rose-700 shadow-sm transition-all active:scale-[0.98] hover:bg-rose-50"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Log Out
+            </button>
+          )}
         </div>
 
         {/* Form */}

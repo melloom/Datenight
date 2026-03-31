@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
         plan: parseResult.data.plan,
       },
       allow_promotion_codes: true,
-      success_url: `${appUrl}/?billing=success`,
-      cancel_url: `${appUrl}/?billing=cancelled`,
+      success_url: `${appUrl}/plans?billing=success`,
+      cancel_url: `${appUrl}/plans?billing=cancelled`,
     })
 
     return NextResponse.json({
