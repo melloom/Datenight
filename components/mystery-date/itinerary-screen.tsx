@@ -390,9 +390,10 @@ function ShareModal({ steps, isOpen, onClose, venues, searchCriteria }: { steps:
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
+        const shareTitle = searchCriteria?.location ? `Date Night in ${searchCriteria.location}` : 'Date Night Plan'
         await navigator.share({
-          title: "Date Night Plan",
-          text: shareTextWithLink,
+          title: shareTitle,
+          text: shareUrl ? undefined : shareTextWithLink,
           ...(shareUrl ? { url: shareUrl } : {}),
         })
         setShared(true)
@@ -404,11 +405,17 @@ function ShareModal({ steps, isOpen, onClose, venues, searchCriteria }: { steps:
   }
 
   const handleSMS = () => {
-    window.open(`sms:?&body=${shareTextEncoded}`, "_blank")
+    const smsBody = shareUrl
+      ? encodeURIComponent(`Check out our date night plan! 💜\n\n${shareUrl}`)
+      : shareTextEncoded
+    window.open(`sms:?&body=${smsBody}`, "_blank")
   }
 
   const handleWhatsApp = () => {
-    window.open(`https://wa.me/?text=${shareTextEncoded}`, "_blank")
+    const waText = shareUrl
+      ? encodeURIComponent(`Check out our date night plan! 💜\n\n${shareUrl}`)
+      : shareTextEncoded
+    window.open(`https://wa.me/?text=${waText}`, "_blank")
   }
 
   return (

@@ -82,7 +82,7 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
         // Add timeout to prevent infinite loading
         const searchPromise = venueSearcher.searchVenues(searchCriteria)
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Search timeout')), 30000) // 30s max
+          setTimeout(() => reject(new Error('Search timeout')), 45000) // 45s max
         )
         
         const result = await Promise.race([searchPromise, timeoutPromise]) as any

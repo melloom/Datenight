@@ -22,6 +22,7 @@ export interface AlternativeSuggestion {
   actionItems: string[]
   pros: string[]
   cons?: string[]
+  actionUrl?: string
 }
 
 export interface LateNightResponse {
@@ -40,6 +41,7 @@ export interface SameDayOption {
   setupTime: string
   cost: string
   lastOrderTime?: string
+  actionUrl?: string
 }
 
 class LateNightDetector {
@@ -174,9 +176,14 @@ class LateNightDetector {
     })
   }
 
+  private buildLocationQuery(criteria: SearchCriteria): string {
+    return encodeURIComponent(criteria.location || 'near me')
+  }
+
   getSameDayOptions(currentTime: Date, criteria: SearchCriteria): SameDayOption[] {
     const currentHour = currentTime.getHours()
     const options: SameDayOption[] = []
+    const locationQuery = this.buildLocationQuery(criteria)
 
     // Food delivery options
     if (currentHour >= 17) {
@@ -185,21 +192,23 @@ class LateNightDetector {
       options.push({
         type: 'delivery',
         title: 'Gourmet Food Delivery',
-        description: 'Order from high-end restaurants for a romantic dinner at home',
+        description: 'Order from top-rated restaurants on DoorDash or UberEats',
         availableUntil: deliveryDeadline,
         setupTime: '5 mins',
         cost: '$$-$$$',
-        lastOrderTime: currentHour >= 21 ? '11:00 PM' : '10:30 PM'
+        lastOrderTime: currentHour >= 21 ? '11:00 PM' : '10:30 PM',
+        actionUrl: `https://www.doordash.com/search/store/${locationQuery}/`
       })
 
       options.push({
         type: 'delivery',
         title: 'Cocktail Kit Delivery',
-        description: 'Premium cocktail ingredients and recipes delivered to your door',
+        description: 'Get cocktail kits & spirits delivered — browse real options on Drizly',
         availableUntil: currentHour >= 21 ? '10:00 PM' : '9:00 PM',
         setupTime: '2 mins',
         cost: '$$',
-        lastOrderTime: currentHour >= 21 ? '9:30 PM' : '9:00 PM'
+        lastOrderTime: currentHour >= 21 ? '9:30 PM' : '9:00 PM',
+        actionUrl: `https://drizly.com/search?q=cocktail+kit`
       })
     }
 
@@ -207,20 +216,22 @@ class LateNightDetector {
     options.push({
       type: 'streaming',
       title: 'Movie Night Marathon',
-      description: 'Curated romantic movie collection with themed snacks',
+      description: 'Browse romantic movies and start streaming now on Netflix',
       availableUntil: 'All night',
       setupTime: '10 mins',
-      cost: '$'
+      cost: '$',
+      actionUrl: 'https://www.netflix.com/browse/genre/8883'
     })
 
     options.push({
       type: 'streaming',
       title: 'Virtual Cooking Class',
-      description: 'Live online cooking class for couples',
+      description: 'Book a live online couples cooking class on Airbnb Experiences',
       availableUntil: currentHour >= 21 ? '9:00 PM' : '10:00 PM',
       setupTime: '15 mins',
       cost: '$$',
-      lastOrderTime: currentHour >= 21 ? '8:30 PM' : '9:30 PM'
+      lastOrderTime: currentHour >= 21 ? '8:30 PM' : '9:30 PM',
+      actionUrl: 'https://www.airbnb.com/s/experiences?query=cooking+class+online'
     })
 
     // Outdoor/quick venues (time-sensitive)
@@ -229,20 +240,22 @@ class LateNightDetector {
       options.push({
         type: 'outdoor',
         title: 'Sunset Picnic',
-        description: 'Quick setup picnic at a local park with sunset views',
+        description: 'Find a park near you for a quick romantic picnic',
         availableUntil: `${sunsetTime} + 1 hour`,
         setupTime: '20 mins',
-        cost: '$'
+        cost: '$',
+        actionUrl: `https://www.google.com/maps/search/parks+${locationQuery}`
       })
 
       if (currentHour <= 22) {
         options.push({
           type: 'quick_venue',
           title: 'Late Night Dessert Spot',
-          description: 'Find ice cream shops or dessert bars open late',
+          description: 'Find ice cream shops or dessert bars open late near you',
           availableUntil: currentHour >= 21 ? '11:00 PM' : '10:30 PM',
           setupTime: '5 mins',
-          cost: '$'
+          cost: '$',
+          actionUrl: `https://www.google.com/maps/search/dessert+open+now+${locationQuery}`
         })
       }
     }
@@ -270,39 +283,42 @@ class LateNightDetector {
   }
 
   private getImmediateOptions(criteria: SearchCriteria): AlternativeSuggestion[] {
+    const locationQuery = this.buildLocationQuery(criteria)
     return [
       {
         id: 'immediate-delivery',
         title: 'Premium Date Night Delivery',
-        description: 'Gourmet meal and cocktail kits delivered for a romantic home dinner',
+        description: 'Order a gourmet meal on DoorDash and cocktail kits on Drizly for a romantic home dinner',
         category: 'immediate',
         timeRequired: '30-45 mins',
         costEstimate: '$$$',
         availability: 'now',
         tags: ['delivery', 'romantic', 'convenient', 'no-prep'],
         actionItems: [
-          'Order from premium delivery service',
-          'Set up romantic atmosphere at home',
-          'Enjoy restaurant-quality meal together'
+          'Order dinner on DoorDash or UberEats',
+          'Add cocktail kits from Drizly',
+          'Set up romantic atmosphere at home'
         ],
-        pros: ['Available right now', 'No travel required', 'Private and intimate', 'Often cheaper than restaurants']
+        pros: ['Available right now', 'No travel required', 'Private and intimate', 'Often cheaper than restaurants'],
+        actionUrl: `https://www.doordash.com/search/store/${locationQuery}/`
       },
       {
         id: 'immediate-late-night',
         title: 'Late Night Venue Hunt',
-        description: 'Find venues specifically open late for spontaneous dates',
+        description: 'Find bars, lounges, and restaurants open late near you on Google Maps',
         category: 'immediate',
         timeRequired: '2-3 hours',
         costEstimate: '$$',
         availability: 'tonight',
         tags: ['spontaneous', 'late-night', 'adventure', 'open-late'],
         actionItems: [
-          'Check late-night venues in your area',
+          'Browse open-now venues on Google Maps',
           'Call ahead to confirm availability',
           'Be flexible with venue types'
         ],
         pros: ['Exciting and spontaneous', 'Unique experiences', 'Less crowded'],
-        cons: ['Limited options', 'May require travel', 'Lower quality venues']
+        cons: ['Limited options', 'May require travel', 'Lower quality venues'],
+        actionUrl: `https://www.google.com/maps/search/bars+open+now+${locationQuery}`
       }
     ]
   }
@@ -370,42 +386,45 @@ class LateNightDetector {
   }
 
   private getHomeDateOptions(criteria: SearchCriteria): AlternativeSuggestion[] {
+    const locationQuery = this.buildLocationQuery(criteria)
     return [
       {
         id: 'home-gourmet',
         title: 'Gourmet Home Cooking',
-        description: 'Cook a special meal together with premium ingredients',
+        description: 'Get premium ingredients delivered via Instacart and cook a special meal together',
         category: 'home',
         timeRequired: '2-3 hours',
         costEstimate: '$$',
         availability: 'now',
         tags: ['cooking', 'intimate', 'collaborative', 'budget-friendly'],
         actionItems: [
-          'Shop for premium ingredients',
+          'Order premium ingredients on Instacart',
           'Choose a special recipe together',
           'Cook as a team',
           'Set the mood with music and lighting'
         ],
         pros: ['Very intimate', 'Cost-effective', 'Fun activity together', 'Complete control over atmosphere'],
-        cons: ['Requires cooking skills', 'Cleanup required', 'Need to shop for ingredients']
+        cons: ['Requires cooking skills', 'Cleanup required'],
+        actionUrl: 'https://www.instacart.com/'
       },
       {
         id: 'home-theme',
         title: 'Themed Home Date Night',
-        description: 'Create a themed experience at home (movie marathon, game night, etc.)',
+        description: 'Stream a movie marathon on Netflix or plan a game night together',
         category: 'home',
         timeRequired: '2-4 hours',
         costEstimate: '$',
         availability: 'now',
         tags: ['themed', 'creative', 'comfortable', 'low-cost'],
         actionItems: [
-          'Choose a fun theme',
-          'Prepare themed snacks and drinks',
-          'Decorate accordingly',
+          'Pick a theme on Netflix or Disney+',
+          'Order themed snacks on DoorDash',
+          'Set the mood with lighting',
           'Plan themed activities'
         ],
         pros: ['Very affordable', 'Creative and fun', 'Comfortable environment', 'Unlimited time together'],
-        cons: ['Less special than going out', 'Requires preparation', 'Potential distractions at home']
+        cons: ['Less special than going out', 'Requires preparation', 'Potential distractions at home'],
+        actionUrl: 'https://www.netflix.com/browse'
       }
     ]
   }

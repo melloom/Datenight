@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertCircle, Clock, Home, Calendar, Package, Star, ChevronRight, X } from "lucide-react"
+import { AlertCircle, Clock, Home, Calendar, Package, Star, ChevronRight, X, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -142,17 +142,30 @@ export function LateNightAlert({
                         )}
                       </div>
                     </div>
-                    {onSameDaySelect && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onSameDaySelect(option)}
-                        disabled={isGenerating}
-                        className="ml-2 h-8"
-                      >
-                        {isGenerating ? '...' : 'Choose'}
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1 ml-2">
+                      {option.actionUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(option.actionUrl, '_blank', 'noopener,noreferrer')}
+                          className="h-8 gap-1 text-xs"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Open
+                        </Button>
+                      )}
+                      {onSameDaySelect && !option.actionUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onSameDaySelect(option)}
+                          disabled={isGenerating}
+                          className="h-8"
+                        >
+                          {isGenerating ? '...' : 'Choose'}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -182,17 +195,29 @@ export function LateNightAlert({
                          suggestion.availability === 'tomorrow' ? 'Tomorrow' : 'Weekend'}
                       </Badge>
                     </div>
-                    {onSuggestionSelect && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onSuggestionSelect(suggestion)}
-                        disabled={isGenerating}
-                        className="h-6 w-6 p-0"
-                      >
-                        {isGenerating ? '...' : <ChevronRight className="h-4 w-4" />}
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {suggestion.actionUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(suggestion.actionUrl, '_blank', 'noopener,noreferrer')}
+                          className="h-6 w-6 p-0"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {onSuggestionSelect && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onSuggestionSelect(suggestion)}
+                          disabled={isGenerating}
+                          className="h-6 w-6 p-0"
+                        >
+                          {isGenerating ? '...' : <ChevronRight className="h-4 w-4" />}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <CardDescription className="text-xs">
                     {suggestion.description}

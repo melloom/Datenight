@@ -358,24 +358,24 @@ class VenueSearcher {
     // Enhance venues for special occasions
     const occasionEnhancedVenues = this.enhanceVenuesForOccasion(rankedVenues, criteria)
 
-    // Scrape real pricing in parallel with tight timeout — falls back to estimates
-    let pricingEnhancedVenues = occasionEnhancedVenues
+    // Optimize date plan with travel time FIRST (narrows to ~3 venues)
+    const optimizedPlan = this.optimizeDatePlan(occasionEnhancedVenues, criteria)
+
+    // Scrape real pricing only for the final optimized plan (~3 venues, not all 135)
+    let pricedPlan = optimizedPlan
     try {
-      const pricingPromise = this.scrapePricingForVenues(occasionEnhancedVenues, criteria)
+      const pricingPromise = this.scrapePricingForVenues(optimizedPlan, criteria)
       const pricingTimeout = new Promise<Venue[]>(resolve =>
-        setTimeout(() => resolve(occasionEnhancedVenues), 5000) // 5s max
+        setTimeout(() => resolve(optimizedPlan), 5000) // 5s max
       )
-      pricingEnhancedVenues = await Promise.race([pricingPromise, pricingTimeout])
+      pricedPlan = await Promise.race([pricingPromise, pricingTimeout])
     } catch {
-      pricingEnhancedVenues = occasionEnhancedVenues
+      pricedPlan = optimizedPlan
     }
 
-    // Optimize date plan with travel time
-    const optimizedPlan = this.optimizeDatePlan(pricingEnhancedVenues, criteria)
-
     // If no venues found, return empty array - NO FAKE FALLBACKS
-    let finalPlan = optimizedPlan
-    if (optimizedPlan.length === 0) {
+    let finalPlan = pricedPlan
+    if (pricedPlan.length === 0) {
     }
 
 
