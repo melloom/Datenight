@@ -149,18 +149,6 @@ export function LoginScreen() {
               I agree to the <Link href="/legal/terms-of-service" className="underline">Terms of Service</Link> and <Link href="/legal/privacy-policy" className="underline">Privacy Policy</Link>.
             </label>
           </div>
-          
-          {/* Scroll status indicators */}
-          <div className="space-y-1 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${hasScrolledTerms ? 'bg-green-500' : 'bg-gray-300'}`} />
-              <span>Terms of Service {hasScrolledTerms ? '✓ Read' : 'Please read'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${hasScrolledPrivacy ? 'bg-green-500' : 'bg-gray-300'}`} />
-              <span>Privacy Policy {hasScrolledPrivacy ? '✓ Read' : 'Please read'}</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -7,14 +7,25 @@ interface ScrollableDocumentProps {
 
 const ScrollableDocument: React.FC<ScrollableDocumentProps> = ({ children, onScrollEnd }) => {
   const [isScrolledToEnd, setIsScrolledToEnd] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = () => {
     if (scrollRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-      if (scrollTop + clientHeight >= scrollHeight - 5) { // 5px buffer
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 5; // 5px buffer
+      
+      // Calculate scroll progress
+      const progress = Math.min((scrollTop / (scrollHeight - clientHeight)) * 100, 100);
+      setScrollProgress(progress);
+      
+      // Update scroll end state
+      if (isAtBottom && !isScrolledToEnd) {
         setIsScrolledToEnd(true);
         onScrollEnd();
+      } else if (!isAtBottom && isScrolledToEnd) {
+        // Allow re-scrolling if user scrolls back up
+        setIsScrolledToEnd(false);
       }
     }
   };
@@ -37,14 +48,28 @@ const ScrollableDocument: React.FC<ScrollableDocumentProps> = ({ children, onScr
 
   return (
     <div className="w-full flex flex-col">
-      {/* Scroll indicator */}
-      {!isScrolledToEnd && (
-        <div className="bg-background/80 backdrop-blur-sm border-b p-3 text-center">
-          <div className="text-xs text-muted-foreground animate-pulse">
-            Scroll to bottom to continue ↓
+      {/* Scroll indicator with progress */}
+      <div className="bg-background/80 backdrop-blur-sm border-b p-3">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">
+              {!isScrolledToEnd ? "Scroll to bottom to continue ↓" : "✓ Document fully read"}
+            </span>
+            <span className="text-muted-foreground">
+              {Math.round(scrollProgress)}%
+            </span>
+          </div>
+          {/* Progress bar */}
+          <div className="w-full bg-gray-200 rounded-full h-1.5">
+            <div 
+              className={`h-1.5 rounded-full transition-all duration-200 ${
+                isScrolledToEnd ? 'bg-green-500' : 'bg-primary'
+              }`}
+              style={{ width: `${scrollProgress}%` }}
+            />
           </div>
         </div>
-      )}
+      </div>
       
       {/* Document content */}
       <div 
