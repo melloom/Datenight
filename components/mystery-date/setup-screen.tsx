@@ -170,7 +170,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   })
   const locationDropdownRef = useRef<HTMLDivElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const id = window.requestAnimationFrame(() => setIsReady(true))
@@ -1177,43 +1177,6 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes floatSlow {
-          0% { transform: translate3d(0, 0, 0); }
-          50% { transform: translate3d(0, -14px, 0); }
-          100% { transform: translate3d(0, 0, 0); }
-        }
-
-        @keyframes floatSlower {
-          0% { transform: translate3d(0, 0, 0); }
-          50% { transform: translate3d(0, 10px, 0); }
-          100% { transform: translate3d(0, 0, 0); }
-        }
-
-        @keyframes slideDownFade {
-          from {
-            opacity: 0;
-            transform: translate3d(0, -8px, 0);
-          }
-          to {
-            opacity: 1;
-            transform: translate3d(0, 0, 0);
-          }
-        }
-
-        .animate-float-slow {
-          animation: floatSlow 9s ease-in-out infinite;
-        }
-
-        .animate-float-slower {
-          animation: floatSlower 11s ease-in-out infinite;
-        }
-
-        .animate-slide-down-fade {
-          animation: slideDownFade 240ms ease-out;
-        }
-      `}</style>
     </div>
   )
 }

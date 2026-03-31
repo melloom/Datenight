@@ -17,6 +17,8 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
     "plugins": [
       {
         "name": "next"
@@ -30,6 +32,8 @@
   },
   "include": [
     "next-env.d.ts",
+    "types.d.ts",
+    "types-simple.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",

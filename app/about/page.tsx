@@ -1,4 +1,5 @@
 /* eslint-disable react/no-unescaped-entities */
+'use client'
 import Link from "next/link"
 import { ArrowLeft, Compass, Heart, Sparkles, Stars } from "lucide-react"
 
@@ -223,82 +224,6 @@ function AnimatedDateMap() {
           />
         </g>
       </svg>
-
-      <style jsx>{`
-        .about-float-slow {
-          animation: aboutFloatSlow 5.2s ease-in-out infinite;
-        }
-
-        .about-float-fast {
-          animation: aboutFloatFast 3.6s ease-in-out infinite;
-        }
-
-        .about-dash {
-          animation: aboutDash 14s linear infinite;
-        }
-
-        .about-orbit {
-          animation: aboutOrbit 12s linear infinite;
-        }
-
-        .about-pulse {
-          animation: aboutPulse 3.8s ease-in-out infinite;
-        }
-
-        @keyframes aboutDash {
-          to {
-            stroke-dashoffset: -620;
-          }
-        }
-
-        @keyframes aboutFloatSlow {
-          0%,
-          100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-8px);
-          }
-        }
-
-        @keyframes aboutFloatFast {
-          0%,
-          100% {
-            transform: translateY(0px) scale(1);
-          }
-          50% {
-            transform: translateY(-10px) scale(1.02);
-          }
-        }
-
-        @keyframes aboutOrbit {
-          to {
-            transform: rotate(360deg);
-          }
-        }
-
-        @keyframes aboutPulse {
-          0%,
-          100% {
-            opacity: 0.45;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.75;
-            transform: scale(1.06);
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .about-float-slow,
-          .about-float-fast,
-          .about-dash,
-          .about-orbit,
-          .about-pulse {
-            animation: none;
-          }
-        }
-      `}</style>
     </div>
   )
 }
