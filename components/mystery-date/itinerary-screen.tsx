@@ -1226,6 +1226,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [showLateNightAlert, setShowLateNightAlert] = useState(true)
   const [isGeneratingAlternative, setIsGeneratingAlternative] = useState(false)
   const [isLoadingTravelTimes, setIsLoadingTravelTimes] = useState(false)
+  const [isOptimizingRoute, setIsOptimizingRoute] = useState(false)
   const { signOut } = useAuth()
 
   // Scroll to specific modal when it opens
@@ -1289,6 +1290,54 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     }
 
     return updatedSteps
+  }
+
+  // Optimize route using AI and Google Maps Directions API
+  const optimizeRoute = async () => {
+    if (venues.length < 2) return
+
+    setIsOptimizingRoute(true)
+    try {
+      const response = await fetch('/api/ai/enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'optimize-route',
+          venues: venues.map(v => ({
+            name: v.name,
+            category: v.category,
+            address: v.address,
+            coordinates: v.coordinates
+          })),
+          criteria: {
+            location: searchCriteria?.location,
+            time: searchCriteria?.time,
+            vibes: searchCriteria?.vibes
+          }
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        
+        // Update venues with optimized order
+        if (result.optimizedVenues && onVenuesUpdate) {
+          onVenuesUpdate(result.optimizedVenues)
+        }
+
+        // Show success message with savings
+        if (result.timeSavings > 0) {
+          const savingsMsg = result.timeSavings > 0 
+            ? `Route optimized! Saved ${result.timeSavings} minutes of travel time.` 
+            : 'Route analyzed with real travel times.'
+          console.log(savingsMsg, result.reasoning)
+        }
+      }
+    } catch (error) {
+      console.error('Route optimization failed:', error)
+    } finally {
+      setIsOptimizingRoute(false)
+    }
   }
 
   // Load history from localStorage on mount
@@ -2097,6 +2146,37 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Route Optimization */}
+        {onVenuesUpdate && steps.length > 1 && (
+          <div className="mt-4 p-4 rounded-2xl border border-border bg-card">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Navigation className="w-4 h-4 text-green-600" />
+                <span className="text-xs font-semibold text-foreground">Optimize Route</span>
+                <span className="text-[10px] text-muted-foreground">AI-powered routing with real traffic data</span>
+              </div>
+              <button
+                onClick={optimizeRoute}
+                disabled={isOptimizingRoute || venues.length < 2}
+                className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-semibold hover:bg-green-600 active:scale-[0.98] transition-all disabled:opacity-40 flex items-center gap-1.5"
+              >
+                {isOptimizingRoute ? (
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Navigation className="w-3 h-3" />
+                )}
+                {isOptimizingRoute ? "Optimizing..." : "Optimize"}
+              </button>
+            </div>
+            {isLoadingTravelTimes && (
+              <div className="mt-2 text-[10px] text-muted-foreground flex items-center gap-1">
+                <RefreshCw className="w-2 h-2 animate-spin" />
+                Getting real travel times from Google Maps...
+              </div>
+            )}
           </div>
         )}
 

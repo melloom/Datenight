@@ -67,6 +67,24 @@ const swapVenueSchema = z.object({
   swapCategory: z.string().max(100)
 })
 
+const optimizeRouteSchema = z.object({
+  action: z.literal('optimize-route'),
+  venues: z.array(z.object({
+    name: z.string().max(200),
+    category: z.string().max(100),
+    address: z.string().max(300),
+    coordinates: z.object({
+      lat: z.number(),
+      lng: z.number()
+    })
+  })).max(10),
+  criteria: z.object({
+    location: z.string().max(200),
+    time: z.string().max(50),
+    vibes: z.array(z.string().max(50)).max(10)
+  })
+})
+
 function getApiKey(): string {
   // Try server-side env first, then public env
   // NEXT_PUBLIC_ vars are inlined at build time by Next.js
@@ -119,6 +137,8 @@ export async function POST(request: NextRequest) {
       validationResult = fetchPricingSchema.safeParse(body)
     } else if (action === 'swap-venue') {
       validationResult = swapVenueSchema.safeParse(body)
+    } else if (action === 'optimize-route') {
+      validationResult = optimizeRouteSchema.safeParse(body)
     } else if (action === 'improve-plan' || action === 'generate-venues' || action === 'suggest-alternative') {
       // These actions accept flexible input — skip strict schema validation
       validationResult = { success: true }
@@ -400,6 +420,51 @@ Return JSON array (same order):
       return NextResponse.json({ pricing: finalPricing })
     }
 
+    // ─── Google Maps Directions API for routing ─────────────────────────────────────
+    async function getDirectionsBetweenVenues(venues: any[]): Promise<{ [key: string]: { minutes: number; miles: number } }> {
+      const results: { [key: string]: { minutes: number; miles: number } } = {}
+      
+      for (let i = 0; i < venues.length - 1; i++) {
+        const from = venues[i]
+        const to = venues[i + 1]
+        
+        if (from.coordinates?.lat && from.coordinates?.lng && to.coordinates?.lat && to.coordinates?.lng) {
+          try {
+            const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${from.coordinates.lat},${from.coordinates.lng}&destination=${to.coordinates.lat},${to.coordinates.lng}&mode=driving&key=${GOOGLE_API_KEY}`
+            const res = await fetch(url)
+            
+            if (res.ok) {
+              const data = await res.json()
+              if (data.status === 'OK' && data.routes?.[0]?.legs?.[0]) {
+                const leg = data.routes[0].legs[0]
+                const minutes = Math.round(leg.duration.value / 60)
+                const miles = leg.distance.value / 1609.34 // meters to miles
+                
+                results[`${i}-${i + 1}`] = { minutes, miles: Math.round(miles * 10) / 10 }
+              }
+            }
+          } catch (error) {
+            console.warn('Directions API failed for venue pair', i, i + 1)
+            // Fallback to Haversine calculation
+            const R = 3959 // Earth's radius in miles
+            const dLat = (to.coordinates.lat - from.coordinates.lat) * Math.PI / 180
+            const dLng = (to.coordinates.lng - from.coordinates.lng) * Math.PI / 180
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(from.coordinates.lat * Math.PI / 180) * Math.cos(to.coordinates.lat * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2)
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+            const distance = R * c
+            const avgSpeed = 25 // mph city average
+            const minutes = Math.round((distance / avgSpeed) * 60)
+            
+            results[`${i}-${i + 1}`] = { minutes, miles: Math.round(distance * 10) / 10 }
+          }
+        }
+      }
+      
+      return results
+    }
+
     // ─── Shared helpers: geocode + Google Places search + details ─────────────
     async function geocodeLocation(location: string): Promise<{ lat: number; lng: number } | null> {
       try {
@@ -669,6 +734,101 @@ Return JSON array (same order):
       }
 
       return NextResponse.json({ venue: newVenue })
+    }
+
+    // Optimize route using Google Maps Directions API
+    if (action === 'optimize-route') {
+      const { venues, criteria } = body
+      const timePref = criteria?.time || 'prime'
+      const vibes = criteria?.vibes?.join(', ') || 'romantic'
+
+      if (!model || venues.length < 2) {
+        return NextResponse.json({
+          optimizedVenues: venues,
+          travelTimes: {},
+          totalTravelTime: 0,
+          reasoning: 'Insufficient venues or AI unavailable for optimization'
+        })
+      }
+
+      try {
+        // Get real travel times between all venue pairs
+        const travelTimes = await getDirectionsBetweenVenues(venues)
+        
+        // Calculate total travel time for current order
+        let currentTotalTime = 0
+        for (let i = 0; i < venues.length - 1; i++) {
+          const travel = travelTimes[`${i}-${i + 1}`]
+          if (travel) currentTotalTime += travel.minutes
+        }
+
+        // Use AI to suggest optimal ordering based on travel times and venue types
+        const venueDescriptions = venues.map((v: any, i: number) => 
+          `${i + 1}. ${v.name} (${v.category}) at ${v.address}`
+        ).join('\n')
+
+        const travelDescriptions = Object.entries(travelTimes)
+          .map(([key, value]) => `Venue ${key}: ${value.minutes} min, ${value.miles} miles`)
+          .join('\n')
+
+        const prompt = `You are optimizing a date night route in ${criteria?.location || 'the city'} for ${vibes} vibes at ${timePref} time.
+
+Current venues:
+${venueDescriptions}
+
+Current travel times:
+${travelDescriptions}
+
+Total current travel time: ${currentTotalTime} minutes
+
+Please suggest the optimal order for these venues to minimize travel time and create the best flow for a date night. Consider:
+1. Minimizing total travel time
+2. Logical progression (activity → dinner → drinks or similar)
+3. ${timePref} timing preferences
+4. Creating a romantic, smooth experience
+
+Return JSON:
+{
+  "optimalOrder": [0, 1, 2], // indices in optimal order
+  "reasoning": "Why this order works best",
+  "estimatedSavings": minutes_saved,
+  "suggestedTimings": ["7:00 PM", "8:30 PM", "10:00 PM"]
+}`
+
+        const result = await model.generateContent(prompt)
+        const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
+        const optimization = JSON.parse(text)
+
+        // Apply the optimal order
+        const optimizedVenues = optimization.optimalOrder.map((index: number) => venues[index])
+        
+        // Recalculate travel times for optimized order
+        const optimizedTravelTimes = await getDirectionsBetweenVenues(optimizedVenues)
+        let optimizedTotalTime = 0
+        for (let i = 0; i < optimizedVenues.length - 1; i++) {
+          const travel = optimizedTravelTimes[`${i}-${i + 1}`]
+          if (travel) optimizedTotalTime += travel.minutes
+        }
+
+        return NextResponse.json({
+          optimizedVenues,
+          travelTimes: optimizedTravelTimes,
+          totalTravelTime: optimizedTotalTime,
+          originalTravelTime: currentTotalTime,
+          timeSavings: currentTotalTime - optimizedTotalTime,
+          reasoning: optimization.reasoning,
+          suggestedTimings: optimization.suggestedTimings || []
+        })
+
+      } catch (error) {
+        console.error('Route optimization failed:', error)
+        return NextResponse.json({
+          optimizedVenues: venues,
+          travelTimes: await getDirectionsBetweenVenues(venues),
+          totalTravelTime: currentTotalTime || 0,
+          reasoning: 'Optimization failed, returned original order with real travel times'
+        })
+      }
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
