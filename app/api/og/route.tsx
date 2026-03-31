@@ -5,6 +5,7 @@ export const runtime = 'edge'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
+  const origin = request.nextUrl.origin
 
   const title = searchParams.get('title') || 'Date Night Planner'
   const location = searchParams.get('location') || ''
@@ -14,6 +15,7 @@ export async function GET(request: NextRequest) {
 
   // Get the current domain from the request
   const host = request.headers.get('host') || 'datenight.app'
+  const logoUrl = `${origin}/apple-touch-icon.png`
 
   // Parse venue names
   const venueList = venues ? venues.split('|').slice(0, 3) : []
@@ -27,7 +29,7 @@ export async function GET(request: NextRequest) {
           height: '630',
           display: 'flex',
           flexDirection: 'column',
-          background: 'linear-gradient(135deg, #1a1025 0%, #2d1b4e 40%, #1a1025 100%)',
+          background: 'linear-gradient(135deg, #12091b 0%, #2a1241 45%, #140a1f 100%)',
           fontFamily: 'system-ui, -apple-system, sans-serif',
           position: 'relative',
           overflow: 'hidden',
@@ -41,7 +43,7 @@ export async function GET(request: NextRequest) {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'radial-gradient(circle at 20% 20%, rgba(168, 85, 247, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.15) 0%, transparent 50%)',
+            background: 'radial-gradient(circle at 18% 18%, rgba(236, 72, 153, 0.18) 0%, transparent 48%), radial-gradient(circle at 82% 82%, rgba(251, 191, 36, 0.14) 0%, transparent 44%)',
             display: 'flex',
           }}
         />
@@ -61,19 +63,28 @@ export async function GET(request: NextRequest) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '40px' }}>
             <div
               style={{
-                width: '52px',
-                height: '52px',
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #a855f7, #ec4899)',
+                width: '84px',
+                height: '84px',
+                borderRadius: '22px',
+                background: 'rgba(255,255,255,0.08)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                boxShadow: '0 18px 48px rgba(0,0,0,0.28)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                overflow: 'hidden',
               }}
             >
-              <span style={{ fontSize: '28px' }}>💜</span>
+              <img
+                src={logoUrl}
+                alt="Dat3Night logo"
+                width="84"
+                height="84"
+                style={{ display: 'flex' }}
+              />
             </div>
             <span style={{ fontSize: '24px', fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '-0.5px' }}>
-              Date Night Planner
+              Dat3Night
             </span>
           </div>
 
@@ -89,8 +100,22 @@ export async function GET(request: NextRequest) {
                 margin: 0,
               }}
             >
-              {title}
+              {venueList.length > 0 ? title : 'Plan the perfect date night with Dat3Night'}
             </h1>
+
+            {!venueList.length && (
+              <p
+                style={{
+                  fontSize: '24px',
+                  lineHeight: 1.45,
+                  color: 'rgba(255,255,255,0.78)',
+                  margin: '16px 0 0 0',
+                  maxWidth: '860px',
+                }}
+              >
+                AI-powered recommendations for restaurants, drinks, and memorable plans built around your vibe.
+              </p>
+            )}
 
             {/* Location + Date */}
             {(location || date) && (

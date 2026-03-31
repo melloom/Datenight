@@ -83,10 +83,10 @@ export const metadata: Metadata = {
     description: 'Dat3Night uses AI to plan perfect date nights. Get personalized restaurant recommendations, fun couple activities, and unique venues based on your preferences.',
     images: [
       {
-        url: '/api/og?title=Plan+the+Perfect+Date+Night+with+Dat3Night',
+        url: '/opengraph-image',
         width: 1200,
         height: 630,
-        alt: 'Dat3Night - AI Date Night Planner',
+        alt: 'Dat3Night logo and share preview',
         type: 'image/png',
       }
     ],
@@ -95,7 +95,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Dat3Night - AI Date Night Planner',
     description: 'Dat3Night uses AI to plan perfect date nights with personalized restaurant and venue recommendations.',
-    images: ['/api/og?title=Plan+the+Perfect+Date+Night+with+Dat3Night'],
+    images: ['/twitter-image'],
     creator: '@dat3night',
   },
   robots: {
