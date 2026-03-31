@@ -37,7 +37,7 @@ export function TestimonialScene() {
   return (
     <section 
       ref={sectionRef}
-      className="relative py-32 md:py-48 overflow-hidden"
+      className="relative py-8 md:py-32 overflow-hidden"
     >
       {/* Background text marquee */}
       <div className="absolute inset-0 flex items-center overflow-hidden opacity-[0.03] pointer-events-none">

@@ -36,7 +36,7 @@ export function SplitImageScene({ scrollY }: SplitImageSceneProps) {
   return (
     <section 
       ref={sectionRef}
-      className="relative py-16 px-4"
+      className="relative py-8 md:py-16 px-4"
     >
       {/* Section number */}
       <span className="absolute right-6 md:right-12 top-32 font-serif text-[20vw] text-muted/10 leading-none select-none">
@@ -45,7 +45,7 @@ export function SplitImageScene({ scrollY }: SplitImageSceneProps) {
 
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-24 md:mb-32">
+        <div className="mb-12 md:mb-32">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-px bg-primary" />
             <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">How It Works</span>

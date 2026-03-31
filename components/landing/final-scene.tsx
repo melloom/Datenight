@@ -14,7 +14,7 @@ export function FinalScene() {
     <>
     <section 
       ref={sectionRef}
-      className="relative min-h-screen flex flex-col items-center justify-center py-20 md:py-32 px-4 overflow-hidden"
+      className="relative min-h-[80vh] md:min-h-screen flex flex-col items-center justify-center py-8 md:py-32 px-4 overflow-hidden"
     >
       {/* Background elements */}
       <div className="absolute inset-0">
@@ -65,8 +65,8 @@ export function FinalScene() {
             isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          Discover amazing date spots, plan unforgettable nights, 
-          and create memories that last a lifetime.
+          Discover amazing date spots, plan unforgettable nights, and create memories that last a lifetime. 
+          Join thousands of couples who have transformed their date nights with our intelligent recommendations and seamless planning tools.
         </p>
 
         {/* CTA Buttons */}

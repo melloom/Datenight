@@ -12,7 +12,7 @@ export function TextRevealScene() {
   return (
     <section 
       ref={sectionRef}
-      className="relative min-h-screen flex items-center justify-center py-32 px-4"
+      className="relative min-h-[80vh] md:min-h-screen flex items-center justify-center py-8 md:py-32 px-4"
     >
       {/* Background accent line */}
       <div className="absolute left-0 top-1/2 w-full h-px bg-border" />
@@ -53,15 +53,21 @@ export function TextRevealScene() {
           <div className="space-y-4">
             <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">The Problem</span>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Finding the perfect date spot is hard. You waste time searching, 
-              end up at the same places, and the excitement fades.
+              Finding the perfect date spot is incredibly hard. Couples waste countless hours scrolling through generic lists, 
+              end up at the same predictable restaurants, and watch the excitement of their relationship fade into routine. 
+              The dating scene has become monotonous, with the same tired suggestions repeated everywhere, leaving you 
+              frustrated and uninspired.
             </p>
           </div>
           <div className="space-y-4">
             <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Our Answer</span>
             <p className="text-lg text-foreground leading-relaxed">
-              Discover amazing restaurants, activities, and venues tailored for you. 
-              Plan perfect date nights with ease. Every. Single. Time.
+              Discover amazing restaurants, unique activities, and hidden gems tailored to your preferences. 
+              Our AI-powered recommendations help you plan perfect date nights that match your style, budget, and location. 
+              From cozy Italian trattorias to adventurous outdoor experiences, find the ideal spot for every mood and occasion. 
+              Save favorites, create custom itineraries, and turn ordinary evenings into extraordinary memories. 
+              With our smart filtering and personalized suggestions, you'll never run out of fresh ideas for keeping the spark alive. 
+              Explore curated collections, get real-time availability, and receive notifications for special events and deals.
             </p>
           </div>
         </div>

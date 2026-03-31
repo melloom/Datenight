@@ -163,7 +163,7 @@ export function HorizontalScrollScene() {
   return (
     <section 
       ref={sectionRef}
-      className="relative h-[500vh] md:h-[600vh]"
+      className="relative h-[300vh] md:h-[600vh]"
     >
       <div className="sticky top-0 min-h-screen flex flex-col justify-center overflow-hidden">
         {/* Section header */}

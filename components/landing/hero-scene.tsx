@@ -48,7 +48,7 @@ export function HeroScene({ scrollY }: HeroSceneProps) {
       />
 
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-60 p-4 md:p-6 bg-background/80 backdrop-blur-sm">
+      <nav className="fixed top-0 left-0 right-0 z-60 p-4 md:p-6 bg-background/80 backdrop-blur-sm" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
         <div className="flex justify-between items-center max-w-7xl mx-auto">
           <div className="text-xl md:text-2xl font-bold text-foreground">
             Dat3Night
@@ -73,7 +73,7 @@ export function HeroScene({ scrollY }: HeroSceneProps) {
         style={{ 
           opacity,
           transform: `translateY(${translateY}px) scale(${scale})`,
-          paddingTop: '5rem'
+          paddingTop: 'calc(6rem + env(safe-area-inset-top))'
         }}
       >
         {/* Eyebrow */}
