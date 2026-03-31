@@ -96,12 +96,21 @@ export default function LandingPage() {
                   </Button>
                 </Link>
               ) : (
-                <Link href="/legal/terms-of-service">
-                  <Button size="lg" className="px-8 py-4 text-lg h-auto bg-linear-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary">
-                    Start Planning Perfect Dates
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </Button>
-                </Link>
+                <>
+                  <Link href="/legal/terms-of-service">
+                    <Button size="lg" className="px-8 py-4 text-lg h-auto bg-linear-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary">
+                      Start Planning Perfect Dates
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </Button>
+                  </Link>
+                  
+                  <Link href="/login">
+                    <Button variant="outline" size="lg" className="px-8 py-4 text-lg h-auto">
+                      Sign In
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </Button>
+                  </Link>
+                </>
               )}
               
               <Link href="#features">
@@ -235,12 +244,20 @@ export default function LandingPage() {
                   </Button>
                 </Link>
               ) : (
-                <Link href="/legal/terms-of-service">
-                  <Button size="lg" className="px-8 py-4 text-lg h-auto bg-linear-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary">
-                    Sign Up Free
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </Button>
-                </Link>
+                <>
+                  <Link href="/legal/terms-of-service">
+                    <Button size="lg" className="px-8 py-4 text-lg h-auto bg-linear-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary">
+                      Sign Up Free
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </Button>
+                  </Link>
+                  
+                  <Link href="/login">
+                    <Button variant="outline" size="lg" className="px-8 py-4 text-lg h-auto">
+                      Sign In
+                    </Button>
+                  </Link>
+                </>
               )}
               
               <Link href="#features">

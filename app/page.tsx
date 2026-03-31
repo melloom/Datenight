@@ -3,6 +3,7 @@
 import { useAuth } from "@/lib/auth-context"
 import { LoginScreen } from "@/components/mystery-date/login-screen"
 import { MysteryDateApp } from "@/components/mystery-date/mystery-date-app"
+import LandingPage from "./landing/page"
 
 export default function Page() {
   const { user, loading } = useAuth()
@@ -19,11 +20,11 @@ export default function Page() {
     )
   }
 
-  // Not logged in → show login
-  if (!user) {
-    return <LoginScreen />
+  // Logged in → show app
+  if (user) {
+    return <MysteryDateApp />
   }
 
-  // Logged in → show app
-  return <MysteryDateApp />
+  // Not logged in → show landing page
+  return <LandingPage />
 }
