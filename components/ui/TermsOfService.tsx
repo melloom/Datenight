@@ -1,10 +1,8 @@
 import React from 'react';
-import ScrollableDocument from './ScrollableDocument';
 
 const TermsOfService = () => {
   return (
-    <ScrollableDocument onScrollEnd={() => {}}>
-      <div className="prose prose-sm max-w-none leading-relaxed prose-headings:font-bold prose-h1:text-3xl prose-h1:text-2xl md:prose-h1:text-4xl prose-h2:text-xl prose-h2:text-lg md:prose-h2:text-2xl prose-h3:text-lg prose-h3:text-base md:prose-h3:text-xl">
+    <div className="prose prose-sm max-w-none leading-relaxed prose-headings:font-bold prose-h1:text-3xl prose-h1:text-2xl md:prose-h1:text-4xl prose-h2:text-xl prose-h2:text-lg md:prose-h2:text-2xl prose-h3:text-lg prose-h3:text-base md:prose-h3:text-xl">
 
 
       <h1>Terms of Service</h1>
@@ -168,7 +166,6 @@ const TermsOfService = () => {
       <h2>14. Contact Us</h2>
       <p>If you have any questions about these Terms, please contact us at contact@mellowsites.com.</p>
       </div>
-    </ScrollableDocument>
   );
 };
 

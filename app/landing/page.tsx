@@ -65,7 +65,7 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
+        <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-background to-accent/5" />
         
         <div className="relative container mx-auto px-6 py-20 lg:py-32">
           <div className="text-center max-w-4xl mx-auto">
@@ -97,7 +97,7 @@ export default function LandingPage() {
                 </Link>
               ) : (
                 <Link href="/legal/terms-of-service">
-                  <Button size="lg" className="px-8 py-4 text-lg h-auto bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary">
+                  <Button size="lg" className="px-8 py-4 text-lg h-auto bg-linear-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary">
                     Start Planning Perfect Dates
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
@@ -157,7 +157,7 @@ export default function LandingPage() {
       </section>
 
       {/* Date Types Section */}
-      <section className="py-20 lg:py-32 bg-gradient-to-b from-background to-primary/5">
+      <section className="py-20 lg:py-32 bg-linear-to-b from-background to-primary/5">
         <div className="container mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground mb-6">
@@ -215,7 +215,7 @@ export default function LandingPage() {
       </section>
 
       {/* Final CTA Section */}
-      <section className="py-20 lg:py-32 bg-gradient-to-r from-primary/10 to-accent/10">
+      <section className="py-20 lg:py-32 bg-linear-to-r from-primary/10 to-accent/10">
         <div className="container mx-auto px-6 text-center">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground mb-6">
@@ -236,7 +236,7 @@ export default function LandingPage() {
                 </Link>
               ) : (
                 <Link href="/legal/terms-of-service">
-                  <Button size="lg" className="px-8 py-4 text-lg h-auto bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary">
+                  <Button size="lg" className="px-8 py-4 text-lg h-auto bg-linear-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary">
                     Sign Up Free
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
