@@ -24,10 +24,16 @@ export interface DateRecommendation {
 
 export class GeminiAIService {
   private model: any = null
+  private groundedModel: any = null
 
   constructor() {
     if (genAI) {
       this.model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+      // Grounded model uses Google Search for real-time web data
+      this.groundedModel = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        tools: [{ googleSearchRetrieval: { dynamicRetrievalConfig: { mode: 'MODE_DYNAMIC' as any, dynamicThreshold: 0.3 } } }],
+      })
     }
   }
 
@@ -192,8 +198,12 @@ Focus on romantic, date-appropriate venues and hidden gems. Consider local cultu
 `
 
     try {
-      const response = await this.generateContent(prompt)
-      const cleaned = response.replace(/```json\n?|\n?```/g, '').trim()
+      // Use grounded model for web-aware search enhancement
+      const activeModel = this.groundedModel || this.model
+      if (!activeModel) return this.getFallbackSearchEnhancement()
+      const result = await activeModel.generateContent(prompt)
+      const text = result.response.text()
+      const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
       return JSON.parse(cleaned)
     } catch {
       return this.getFallbackSearchEnhancement()

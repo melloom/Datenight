@@ -82,6 +82,17 @@ function getModel() {
   return genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 }
 
+// Grounded model that can search the web for real venue data
+function getGroundedModel() {
+  const apiKey = getApiKey()
+  if (!apiKey) return null
+  const genAI = new GoogleGenerativeAI(apiKey)
+  return genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    tools: [{ googleSearchRetrieval: { dynamicRetrievalConfig: { mode: 'MODE_DYNAMIC' as any, dynamicThreshold: 0.3 } } }],
+  })
+}
+
 export async function GET() {
   const apiKey = getApiKey()
   return NextResponse.json({
@@ -123,10 +134,11 @@ export async function POST(request: NextRequest) {
     }
 
     const model = getModel()
+    const groundedModel = getGroundedModel()
 
     if (action === 'enhance-search') {
       const { location, criteria } = body
-      if (!model) {
+      if (!groundedModel && !model) {
         return NextResponse.json({
           searchTerms: ['romantic restaurants', 'date night spots', 'couples dining', 'intimate bars'],
           locationInsights: 'This area offers several romantic options perfect for date nights',
@@ -134,23 +146,27 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      const prompt = `Enhance venue search for a date night app with:
-Location: ${location}
+      const prompt = `Search the web for the best date night venues in ${location} and provide recommendations.
+
 Budget: ${criteria.budget}
 Desired Vibes: ${criteria.vibes.join(', ')}
 Time: ${criteria.time}
 
+Search for real, currently operating restaurants, bars, and entertainment venues in this area. Include specific venue names you find.
+
 Provide a JSON response with these exact keys:
 {
-  "searchTerms": ["5-8 specific search terms for finding venues"],
-  "locationInsights": "Insights about this location for dating (2-3 sentences)",
-  "recommendations": ["3-4 specific types of venues or areas to focus on"]
+  "searchTerms": ["5-8 specific search terms including real venue names and neighborhoods"],
+  "locationInsights": "Current insights about this location for dating based on what you found (2-3 sentences)",
+  "recommendations": ["3-4 specific real venues or areas you found that are great for dates"]
 }
 
-Focus on romantic, date-appropriate venues and hidden gems.`
+Focus on real, currently open, date-appropriate venues and hidden gems.`
 
       try {
-        const result = await model.generateContent(prompt)
+        // Use grounded model for web search, fall back to regular model
+        const activeModel = groundedModel || model!
+        const result = await activeModel.generateContent(prompt)
         const text = result.response.text()
         const cleaned = text.replace(/```json\n?|\n?```/g, '').trim()
         return NextResponse.json(JSON.parse(cleaned))
@@ -510,18 +526,19 @@ Return JSON array (same order):
       const { location, criteria } = body
       const vibes = criteria?.vibes?.join(' ') || 'romantic'
       const budget = criteria?.budget || '$$'
+      const aiModel = groundedModel || model
 
-      // Use AI to suggest search terms, then search Google Places for real venues
+      // Use grounded AI to suggest search terms based on live web data
       let searchQueries = [
         `best ${vibes} restaurant ${location}`,
         `date night bar ${location}`,
         `fun things to do for couples ${location}`,
       ]
 
-      if (model) {
+      if (aiModel) {
         try {
-          const result = await model.generateContent(
-            `Suggest 4 specific Google search queries to find real ${vibes} date night venues (1 bar, 1 restaurant, 1 activity) in ${location} for budget ${budget}. Return JSON: {"queries": ["query1","query2","query3","query4"]}`
+          const result = await aiModel.generateContent(
+            `Search the web for the best date night venues in ${location}. Find real, currently operating ${vibes} venues for budget ${budget}. Suggest 4 specific Google Maps search queries to find these real venues (1 bar, 1 restaurant, 1 activity). Include specific venue names or neighborhoods you find. Return JSON: {"queries": ["query1","query2","query3","query4"]}`
           )
           const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
           const parsed = JSON.parse(text)
@@ -538,6 +555,7 @@ Return JSON array (same order):
       const vibes = criteria?.vibes?.join(' ') || 'romantic'
       const cat = category || 'dinner'
       const excludeNames = [currentVenue?.name || '']
+      const aiModel = groundedModel || model
 
       const typeMap: Record<string, string> = { dinner: 'restaurant', drinks: 'bar cocktail lounge', activity: 'entertainment fun' }
       let searchQueries = [
@@ -545,10 +563,10 @@ Return JSON array (same order):
         `top rated ${typeMap[cat] || cat} ${location}`,
       ]
 
-      if (model) {
+      if (aiModel) {
         try {
-          const result = await model.generateContent(
-            `Suggest 3 Google search queries to find a REAL ${vibes} ${cat} venue in ${location} (budget ${criteria?.budget || '$$'}) that's different from "${currentVenue?.name}". Return JSON: {"queries": ["q1","q2","q3"]}`
+          const result = await aiModel.generateContent(
+            `Search the web for real ${vibes} ${cat} venues in ${location} (budget ${criteria?.budget || '$$'}) that are different from "${currentVenue?.name}". Find currently open, well-reviewed places. Suggest 3 Google Maps search queries using specific venue names or neighborhoods. Return JSON: {"queries": ["q1","q2","q3"]}`
           )
           const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
           const parsed = JSON.parse(text)
@@ -567,19 +585,20 @@ Return JSON array (same order):
       const vibes = criteria?.vibes?.join(' ') || 'romantic'
       const loc = location || criteria?.location || 'the city'
       const excludeNames = (currentVenues || body.currentPlan || []).map((v: any) => v.name)
+      const aiModel = groundedModel || model
 
-      // Use AI to generate targeted search queries from user feedback
+      // Use grounded AI to generate targeted search queries from user feedback
       let searchQueries = [
         `best ${vibes} restaurant ${loc}`,
         `top ${vibes} bar ${loc}`,
         `fun date activity ${loc}`,
       ]
 
-      if (model) {
+      if (aiModel) {
         try {
           const userFeedback = feedback || 'I want better options'
-          const result = await model.generateContent(
-            `A user wants to improve their date plan in ${loc}. Their feedback: "${userFeedback}". Vibes: ${vibes}, Budget: ${criteria?.budget || '$$'}. Current venues: ${excludeNames.join(', ') || 'none'}. Suggest 5 specific Google search queries to find REAL replacement venues (1 drinks, 1 dinner, 1 activity). Return JSON: {"queries": ["q1","q2","q3","q4","q5"]}`
+          const result = await aiModel.generateContent(
+            `Search the web for date night venues in ${loc}. User feedback: "${userFeedback}". Vibes: ${vibes}, Budget: ${criteria?.budget || '$$'}. Current venues to avoid: ${excludeNames.join(', ') || 'none'}. Find real, currently operating replacements. Suggest 5 specific Google Maps search queries using real venue names or neighborhoods you found. Return JSON: {"queries": ["q1","q2","q3","q4","q5"]}`
           )
           const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
           const parsed = JSON.parse(text)
@@ -590,7 +609,6 @@ Return JSON array (same order):
       const venues = await findRealVenues(loc, searchQueries, excludeNames, 3)
 
       // Try to assign categories: 1 dinner, 1 drinks, 1 activity
-      const cats = ['dinner', 'drinks', 'activity']
       const usedCats = new Set<string>()
       for (const v of venues) {
         if (!usedCats.has(v.category)) {
@@ -611,6 +629,7 @@ Return JSON array (same order):
       const loc = criteria?.location || ''
       const vibes = criteria?.vibes?.join(' ') || 'romantic'
       const excludeNames = (currentPlan || []).map((v: any) => v.name)
+      const aiModel = groundedModel || model
 
       const typeMap: Record<string, string> = { dinner: 'restaurant', drinks: 'bar cocktail lounge', activity: 'entertainment fun' }
       let searchQueries = [
@@ -618,11 +637,11 @@ Return JSON array (same order):
         `top rated ${typeMap[swapCategory] || swapCategory} ${loc}`,
       ]
 
-      // If user gave a custom request, use AI to make smarter queries
-      if (model && (customReq || vibes)) {
+      // Use grounded AI to make smarter queries based on web search
+      if (aiModel && (customReq || vibes)) {
         try {
-          const result = await model.generateContent(
-            `Find a replacement ${swapCategory} venue in ${loc} for a date night. Replacing "${venue.name}". User request: "${customReq || 'something different'}". Vibes: ${vibes}, Budget: ${criteria?.budget || '$$'}. Suggest 3 Google search queries for REAL venues. Return JSON: {"queries": ["q1","q2","q3"]}`
+          const result = await aiModel.generateContent(
+            `Search the web for a replacement ${swapCategory} venue in ${loc} for a date night. Replacing "${venue.name}". User wants: "${customReq || 'something different'}". Vibes: ${vibes}, Budget: ${criteria?.budget || '$$'}. Find real, currently open venues. Suggest 3 Google Maps search queries using specific venue names you found. Return JSON: {"queries": ["q1","q2","q3"]}`
           )
           const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
           const parsed = JSON.parse(text)
@@ -634,11 +653,11 @@ Return JSON array (same order):
       const newVenue = venues[0] || null
       if (newVenue) {
         newVenue.category = swapCategory
-        // Add features/highlights from AI if available
-        if (model) {
+        // Add features/highlights from grounded AI
+        if (aiModel) {
           try {
-            const result = await model.generateContent(
-              `For the venue "${newVenue.name}" at ${newVenue.address}, provide: {"highlights": ["3-4 highlights"], "vibe": "one word vibe", "features": ["2-3 features"]}. Be factual.`
+            const result = await aiModel.generateContent(
+              `Search the web for "${newVenue.name}" at ${newVenue.address}. Based on what you find, provide: {"highlights": ["3-4 real highlights"], "vibe": "one word vibe", "features": ["2-3 real features"]}. Be factual and use real info.`
             )
             const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
             const extras = JSON.parse(text)
