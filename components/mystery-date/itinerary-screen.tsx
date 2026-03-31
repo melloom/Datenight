@@ -60,7 +60,17 @@ import {
 } from "lucide-react"
 import { Venue } from "@/lib/venue-search"
 import { useAuth } from "@/lib/auth-context"
-import { shareItinerary, SavedDate } from "@/lib/db"
+import {
+  shareItinerary,
+  SavedDate,
+  getDatePlanHistory,
+  upsertDatePlanHistory,
+  deleteDatePlanHistoryItem,
+  setDatePlanHistoryFavorite,
+  saveFavorite,
+  removeFavorite,
+  getUserFavorites,
+} from "@/lib/db"
 import { AIRecommendation } from "@/components/ai/ai-recommendation"
 import { LateNightAlert } from "@/components/ui/late-night-alert"
 import { AlternativeSuggestion, SameDayOption } from "@/lib/late-night-detector"
@@ -70,6 +80,7 @@ import { createStripeCheckout, createBillingPortalSession, type PlanInterval } f
 
 interface Step {
   id: number
+  sourceVenueId?: string
   label: string
   time: string
   icon: React.ReactNode
@@ -644,7 +655,10 @@ function StepCard({
   onVenuesUpdate,
   handleSwapVenue,
   isSwapping,
-  isLoadingTravelTimes
+  isLoadingTravelTimes,
+  isSaved,
+  onToggleSave,
+  isTogglingSave,
 }: {
   step: Step
   index: number
@@ -656,9 +670,10 @@ function StepCard({
   handleSwapVenue?: (index: number) => void
   isSwapping?: number | null
   isLoadingTravelTimes?: boolean
+  isSaved?: boolean
+  onToggleSave?: (step: Step) => void
+  isTogglingSave?: boolean
 }) {
-  const [isSaved, setIsSaved] = useState(false)
-
   const stepColors = [
     { bg: "bg-rose-500/10", border: "border-rose-500/20", text: "text-rose-600", dot: "bg-rose-500" },
     { bg: "bg-amber-500/10", border: "border-amber-500/20", text: "text-amber-600", dot: "bg-amber-500" },
@@ -719,8 +734,9 @@ function StepCard({
               </div>
               <div className="absolute top-2.5 right-2.5">
                 <button
-                  onClick={() => setIsSaved(!isSaved)}
-                  className="p-1.5 rounded-lg backdrop-blur-md bg-black/40 hover:bg-black/60 transition-colors"
+                  onClick={() => onToggleSave?.(step)}
+                  disabled={isTogglingSave}
+                  className="p-1.5 rounded-lg backdrop-blur-md bg-black/40 hover:bg-black/60 transition-colors disabled:opacity-60"
                 >
                   <Bookmark className={`w-4 h-4 ${isSaved ? "fill-white text-white" : "text-white/80"}`} />
                 </button>
@@ -1083,6 +1099,17 @@ interface DatePlanHistory {
   favorite?: boolean
 }
 
+interface SavedVenueItem {
+  id: string
+  name: string
+  category?: string
+  rating?: number
+  priceRange?: string
+  address?: string
+  imageUrl?: string
+  savedAt?: number
+}
+
 // Budget calculation functions
 function calculateBudgetBreakdown(steps: Step[], partySize: number): BudgetBreakdown {
   const venues: VenueCost[] = []
@@ -1395,16 +1422,127 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [includeTravelTime, setIncludeTravelTime] = useState<boolean>(true)
   const [calendarNotes, setCalendarNotes] = useState('')
   const [showHistory, setShowHistory] = useState(false)
+  const [showSavedVenues, setShowSavedVenues] = useState(false)
   const [datePlanHistory, setDatePlanHistory] = useState<DatePlanHistory[]>([])
+  const [savedVenues, setSavedVenues] = useState<SavedVenueItem[]>([])
   const [showLateNightAlert, setShowLateNightAlert] = useState(true)
   const [isGeneratingAlternative, setIsGeneratingAlternative] = useState(false)
   const [isLoadingTravelTimes, setIsLoadingTravelTimes] = useState(false)
   const [isOptimizingRoute, setIsOptimizingRoute] = useState(false)
+  const [savedVenueIds, setSavedVenueIds] = useState<Set<string>>(new Set())
+  const [togglingVenueIds, setTogglingVenueIds] = useState<Set<string>>(new Set())
   const [showBillingPrompt, setShowBillingPrompt] = useState(false)
   const [billingErrorMessage, setBillingErrorMessage] = useState<string | null>(null)
   const [checkoutPlan, setCheckoutPlan] = useState<PlanInterval | null>(null)
   const [isOpeningPortal, setIsOpeningPortal] = useState(false)
-  const { signOut } = useAuth()
+  const { signOut, user } = useAuth()
+
+  const sanitizeVenueKey = (value: string) => value.replace(/[.#$[\]]/g, '_')
+
+  const getStepVenueId = (step: Step) => step.sourceVenueId || `${step.place}|${step.address}`
+
+  const buildVenueFromStep = (step: Step): Venue => ({
+    id: getStepVenueId(step),
+    name: step.place,
+    category: step.category || 'activity',
+    rating: step.rating,
+    reviewCount: step.reviewCount,
+    priceRange: step.priceRange,
+    address: step.address,
+    phone: step.phone,
+    website: step.website,
+    imageUrl: step.imageUrl,
+    description: step.description,
+    highlights: step.highlights,
+    coordinates: step.coordinates,
+    hours: step.hours,
+    tags: step.tags,
+    features: step.features,
+  })
+
+  useEffect(() => {
+    const loadSavedVenues = async () => {
+      if (!user) {
+        setSavedVenueIds(new Set())
+        setSavedVenues([])
+        return
+      }
+
+      try {
+        const favorites = await getUserFavorites(user.uid)
+        const nextIds = new Set<string>()
+        const nextVenues: SavedVenueItem[] = []
+
+        favorites.forEach((fav) => {
+          if (!fav?.id) return
+          const id = String(fav.id)
+          nextIds.add(id)
+          nextVenues.push({
+            id,
+            name: fav.name || 'Saved venue',
+            category: fav.category,
+            rating: typeof fav.rating === 'number' ? fav.rating : undefined,
+            priceRange: fav.priceRange,
+            address: fav.address,
+            imageUrl: fav.imageUrl,
+            savedAt: typeof fav.savedAt === 'number' ? fav.savedAt : undefined,
+          })
+        })
+
+        nextVenues.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0))
+        setSavedVenueIds(nextIds)
+        setSavedVenues(nextVenues)
+      } catch {
+        setSavedVenueIds(new Set())
+        setSavedVenues([])
+      }
+    }
+
+    loadSavedVenues()
+  }, [user])
+
+  const handleToggleVenueSave = async (step: Step) => {
+    if (!user) return
+
+    const venueId = getStepVenueId(step)
+    const venueKey = sanitizeVenueKey(venueId)
+
+    setTogglingVenueIds((prev) => new Set(prev).add(venueKey))
+    try {
+      if (savedVenueIds.has(venueKey)) {
+        await removeFavorite(user.uid, venueId)
+        setSavedVenueIds((prev) => {
+          const next = new Set(prev)
+          next.delete(venueKey)
+          return next
+        })
+        setSavedVenues((prev) => prev.filter((venue) => venue.id !== venueKey))
+      } else {
+        await saveFavorite(user.uid, buildVenueFromStep(step))
+        setSavedVenueIds((prev) => new Set(prev).add(venueKey))
+        setSavedVenues((prev) => [
+          {
+            id: venueKey,
+            name: step.place,
+            category: step.category,
+            rating: step.rating,
+            priceRange: step.priceRange,
+            address: step.address,
+            imageUrl: step.imageUrl,
+            savedAt: Date.now(),
+          },
+          ...prev.filter((venue) => venue.id !== venueKey),
+        ])
+      }
+    } catch {
+    } finally {
+      setTogglingVenueIds((prev) => {
+        const next = new Set(prev)
+        next.delete(venueKey)
+        return next
+      })
+    }
+  }
 
   const handleSubscriptionRequired = async (response: Response): Promise<boolean> => {
     if (response.status !== 402) return false
@@ -1470,6 +1608,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
     if (showHistory) {
       scrollToModal('[data-modal="history"]')
+    } else if (showSavedVenues) {
+      scrollToModal('[data-modal="saved-venues"]')
     } else if (showSpecialOccasions) {
       scrollToModal('[data-modal="special-occasions"]')
     } else if (showCalendarDialog) {
@@ -1477,7 +1617,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     } else if (showBudgetCalculator) {
       scrollToModal('[data-modal="budget"]')
     }
-  }, [showHistory, showSpecialOccasions, showCalendarDialog, showBudgetCalculator])
+  }, [showHistory, showSavedVenues, showSpecialOccasions, showCalendarDialog, showBudgetCalculator])
 
   // Fetch real travel times using Google Maps API
   const fetchTravelTimes = async (venueSteps: Step[]) => {
@@ -1568,23 +1708,52 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     }
   }
 
-  // Load history from localStorage on mount
+  // Load history from Firebase for logged-in users, localStorage fallback for guests.
   useEffect(() => {
-    const savedHistory = localStorage.getItem('datePlanHistory')
-    if (savedHistory) {
+    const loadHistory = async () => {
+      if (user) {
+        try {
+          const cloudHistory = await getDatePlanHistory(user.uid)
+          setDatePlanHistory(
+            cloudHistory.map((item) => ({
+              ...item,
+              date: new Date(item.date),
+            }))
+          )
+          return
+        } catch {
+          // Fall through to local fallback if cloud read fails.
+        }
+      }
+
+      const savedHistory = localStorage.getItem('datePlanHistory')
+      if (!savedHistory) {
+        setDatePlanHistory([])
+        return
+      }
+
       try {
         const parsed = JSON.parse(savedHistory)
-        setDatePlanHistory(parsed.map((item: any) => ({
-          ...item,
-          date: new Date(item.date)
-        })))
-      } catch (e) {
+        setDatePlanHistory(
+          parsed.map((item: any) => ({
+            ...item,
+            date: new Date(item.date),
+          }))
+        )
+      } catch {
+        setDatePlanHistory([])
       }
     }
-  }, [])
+
+    loadHistory()
+  }, [user])
+
+  const persistLocalHistory = (history: DatePlanHistory[]) => {
+    localStorage.setItem('datePlanHistory', JSON.stringify(history))
+  }
 
   // Save current plan to history with date-based deduplication
-  const saveToHistory = () => {
+  const saveToHistory = async () => {
     if (!searchCriteria || !venues || venues.length === 0) return
 
     const planDate = selectedDate // Use the selected date from calendar
@@ -1618,14 +1787,35 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     }
 
     setDatePlanHistory(updatedHistory)
-    localStorage.setItem('datePlanHistory', JSON.stringify(updatedHistory))
+
+    if (user) {
+      try {
+        await upsertDatePlanHistory(user.uid, {
+          ...newHistoryItem,
+          date: planDate.toISOString(),
+        })
+      } catch {
+      }
+      return
+    }
+
+    persistLocalHistory(updatedHistory)
   }
 
   // Delete history item
-  const deleteHistoryItem = (id: string) => {
+  const deleteHistoryItem = async (id: string) => {
     const updatedHistory = datePlanHistory.filter(item => item.id !== id)
     setDatePlanHistory(updatedHistory)
-    localStorage.setItem('datePlanHistory', JSON.stringify(updatedHistory))
+
+    if (user) {
+      try {
+        await deleteDatePlanHistoryItem(user.uid, id)
+      } catch {
+      }
+      return
+    }
+
+    persistLocalHistory(updatedHistory)
   }
 
   // Late night alert handlers
@@ -1863,12 +2053,23 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   }
 
   // Toggle favorite
-  const toggleFavorite = (id: string) => {
+  const toggleFavorite = async (id: string) => {
     const updatedHistory = datePlanHistory.map(item =>
       item.id === id ? { ...item, favorite: !item.favorite } : item
     )
     setDatePlanHistory(updatedHistory)
-    localStorage.setItem('datePlanHistory', JSON.stringify(updatedHistory))
+
+    if (user) {
+      const updatedItem = updatedHistory.find((item) => item.id === id)
+      if (!updatedItem) return
+      try {
+        await setDatePlanHistoryFavorite(user.uid, id, !!updatedItem.favorite)
+      } catch {
+      }
+      return
+    }
+
+    persistLocalHistory(updatedHistory)
   }
 
   // Fetch weather when calendar dialog opens
@@ -1980,6 +2181,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       const step = {
         id: index + 1,
+        sourceVenueId: venue.id,
         label: venue.category === "drinks" ? "Drinks" : venue.category === "dinner" ? "Dinner" : "Activity",
         time: assignedTime,
         icon: venue.category === "drinks" ? <Wine className="w-5 h-5" /> : venue.category === "dinner" ? <UtensilsCrossed className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />,
@@ -2315,6 +2517,15 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             </button>
             <button
               onClick={() => {
+                setShowSavedVenues(true)
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 text-xs font-medium hover:bg-rose-500/15 transition-all"
+            >
+              <Heart className="w-3.5 h-3.5" />
+              Saved Venues {savedVenues.length > 0 ? `(${savedVenues.length})` : ''}
+            </button>
+            <button
+              onClick={() => {
                 setShowSpecialOccasions(true)
               }}
               disabled={steps.length === 0}
@@ -2486,6 +2697,9 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                 handleSwapVenue={handleSwapVenue}
                 isSwapping={isSwapping}
                 isLoadingTravelTimes={isLoadingTravelTimes}
+                isSaved={savedVenueIds.has(sanitizeVenueKey(getStepVenueId(step)))}
+                onToggleSave={handleToggleVenueSave}
+                isTogglingSave={togglingVenueIds.has(sanitizeVenueKey(getStepVenueId(step)))}
               />
               {/* Travel time between this venue and the next */}
               {index < steps.length - 1 && index < revealedCount && index + 1 < revealedCount && (
@@ -3395,6 +3609,85 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Saved Venues Modal */}
+      {showSavedVenues && (
+        <div data-modal="saved-venues" className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-2xl border p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto my-4 md:my-0">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Heart className="w-5 h-5 text-rose-600" />
+                <h3 className="font-semibold text-lg">Saved Venues</h3>
+              </div>
+              <button
+                onClick={() => setShowSavedVenues(false)}
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {!user ? (
+              <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                Sign in to save venues and sync favorites across devices.
+              </div>
+            ) : savedVenues.length === 0 ? (
+              <div className="text-center py-12">
+                <Heart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h4 className="font-medium text-lg mb-2">No Saved Venues Yet</h4>
+                <p className="text-sm text-muted-foreground">
+                  Tap the bookmark icon on any itinerary stop to save it here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {savedVenues.map((venue) => (
+                  <div key={venue.id} className="rounded-xl border border-border bg-card p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h4 className="font-semibold text-sm text-foreground truncate">{venue.name}</h4>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{venue.address || 'Address unavailable'}</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                          {venue.category && (
+                            <span className="px-2 py-0.5 rounded-full bg-muted border border-border">{venue.category}</span>
+                          )}
+                          {venue.priceRange && (
+                            <span className="px-2 py-0.5 rounded-full bg-muted border border-border">{venue.priceRange}</span>
+                          )}
+                          {typeof venue.rating === 'number' && venue.rating > 0 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted border border-border">
+                              <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                              {venue.rating.toFixed(1)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (!user) return
+                          try {
+                            await removeFavorite(user.uid, venue.id)
+                            setSavedVenueIds((prev) => {
+                              const next = new Set(prev)
+                              next.delete(venue.id)
+                              return next
+                            })
+                            setSavedVenues((prev) => prev.filter((item) => item.id !== venue.id))
+                          } catch {
+                          }
+                        }}
+                        className="shrink-0 px-2.5 py-1.5 rounded-lg border border-rose-500/25 bg-rose-500/10 text-rose-600 text-xs font-medium hover:bg-rose-500/15 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
