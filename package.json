@@ -8,7 +8,8 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "grant:all-pro": "node scripts/grant-all-users-pro.js --yes"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
