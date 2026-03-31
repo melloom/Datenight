@@ -3,7 +3,9 @@
 import { useState } from "react"
 import { Sparkles, MapPin, Wine } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
+import { useLegal } from "@/lib/legal-context"
 import { Checkbox } from "@/components/ui/checkbox"
 
 export function LoginScreen() {
@@ -11,6 +13,9 @@ export function LoginScreen() {
   const { hasScrolledTerms, hasScrolledPrivacy } = useLegal()
   const [error, setError] = useState<string | null>(null)
   const [agree, setAgree] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  
+  const canAgree = hasScrolledTerms && hasScrolledPrivacy
   const handleGoogleSignIn = async () => {
     if (!agree) {
       setError("Please agree to the Terms of Service and Privacy Policy.")
@@ -99,7 +104,6 @@ export function LoginScreen() {
         <p className="text-[10px] text-muted-foreground/50 text-center">
           By continuing, you agree to our Terms &amp; Privacy Policy
         </p>
-            )}
             <span className="text-sm font-medium text-foreground">
               {isLoading ? "Signing in..." : "Continue with Google"}
             </span>
