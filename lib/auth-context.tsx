@@ -11,7 +11,7 @@ import {
   signOut as firebaseSignOut,
 } from "firebase/auth"
 import { ref, set, get } from "firebase/database"
-import { ensureFirebaseInitialized } from "@/lib/firebase"
+import { ensureFirebaseInitialized, getFirebaseDebugInfo } from "@/lib/firebase"
 
 interface AuthContextType {
   user: User | null
@@ -94,7 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { auth, googleProvider } = await ensureFirebaseInitialized()
 
     if (!auth || !googleProvider) {
-      throw new Error("Firebase authentication not available")
+      const debugInfo = getFirebaseDebugInfo()
+      throw new Error(
+        `Firebase authentication not available (source=${debugInfo.source}; attempts=${debugInfo.attempts.join(',') || 'none'}; missing=${debugInfo.missingKeys.join(',') || 'none'}${debugInfo.lastError ? `; error=${debugInfo.lastError}` : ''})`
+      )
     }
     try {
       const result: UserCredential = await signInWithPopup(auth, googleProvider)
