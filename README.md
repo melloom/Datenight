@@ -69,9 +69,15 @@ FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx_or_pk_live_xxx
 STRIPE_SECRET_KEY=sk_test_xxx_or_sk_live_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
-STRIPE_PRICE_MONTHLY=price_xxx
-STRIPE_PRICE_YEARLY=price_xxx
+STRIPE_PRICE_MONTHLY=price_1TH6kyEykVDCxwrv7i14qTAM
+STRIPE_PRICE_YEARLY=price_1TH6kyEykVDCxwrva1gKcy0L
 ```
+
+Current live plan setup:
+- Product: DateNight Pro
+- Monthly: DateNight Pro - Monthly (USD 9.99)
+- Yearly: DateNight Pro - Yearly (USD 99.99)
+- Effective monthly cost on yearly: USD 8.33 (USD 99.99 / 12)
 
 ### Stripe Webhook Route
 
@@ -81,7 +87,7 @@ STRIPE_PRICE_YEARLY=price_xxx
 	- customer.subscription.created
 	- customer.subscription.updated
 	- customer.subscription.deleted
-	- invoice.paid
+	- invoice.payment_succeeded
 	- invoice.payment_failed
 
 For local testing, use Stripe CLI:

@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
         break
       }
       case 'invoice.paid':
+      case 'invoice.payment_succeeded':
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
         const invoiceWithSubscription = invoice as Stripe.Invoice & {
