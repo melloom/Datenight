@@ -11,6 +11,7 @@ interface VenuePricing {
   packages?: Array<{ name: string; price: number; includes: string[] }>
   minimumSpend?: number
   currency?: string
+  duration?: number
   source?: string
   lastUpdated?: string
 }

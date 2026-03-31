@@ -102,6 +102,7 @@ interface Step {
   }
   travelTimeToNext?: number
   travelDistanceToNext?: number
+  duration?: number // estimated visit duration in minutes
   category?: 'drinks' | 'dinner' | 'activity'
   reservationRecommended?: boolean
   distanceToNext?: number
@@ -117,6 +118,7 @@ interface Step {
     }>
     minimumSpend?: number
     currency?: string
+    duration?: number
     source?: string
     lastUpdated?: string
   }
@@ -144,6 +146,40 @@ interface Step {
   ticketUrl?: string
   minPrice?: number
   maxPrice?: number
+}
+
+// Get activity duration — uses scraped/AI duration from venue data, falls back to category-based estimate
+function getActivityDuration(step: { duration?: number; category?: string; tags?: string[]; place?: string; pricing?: any }): number {
+  // Priority 1: duration from pricing (scraped or AI-estimated per venue)
+  if (step.pricing?.duration && step.pricing.duration > 0) return step.pricing.duration
+  // Priority 2: duration set directly on the step/venue
+  if (step.duration && step.duration > 0) return step.duration
+  // Priority 3: fallback estimate from category + name
+  const nameLower = (step.place || '').toLowerCase()
+  const allTags = (step.tags || []).map(t => t.toLowerCase())
+
+  if (step.category === 'activity') {
+    if (allTags.some(t => ['bowling_alley', 'amusement_park', 'zoo', 'aquarium', 'museum', 'art_gallery', 'movie_theater', 'stadium', 'spa'].includes(t)) ||
+        /topgolf|top golf|bowling|arcade|go.?kart|laser.?tag|escape.?room|axe.?throw|paintball|trampoline|mini.?golf|putt.?putt|driving range|batting cage|roller.?skat|ice.?skat|rock.?climb|imax|theater|theatre|cinema|zoo|aquarium|museum|spa|massage/i.test(nameLower)) {
+      return 120
+    }
+    if (allTags.some(t => ['park', 'tourist_attraction', 'casino'].includes(t)) ||
+        /karaoke|comedy|show|concert|live music|trivia|game|pool hall|billiards|darts|casino|wine tasting|brewery tour|distillery/i.test(nameLower)) {
+      return 90
+    }
+    return 90
+  }
+  if (step.category === 'dinner') {
+    if (/omakase|tasting menu|prix fixe|fine dining|michelin/i.test(nameLower)) return 120
+    if (allTags.some(t => ['cafe', 'bakery', 'fast_food', 'meal_takeaway'].includes(t)) ||
+        /coffee|cafe|bakery|taco|pizza|burger|pho|ramen|noodle|sandwich|deli|food truck|food hall/i.test(nameLower)) return 45
+    return 75
+  }
+  if (step.category === 'drinks') {
+    if (/speakeasy|cocktail lounge|wine bar|tasting/i.test(nameLower)) return 75
+    return 60
+  }
+  return 75
 }
 
 // Calculate travel time between two coordinates
@@ -786,18 +822,62 @@ function StepCard({
                 </div>
               )}
 
-              {/* Reservation Badge + Links */}
+              {/* Reservation Badge + Booking Links */}
               {step.reservationRecommended && <ReservationBadge />}
-              {step.reservationLinks && step.reservationLinks.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {step.reservationLinks.filter(l => l.platform !== 'Google Maps').slice(0, 3).map((link, i) => (
-                    <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
-                      className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors">
-                      {link.platform}
-                    </a>
-                  ))}
-                </div>
-              )}
+              {step.reservationLinks && step.reservationLinks.length > 0 && (() => {
+                const bookingLinks = step.reservationLinks!.filter(l => l.platform !== 'Google Maps' && l.platform !== 'Website')
+                const websiteLink = step.reservationLinks!.find(l => l.platform === 'Website')
+                const primaryLink = bookingLinks[0]
+                const secondaryLinks = bookingLinks.slice(1)
+                const isActivity = step.category === 'activity'
+                const isRestaurant = step.category === 'dinner'
+
+                // Determine primary button label and style
+                const primaryLabel = isActivity ? 'Book Activity' : isRestaurant ? 'Make Reservation' : 'View Menu & Book'
+                const primaryIcon = isActivity ? <Ticket className="w-3 h-3" /> : <CalendarCheck className="w-3 h-3" />
+                const primaryColor = isActivity
+                  ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                  : 'bg-violet-500 text-white hover:bg-violet-600'
+
+                return (
+                  <div className="space-y-2">
+                    {/* Primary booking action */}
+                    {primaryLink && (
+                      <a href={primaryLink.url} target="_blank" rel="noopener noreferrer"
+                        className={`inline-flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-md font-medium transition-colors ${primaryColor}`}>
+                        {primaryIcon}
+                        {primaryLabel}
+                      </a>
+                    )}
+                    {/* Secondary platform links */}
+                    {secondaryLinks.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {secondaryLinks.slice(0, 3).map((link, i) => (
+                          <a key={i} href={link.url} target="_blank" rel="noopener noreferrer"
+                            className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium hover:bg-primary/20 transition-colors">
+                            {link.platform}
+                          </a>
+                        ))}
+                        {/* Venue website fallback */}
+                        {websiteLink && (
+                          <a href={websiteLink.url} target="_blank" rel="noopener noreferrer"
+                            className="text-[10px] px-2 py-0.5 rounded-md bg-muted/80 text-muted-foreground font-medium hover:text-foreground transition-colors">
+                            Website
+                          </a>
+                        )}
+                      </div>
+                    )}
+                    {/* If no secondary links but has website */}
+                    {secondaryLinks.length === 0 && websiteLink && !primaryLink && (
+                      <a href={websiteLink.url} target="_blank" rel="noopener noreferrer"
+                        className={`inline-flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-md font-medium transition-colors ${primaryColor}`}>
+                        {primaryIcon}
+                        {primaryLabel}
+                      </a>
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Social Media */}
               {step.socialMedia && step.socialMedia.length > 0 && (
@@ -1121,12 +1201,13 @@ function generateCalendarEvents(steps: Step[], date: Date, travelTimes: any[], s
   currentTime.setHours(hours, minutes || 0, 0, 0)
 
   steps.forEach((step, index) => {
-    const eventDescription = `Date night stop ${index + 1}. ${step.description}${notes ? '\n\n' + notes : ''}`
-    
+    const duration = getActivityDuration(step)
+    const eventDescription = `Date night stop ${index + 1} (~${duration} min). ${step.description}${notes ? '\n\n' + notes : ''}`
+
     const event = {
       title: `${step.label}: ${step.place}`,
       start: new Date(currentTime),
-      end: new Date(currentTime.getTime() + 90 * 60 * 1000), // 1.5 hours per venue
+      end: new Date(currentTime.getTime() + duration * 60 * 1000),
       location: step.address,
       description: eventDescription,
       category: step.category,
@@ -1134,11 +1215,11 @@ function generateCalendarEvents(steps: Step[], date: Date, travelTimes: any[], s
     }
     events.push(event)
 
-    // Add travel time to next venue
+    // Add venue duration + travel time to next venue
     if (index < steps.length - 1 && includeTravelTime && travelTimes[index]) {
-      currentTime = new Date(currentTime.getTime() + (90 + travelTimes[index]) * 60 * 1000)
+      currentTime = new Date(currentTime.getTime() + (duration + travelTimes[index]) * 60 * 1000)
     } else {
-      currentTime = new Date(currentTime.getTime() + 90 * 60 * 1000)
+      currentTime = new Date(currentTime.getTime() + duration * 60 * 1000)
     }
   })
 
@@ -1731,19 +1812,46 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       pricingFetchedRef.current = false
     }
 
-    // Time slots assigned SEQUENTIALLY by step position (stop 1 = earliest, stop 3 = latest)
-    // Each stop gets ~90 min + travel time between them
-    const sequentialSlots: Record<string, string[]> = {
-      early: ["5:00 PM", "6:45 PM", "8:30 PM"],
-      prime: ["6:30 PM", "8:15 PM", "10:00 PM"],
-      late:  ["8:30 PM", "10:15 PM", "11:45 PM"]
+    // Dynamic time slots — each venue gets a realistic duration, then travel time is added
+    const startTimes: Record<string, string> = {
+      early: "5:00 PM",
+      prime: "6:30 PM",
+      late:  "8:30 PM"
     }
     const timePref = searchCriteria?.time || 'prime'
-    const orderedSlots = sequentialSlots[timePref] || sequentialSlots.prime
+    const firstStartTime = startTimes[timePref] || startTimes.prime
+
+    // Build time slots dynamically based on each venue's estimated duration + travel gap
+    const dynamicSlots: string[] = []
+    let runningTime = (() => {
+      const [time, period] = firstStartTime.split(' ')
+      let [h, m] = time.split(':').map(Number)
+      if (period === 'PM' && h !== 12) h += 12
+      if (period === 'AM' && h === 12) h = 0
+      return h * 60 + m // total minutes from midnight
+    })()
+
+    for (let i = 0; i < venues.length; i++) {
+      const hrs = Math.floor(runningTime / 60) % 24
+      const mins = runningTime % 60
+      const period = hrs >= 12 ? 'PM' : 'AM'
+      const displayHrs = hrs > 12 ? hrs - 12 : hrs === 0 ? 12 : hrs
+      dynamicSlots.push(`${displayHrs}:${mins.toString().padStart(2, '0')} ${period}`)
+
+      // Add this venue's duration + a default 15 min travel buffer for slot calculation
+      // (actual travel times get refined later via Google Maps API)
+      const venueDuration = getActivityDuration({
+        category: venues[i].category,
+        tags: venues[i].tags || [],
+        place: venues[i].name,
+        pricing: venues[i].pricing,
+        duration: venues[i].duration
+      })
+      runningTime += venueDuration + 15 // venue duration + travel buffer
+    }
 
     const convertedSteps: Step[] = venues.map((venue, index) => {
-      // Assign time by step position — stop 1 always earliest, stop 3 always latest
-      const assignedTime = orderedSlots[Math.min(index, orderedSlots.length - 1)]
+      const assignedTime = dynamicSlots[index] || dynamicSlots[dynamicSlots.length - 1]
 
       const step = {
         id: index + 1,
@@ -1770,6 +1878,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         tags: venue.tags || [],
         coordinates: venue.coordinates || { lat: 0, lng: 0 },
         pricing: venue.pricing,
+        duration: venue.duration || venue.pricing?.duration,
         reservationRecommended:
           venue.reservable ||
           venue.category === "dinner" && (venue.priceRange === "$$$" || venue.priceRange === "$$$$") ||
@@ -1838,7 +1947,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             category: v.category,
             description: v.description,
             address: v.address,
-            priceRange: v.priceRange
+            priceRange: v.priceRange,
+            tags: v.tags || []
           }))
         })
       })
@@ -1853,11 +1963,31 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             }
             return v
           })
-          // Update steps with new pricing data
+          // Update steps with new pricing data and recalculate times with real durations
           const updatedSteps = stepsWithTravel.map((step, i) => ({
             ...step,
-            pricing: updatedVenues[i]?.pricing || step.pricing
+            pricing: updatedVenues[i]?.pricing || step.pricing,
+            duration: updatedVenues[i]?.pricing?.duration || step.duration
           }))
+          // Recalculate time slots now that we have real duration data
+          const firstStart = startTimes[timePref] || startTimes.prime
+          let recalcTime = (() => {
+            const [t, p] = firstStart.split(' ')
+            let [hh, mm] = t.split(':').map(Number)
+            if (p === 'PM' && hh !== 12) hh += 12
+            if (p === 'AM' && hh === 12) hh = 0
+            return hh * 60 + mm
+          })()
+          for (let i = 0; i < updatedSteps.length; i++) {
+            const hrs = Math.floor(recalcTime / 60) % 24
+            const mins = recalcTime % 60
+            const period = hrs >= 12 ? 'PM' : 'AM'
+            const displayHrs = hrs > 12 ? hrs - 12 : hrs === 0 ? 12 : hrs
+            updatedSteps[i] = { ...updatedSteps[i], time: `${displayHrs}:${mins.toString().padStart(2, '0')} ${period}` }
+            const dur = getActivityDuration(updatedSteps[i])
+            const travel = updatedSteps[i].travelTimeToNext || 15
+            recalcTime += dur + (i < updatedSteps.length - 1 ? travel : 0)
+          }
           setSteps(updatedSteps)
           // Propagate updated venues to parent
           if (onVenuesUpdate) {

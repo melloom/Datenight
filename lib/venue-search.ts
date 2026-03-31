@@ -64,6 +64,7 @@ export interface Venue {
   yelpRating?: number
   combinedRating?: number // weighted avg of Google + Yelp
   seasonalFit?: number // 0-1 score for current season/weather
+  duration?: number // estimated visit duration in minutes (scraped or estimated)
   // Event-specific fields (for Ticketmaster events)
   eventId?: string
   eventDate?: string
@@ -82,6 +83,7 @@ export interface VenuePricing {
   packages?: PricingPackage[]
   minimumSpend?: number
   currency?: string
+  duration?: number // estimated visit duration in minutes
   source?: string
   lastUpdated?: string
 }

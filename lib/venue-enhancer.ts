@@ -241,17 +241,71 @@ export function calculateSeasonalFit(venue: Venue, criteria: SearchCriteria): nu
 
 // ─── #9: Reservation link generation ────────────────────────────────────────
 
+// Known activity chains with direct booking URLs
+const KNOWN_ACTIVITY_CHAINS: Record<string, string> = {
+  'topgolf': 'https://topgolf.com/us/book/',
+  'top golf': 'https://topgolf.com/us/book/',
+  'main event': 'https://www.mainevent.com/book-an-event',
+  "dave & buster's": 'https://www.daveandbusters.com/reservations',
+  "dave and buster's": 'https://www.daveandbusters.com/reservations',
+  'bowlero': 'https://www.bowlero.com/reservations',
+  'amf': 'https://www.amf.com/reservations',
+  'ifly': 'https://www.iflyworld.com/book/',
+  'andretti': 'https://andrettikarting.com/book-now',
+  'k1 speed': 'https://www.k1speed.com/book-now.html',
+  'pinstripes': 'https://pinstripes.com/reservations/',
+  'punch bowl social': 'https://www.punchbowlsocial.com/reservations',
+  'escapology': 'https://www.escapology.com/en/book-now',
+  'breakout games': 'https://breakoutgames.com/book/',
+  'chicken n pickle': 'https://chickennpickle.com/reservations/',
+  'lucky strike': 'https://www.luckystrikesocial.com/book-an-event',
+  'splitsville': 'https://www.splitsvillelanes.com/reserve',
+  'the escape game': 'https://theescapegame.com/book/',
+  'urban air': 'https://www.urbanair.com/book-a-party',
+  'sky zone': 'https://www.skyzone.com/book',
+  'surge': 'https://surgetrampolinepark.com/book/',
+}
+
 export function generateReservationLinks(venue: Venue): { url: string; platform: string }[] {
   const links: { url: string; platform: string }[] = []
   const encodedName = encodeURIComponent(venue.name)
   const encodedAddr = encodeURIComponent(venue.address || '')
 
-  // Only suggest reservations for dinner/drinks venues
   if (venue.category === 'dinner' || venue.category === 'drinks') {
+    // Restaurant/bar reservation links
     links.push({ url: `https://www.opentable.com/s?term=${encodedName}&covers=2`, platform: 'OpenTable' })
     const citySlug = (venue.address || '').split(',').map(p => p.trim().toLowerCase().replace(/\s+/g, '-')).find(p => p.length > 2 && !/^\d/.test(p)) || 'ny'
     links.push({ url: `https://resy.com/cities/${citySlug}?query=${encodedName}`, platform: 'Resy' })
     links.push({ url: `https://www.yelp.com/search?find_desc=${encodedName}&find_loc=${encodedAddr}`, platform: 'Yelp' })
+  } else if (venue.category === 'activity') {
+    // Check for known activity chains first
+    const nameLower = venue.name.toLowerCase()
+    let chainUrl: string | null = null
+    for (const [chain, url] of Object.entries(KNOWN_ACTIVITY_CHAINS)) {
+      if (nameLower.includes(chain)) {
+        chainUrl = url
+        links.push({ url, platform: 'Book Activity' })
+        break
+      }
+    }
+
+    // Venue website as primary booking link (if not already a chain link)
+    if (!chainUrl && venue.website) {
+      links.push({ url: venue.website, platform: 'Book Activity' })
+    }
+
+    // Eventbrite search for activities/entertainment
+    links.push({ url: `https://www.eventbrite.com/d/nearby/events/?q=${encodedName}`, platform: 'Eventbrite' })
+
+    // Google search for booking as fallback
+    if (!chainUrl && !venue.website) {
+      links.push({ url: `https://www.google.com/search?q=${encodedName}+book+tickets`, platform: 'Find Tickets' })
+    }
+  }
+
+  // Venue website for all categories (if not already added as primary)
+  if (venue.website && venue.category !== 'activity') {
+    links.push({ url: venue.website, platform: 'Website' })
   }
 
   // Google Maps link for all venues

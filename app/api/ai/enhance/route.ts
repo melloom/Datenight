@@ -305,12 +305,13 @@ Provide JSON:
       const generateEstimatePricing = (v: any) => {
         const multipliers: Record<string, number> = { '$': 0.7, '$$': 1.0, '$$$': 1.8, '$$$$': 3.0 }
         const mult = multipliers[v.priceRange] || 1.0
+        const duration = estimateVenueDuration(v.category || 'activity', v.tags || [], v.name || '')
         if (v.category === 'dinner') {
-          return { tickets: null, food: Math.round(25 * mult), drinks: Math.round(10 * mult), activities: null, packages: [], source: 'estimate' }
+          return { tickets: null, food: Math.round(25 * mult), drinks: Math.round(10 * mult), activities: null, packages: [], duration, source: 'estimate' }
         } else if (v.category === 'drinks') {
-          return { tickets: null, food: Math.round(10 * mult), drinks: Math.round(12 * mult), activities: null, packages: [], source: 'estimate' }
+          return { tickets: null, food: Math.round(10 * mult), drinks: Math.round(12 * mult), activities: null, packages: [], duration, source: 'estimate' }
         } else {
-          return { tickets: Math.round(20 * mult), food: Math.round(8 * mult), drinks: Math.round(6 * mult), activities: Math.round(15 * mult), packages: [], source: 'estimate' }
+          return { tickets: Math.round(20 * mult), food: Math.round(8 * mult), drinks: Math.round(6 * mult), activities: Math.round(15 * mult), packages: [], duration, source: 'estimate' }
         }
       }
 
@@ -324,7 +325,7 @@ Provide JSON:
           if (v.placeId || (v.id && String(v.id).startsWith('google-'))) {
             const placeId = v.placeId || String(v.id).replace('google-', '')
             try {
-              const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=price_level,reviews&key=${GOOGLE_API_KEY}`
+              const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=price_level,reviews,website&key=${GOOGLE_API_KEY}`
               const controller = new AbortController()
               const timeoutId = setTimeout(() => controller.abort(), 3000) // 3s per venue
               const res = await fetch(detailsUrl, { signal: controller.signal })
@@ -353,12 +354,14 @@ Provide JSON:
                 const hasReal = avgSpend > 0
                 const mult = [0.6, 0.8, 1.0, 1.5, 2.5][priceLevel] || 1.0
 
+                const duration = estimateVenueDuration(v.category || 'activity', v.tags || [], v.name || '')
+                const venueWebsite = details.website || null
                 if (v.category === 'dinner') {
-                  return { food: hasReal ? avgSpend : Math.round(22 * mult), drinks: hasReal ? Math.round(avgSpend * 0.4) : Math.round(10 * mult), tickets: null, activities: null, packages: [], source: hasReal ? 'scraped' : 'estimate' }
+                  return { food: hasReal ? avgSpend : Math.round(22 * mult), drinks: hasReal ? Math.round(avgSpend * 0.4) : Math.round(10 * mult), tickets: null, activities: null, packages: [], duration, website: venueWebsite, source: hasReal ? 'scraped' : 'estimate' }
                 } else if (v.category === 'drinks') {
-                  return { drinks: hasReal ? avgSpend : Math.round(12 * mult), food: hasReal ? Math.round(avgSpend * 0.7) : Math.round(8 * mult), tickets: null, activities: null, packages: [], source: hasReal ? 'scraped' : 'estimate' }
+                  return { drinks: hasReal ? avgSpend : Math.round(12 * mult), food: hasReal ? Math.round(avgSpend * 0.7) : Math.round(8 * mult), tickets: null, activities: null, packages: [], duration, website: venueWebsite, source: hasReal ? 'scraped' : 'estimate' }
                 } else {
-                  return { tickets: hasReal ? avgSpend : Math.round(20 * mult), food: Math.round((hasReal ? avgSpend : 15) * 0.5), drinks: Math.round((hasReal ? avgSpend : 10) * 0.4), activities: hasReal ? Math.round(avgSpend * 0.6) : Math.round(15 * mult), packages: [], source: hasReal ? 'scraped' : 'estimate' }
+                  return { tickets: hasReal ? avgSpend : Math.round(20 * mult), food: Math.round((hasReal ? avgSpend : 15) * 0.5), drinks: Math.round((hasReal ? avgSpend : 10) * 0.4), activities: hasReal ? Math.round(avgSpend * 0.6) : Math.round(15 * mult), packages: [], duration, website: venueWebsite, source: hasReal ? 'scraped' : 'estimate' }
                 }
               }
             } catch { /* scrape failed, will try AI or estimate */ }
@@ -387,12 +390,20 @@ Provide JSON:
           `${idx + 1}. "${v.name}" (${v.category})${v.address ? ` at ${v.address}` : ''}${v.priceRange ? ` - Price range: ${v.priceRange}` : ''}`
         ).join('\n')
 
-        const prompt = `Estimate realistic per-person pricing for these venues in USD:
+        const prompt = `Estimate realistic per-person pricing and typical visit duration for these venues in USD. Also provide the most likely direct booking/reservation URL for each venue.
 
 ${venueDescriptions}
 
+For duration: estimate how long a typical visit lasts in minutes. Consider:
+- Fine dining: 90-120 min, casual dining: 45-75 min
+- Cocktail bars/speakeasies: 60-75 min, regular bars: 45-60 min
+- Activities like bowling/TopGolf/escape rooms: 90-120 min
+- Shows/concerts: 90-120 min, karaoke: 60-90 min
+
+For bookingUrl: provide the most likely direct booking/reservation page URL. For restaurants, use their OpenTable or Resy page if known. For activities/entertainment, use their official booking page. If unknown, use null.
+
 Return JSON array (same order):
-[{"tickets": number|null, "food": number|null, "drinks": number|null, "activities": number|null, "packages": [], "source": "AI estimate"}]`
+[{"tickets": number|null, "food": number|null, "drinks": number|null, "activities": number|null, "packages": [], "duration": number, "bookingUrl": string|null, "source": "AI estimate"}]`
 
         try {
           const result = await model.generateContent(prompt)
@@ -502,6 +513,41 @@ Return JSON array (same order):
       return 'activity'
     }
 
+    // Estimate visit duration in minutes based on venue category, Google types, and name
+    function estimateVenueDuration(category: string, types: string[], name: string): number {
+      const nameLower = name.toLowerCase()
+
+      if (category === 'activity') {
+        // Long activities (2 hrs) — immersive / time-based experiences
+        if (types.some(t => ['bowling_alley', 'amusement_park', 'zoo', 'aquarium', 'museum', 'art_gallery', 'movie_theater', 'stadium', 'spa'].includes(t)) ||
+            /topgolf|top golf|bowling|arcade|go.?kart|laser.?tag|escape.?room|axe.?throw|paintball|trampoline|mini.?golf|putt.?putt|driving range|batting cage|roller.?skat|ice.?skat|rock.?climb|imax|theater|theatre|cinema|zoo|aquarium|museum|spa|massage/i.test(nameLower)) {
+          return 120
+        }
+        // Medium activities (90 min) — shows, games, tastings
+        if (types.some(t => ['park', 'tourist_attraction', 'casino'].includes(t)) ||
+            /karaoke|comedy|show|concert|live music|trivia|game|pool hall|billiards|darts|casino|wine tasting|brewery tour|distillery/i.test(nameLower)) {
+          return 90
+        }
+        return 90 // default activity
+      }
+
+      if (category === 'dinner') {
+        // Fine dining (2 hrs)
+        if (/omakase|tasting menu|prix fixe|fine dining|michelin/i.test(nameLower)) return 120
+        // Casual/fast (45 min)
+        if (types.some(t => ['cafe', 'bakery', 'fast_food', 'meal_takeaway'].includes(t)) ||
+            /coffee|cafe|bakery|taco|pizza|burger|pho|ramen|noodle|sandwich|deli|food truck|food hall/i.test(nameLower)) return 45
+        return 75 // standard sit-down restaurant
+      }
+
+      if (category === 'drinks') {
+        if (/speakeasy|cocktail lounge|wine bar|tasting/i.test(nameLower)) return 75
+        return 60 // standard bar
+      }
+
+      return 75 // fallback
+    }
+
     function convertPriceLevel(level?: number): string {
       return ['$', '$$', '$$$', '$$$$'][((level || 2) - 1)] || '$$'
     }
@@ -510,13 +556,16 @@ Return JSON array (same order):
       const d = details || {}
       const types = place.types || d.types || []
       const photos = d.photos || place.photos || []
+      const venueName = d.name || place.name
+      const cat = forcedCategory || categorizePlace(types)
       return {
         id: `google-${place.place_id}`,
-        name: d.name || place.name,
-        category: forcedCategory || categorizePlace(types),
+        name: venueName,
+        category: cat,
         rating: d.rating || place.rating || 4.0,
         reviewCount: d.user_ratings_total || place.user_ratings_total || 0,
         priceRange: convertPriceLevel(d.price_level || place.price_level),
+        duration: estimateVenueDuration(cat, types, venueName),
         address: place.formatted_address || d.formatted_address || '',
         phone: d.formatted_phone_number || '',
         website: d.website || '',
