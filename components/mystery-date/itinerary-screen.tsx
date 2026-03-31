@@ -1221,28 +1221,15 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [isGeneratingAlternative, setIsGeneratingAlternative] = useState(false)
   const { signOut } = useAuth()
 
-  // Scroll to center modal when it opens
-  const scrollToModal = () => {
-    // Remove delay completely for instant response
-    const modal = document.querySelector('.fixed.inset-0.bg-black\\/50')
-    if (modal) {
-      // Get modal's position and size
-      const rect = modal.getBoundingClientRect()
-      const modalHeight = rect.height
-      const viewportHeight = window.innerHeight
-      
-      // Calculate scroll position to center modal
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-      const modalTop = rect.top + scrollTop
-      const desiredScrollTop = modalTop - (viewportHeight - modalHeight) / 2
-      
-      // Use instant scroll with no animation
-      window.scrollTo(0, Math.max(0, desiredScrollTop))
-    } else {
-      // Fallback to top if modal not found
-      window.scrollTo(0, 0)
+  // Scroll to top when any modal opens
+  useEffect(() => {
+    if (showHistory || showSpecialOccasions || showCalendarDialog || showBudgetCalculator) {
+      // Small delay to ensure modal is rendered
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }, 50)
     }
-  }
+  }, [showHistory, showSpecialOccasions, showCalendarDialog, showBudgetCalculator])
 
   // Load history from localStorage on mount
   useEffect(() => {
@@ -1863,7 +1850,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             <button
               onClick={() => {
                 setShowHistory(true)
-                scrollToModal()
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-600 text-xs font-medium hover:bg-amber-500/15 transition-all"
             >
@@ -1873,7 +1859,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             <button
               onClick={() => {
                 setShowSpecialOccasions(true)
-                scrollToModal()
               }}
               disabled={steps.length === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-600 text-xs font-medium hover:bg-purple-500/15 transition-all disabled:opacity-40"
@@ -1884,7 +1869,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             <button
               onClick={() => {
                 setShowCalendarDialog(true)
-                scrollToModal()
               }}
               disabled={steps.length === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 text-xs font-medium hover:bg-blue-500/15 transition-all disabled:opacity-40"
@@ -1895,7 +1879,6 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             <button
               onClick={() => {
                 setShowBudgetCalculator(true)
-                scrollToModal()
               }}
               disabled={steps.length === 0}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-600 text-xs font-medium hover:bg-green-500/15 transition-all disabled:opacity-40"
