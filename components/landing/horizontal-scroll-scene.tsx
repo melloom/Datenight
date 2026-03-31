@@ -6,73 +6,73 @@ import Image from "next/image"
 const experiences = [
   {
     id: 1,
-    title: "The Olive Branch",
-    category: "Italian Restaurant",
+    title: "Upscale Dining",
+    category: "Fine Restaurant",
     image: "/images/experience-1.jpg",
-    description: "Cozy trattoria with handmade pasta and wine pairings"
+    description: "Sleek modern restaurant with elegant ambiance and curated wine selections"
   },
   {
     id: 2,
-    title: "Blue Note Jazz",
-    category: "Live Music Venue",
+    title: "DJ Night Out",
+    category: "Nightlife",
     image: "/images/experience-2.jpg",
-    description: "Intimate jazz club with craft cocktails and soulful performances"
+    description: "Neon-lit dance floor with live DJs spinning beats all night long"
   },
   {
     id: 3,
-    title: "Sunset Kayaking",
-    category: "Outdoor Activity",
+    title: "Couples Cooking",
+    category: "Interactive Class",
     image: "/images/experience-3.jpg",
-    description: "Paddle through calm waters as the sun sets over the horizon"
+    description: "Cook a delicious meal together and bond over new recipes"
   },
   {
     id: 4,
-    title: "Art Gallery Walk",
-    category: "Cultural Experience",
+    title: "Lakeside Retreat",
+    category: "Scenic Getaway",
     image: "/images/experience-4.jpg",
-    description: "Explore local galleries and discover emerging artists together"
+    description: "Escape to a peaceful mountain lake and take in breathtaking views"
   },
   {
     id: 5,
-    title: "Brewery Tour",
+    title: "Cozy Café Date",
     category: "Food & Drink",
     image: "/images/experience-5.jpg",
-    description: "Sample craft beers and learn about local brewing traditions"
+    description: "Charming bistro with warm lighting, fresh flowers, and great conversation"
   },
   {
     id: 6,
-    title: "Rooftop Cinema",
-    category: "Entertainment",
+    title: "Craft Cocktails",
+    category: "Speakeasy Bar",
     image: "/images/experience-6.jpg",
-    description: "Classic movies under the stars with skyline views"
+    description: "Artisan cocktails with hand-garnished touches at an intimate bar"
   },
   {
     id: 7,
-    title: "Farmers Market",
-    category: "Weekend Activity",
+    title: "Wine Tasting",
+    category: "Food & Drink",
     image: "/images/experience-7.jpg",
-    description: "Browse local produce and enjoy fresh street food together"
+    description: "Raise a glass and sample fine wines together on a sunny afternoon"
   },
   {
     id: 8,
-    title: "Beach Bonfire",
+    title: "Sunset Beach Walk",
     category: "Outdoor Experience",
     image: "/images/experience-8.jpg",
-    description: "Cozy fireside evening with waves and starry skies"
+    description: "Stroll along the shore as golden light meets turquoise waves"
   },
   {
     id: 9,
-    title: "Comedy Club",
-    category: "Nightlife",
+    title: "Live Concert",
+    category: "Entertainment",
     image: "/images/experience-9.jpg",
-    description: "Laugh together at stand-up shows and open mic nights"
+    description: "Feel the energy of a live show with dazzling lights and roaring crowds"
   },
   {
     id: 10,
-    title: "Couples Cooking",
-    category: "Interactive Class",
+    title: "Couples Spa",
+    category: "Relaxation",
     image: "/images/experience-10.jpg",
-    description: "Learn to make sushi or pasta in a hands-on cooking class"
+    description: "Unwind with a soothing massage and aromatherapy side by side"
   }
 ]
 
