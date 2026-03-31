@@ -163,17 +163,17 @@ export function HorizontalScrollScene() {
   return (
     <section 
       ref={sectionRef}
-      className="relative h-[600vh]"
+      className="relative h-[500vh] md:h-[600vh]"
     >
       <div className="sticky top-0 min-h-screen flex flex-col justify-center overflow-hidden">
         {/* Section header */}
-        <div className="px-6 md:px-12 mb-6 shrink-0">
-          <div className="flex items-center gap-4 mb-4">
+        <div className="px-4 md:px-12 mb-4 md:mb-6 shrink-0">
+          <div className="flex items-center gap-3 md:gap-4 mb-3 md:mb-4">
             <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">02</span>
-            <div className="w-16 h-px bg-border" />
+            <div className="w-10 md:w-16 h-px bg-border" />
             <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Experiences</span>
           </div>
-          <h2 className="font-serif text-2xl md:text-4xl lg:text-5xl leading-tight">
+          <h2 className="font-serif text-xl md:text-4xl lg:text-5xl leading-tight">
             Every date, a <span className="text-primary">masterpiece</span>
           </h2>
         </div>
@@ -181,11 +181,11 @@ export function HorizontalScrollScene() {
         {/* Horizontal scroll container */}
         <div 
           ref={containerRef}
-          className="flex py-6 items-center shrink-0"
+          className="flex py-4 md:py-6 items-center shrink-0"
           style={{
             gap: "4vw",
-            paddingLeft: "15vw",
-            paddingRight: "15vw",
+            paddingLeft: "7vw",
+            paddingRight: "7vw",
             transform: `translate3d(${displayX}px, 0, 0)`,
             willChange: "transform",
           }}
@@ -195,9 +195,9 @@ export function HorizontalScrollScene() {
               <div 
                 key={exp.id}
                 className="shrink-0 group"
-                style={{ width: "70vw", maxWidth: "900px" }}
+                style={{ width: "min(85vw, 900px)" }}
               >
-                <div className="relative aspect-[16/9] overflow-hidden bg-muted rounded-2xl shadow-lg">
+                <div className="relative aspect-video overflow-hidden bg-muted rounded-2xl shadow-lg">
                   <Image
                     src={exp.image}
                     alt={exp.title}
@@ -205,21 +205,21 @@ export function HorizontalScrollScene() {
                     className="object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                   {/* Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/10 to-transparent" />
                   
                   {/* Content */}
-                  <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
-                    <span className="text-xs uppercase tracking-[0.3em] text-primary mb-2 block">
+                  <div className="absolute bottom-0 left-0 right-0 p-4 md:p-8">
+                    <span className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-primary mb-1 md:mb-2 block">
                       {exp.category}
                     </span>
-                    <h3 className="font-serif text-2xl md:text-4xl mb-2 text-white">{exp.title}</h3>
-                    <p className="text-white/70 text-sm md:text-base max-w-xs">
+                    <h3 className="font-serif text-lg md:text-4xl mb-1 md:mb-2 text-white">{exp.title}</h3>
+                    <p className="text-white/70 text-xs md:text-base max-w-xs">
                       {exp.description}
                     </p>
                   </div>
 
                   {/* Index */}
-                  <span className="absolute top-6 right-6 font-serif text-6xl md:text-8xl text-white/10">
+                  <span className="absolute top-3 right-3 md:top-6 md:right-6 font-serif text-4xl md:text-8xl text-white/10">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                 </div>
@@ -229,7 +229,7 @@ export function HorizontalScrollScene() {
         </div>
 
         {/* Progress indicator */}
-        <div className="px-6 md:px-12 mt-6 flex items-center gap-4 shrink-0 pb-4">
+        <div className="px-4 md:px-12 mt-4 md:mt-6 flex items-center gap-3 md:gap-4 shrink-0 pb-4">
           {/* Continuous progress bar */}
           <div className="flex-1 h-1 bg-border rounded-full overflow-hidden">
             <div 
