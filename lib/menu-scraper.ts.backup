@@ -1,0 +1,296 @@
+// Menu scraping utilities for real pricing data
+import axios from 'axios'
+import * as cheerio from 'cheerio'
+import puppeteer from 'puppeteer'
+
+export interface MenuItem {
+  name: string
+  price: number
+  category?: string
+  description?: string
+}
+
+export interface MenuData {
+  items: MenuItem[]
+  averagePrices: {
+    appetizers?: number
+    entrees?: number
+    drinks?: number
+    desserts?: number
+  }
+  currency: string
+  source: string
+  lastUpdated: string
+}
+
+// Yelp Fusion API integration
+export async function scrapeYelpMenu(businessId: string, apiKey: string): Promise<MenuData | null> {
+  try {
+    const response = await axios.get(`https://api.yelp.com/v3/businesses/${businessId}`, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    const business = response.data
+
+    // Check if business has menu data
+    if (!business.attributes?.menu_url) {
+      return null
+    }
+
+    // Scrape the menu URL
+    const menuUrl = business.attributes.menu_url
+    return await scrapeWebsiteMenu(menuUrl, 'yelp')
+
+  } catch (error) {
+    console.error('Yelp API error:', error)
+    return null
+  }
+}
+
+// Direct website menu scraping
+export async function scrapeWebsiteMenu(url: string, source: string = 'website'): Promise<MenuData | null> {
+  let browser
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    })
+
+    const page = await browser.newPage()
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 })
+
+    // Wait for menu content to load
+    await new Promise(resolve => setTimeout(resolve, 2000))
+
+    const content = await page.content()
+    const $ = cheerio.load(content)
+
+    const menuItems: MenuItem[] = []
+
+    // Common menu selectors - try multiple patterns
+    const selectors = [
+      // Square menu patterns
+      '.menu-item',
+      '.menu-item-name',
+      '.item-name',
+      '.dish-name',
+      // Generic menu patterns
+      '[data-price]',
+      '.price',
+      '.menu-price',
+      // Restaurant-specific patterns
+      '.entree',
+      '.appetizer',
+      '.drink',
+      '.cocktail'
+    ]
+
+    for (const selector of selectors) {
+      $(selector).each((_, element) => {
+        const $el = $(element)
+
+        // Extract name
+        const name = $el.find('.name, .title, .item-name, .dish-name').first().text().trim() ||
+                    $el.text().split('$')[0].trim()
+
+        // Extract price
+        const priceText = $el.find('.price, .cost, [data-price]').first().text().trim() ||
+                         $el.text().match(/\$[\d.]+/)?.[0] ||
+                         $el.attr('data-price')
+
+        if (name && priceText) {
+          const price = parseFloat(priceText.replace('$', '').replace(',', ''))
+          if (!isNaN(price) && price > 0) {
+            menuItems.push({
+              name,
+              price,
+              category: extractCategory($el, $)
+            })
+          }
+        }
+      })
+
+      // If we found items, break
+      if (menuItems.length > 0) break
+    }
+
+    // Calculate averages by category
+    const categories = {
+      appetizers: menuItems.filter(item =>
+        /appetizer|starter|small plate|share/i.test(item.category || item.name)
+      ),
+      entrees: menuItems.filter(item =>
+        /entree|main|dish|plate|pasta|steak|chicken|fish|salad/i.test(item.category || item.name) &&
+        !/appetizer|starter|small|share|dessert/i.test(item.category || item.name)
+      ),
+      drinks: menuItems.filter(item =>
+        /drink|cocktail|wine|beer|spirit|coffee|tea|juice/i.test(item.category || item.name)
+      ),
+      desserts: menuItems.filter(item =>
+        /dessert|cake|pie|ice cream|sweet/i.test(item.category || item.name)
+      )
+    }
+
+    const averagePrices = {
+      appetizers: categories.appetizers.length > 0
+        ? Math.round(categories.appetizers.reduce((sum, item) => sum + item.price, 0) / categories.appetizers.length)
+        : undefined,
+      entrees: categories.entrees.length > 0
+        ? Math.round(categories.entrees.reduce((sum, item) => sum + item.price, 0) / categories.entrees.length)
+        : undefined,
+      drinks: categories.drinks.length > 0
+        ? Math.round(categories.drinks.reduce((sum, item) => sum + item.price, 0) / categories.drinks.length)
+        : undefined,
+      desserts: categories.desserts.length > 0
+        ? Math.round(categories.desserts.reduce((sum, item) => sum + item.price, 0) / categories.desserts.length)
+        : undefined
+    }
+
+    return {
+      items: menuItems.slice(0, 50), // Limit to 50 items
+      averagePrices,
+      currency: 'USD',
+      source,
+      lastUpdated: new Date().toISOString()
+    }
+
+  } catch (error) {
+    console.error('Website scraping error:', error)
+    return null
+  } finally {
+    if (browser) {
+      await browser.close()
+    }
+  }
+}
+
+// Square API integration
+export async function scrapeSquareMenu(locationId: string, accessToken: string): Promise<MenuData | null> {
+  try {
+    // Get catalog items from Square
+    const response = await axios.get(`https://connect.squareup.com/v2/catalog/list`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Square-Version': '2024-01-18'
+      },
+      params: {
+        types: 'ITEM'
+      }
+    })
+
+    const items = response.data.objects || []
+    const menuItems: MenuItem[] = []
+
+    for (const item of items) {
+      if (item.type === 'ITEM' && item.item_data) {
+        const itemData = item.item_data
+
+        // Get variations (different sizes/prices)
+        const variations = itemData.variations || []
+
+        for (const variation of variations) {
+          if (variation.item_variation_data) {
+            const variationData = variation.item_variation_data
+            const price = variationData.price_money?.amount
+              ? variationData.price_money.amount / 100 // Convert cents to dollars
+              : null
+
+            if (price && price > 0) {
+              menuItems.push({
+                name: `${itemData.name}${variationData.name ? ` (${variationData.name})` : ''}`,
+                price,
+                category: itemData.category_id || 'General',
+                description: itemData.description
+              })
+            }
+          }
+        }
+      }
+    }
+
+    // Calculate averages
+    const averagePrices = {
+      appetizers: calculateAverage(menuItems.filter(item =>
+        /appetizer|starter|small|share|tapas/i.test(item.name.toLowerCase())
+      )),
+      entrees: calculateAverage(menuItems.filter(item =>
+        /entree|main|pasta|steak|chicken|fish|salad|burger/i.test(item.name.toLowerCase()) &&
+        !/appetizer|starter|small|share|dessert/i.test(item.name.toLowerCase())
+      )),
+      drinks: calculateAverage(menuItems.filter(item =>
+        /drink|cocktail|wine|beer|spirit|coffee|tea|juice|soda/i.test(item.name.toLowerCase())
+      )),
+      desserts: calculateAverage(menuItems.filter(item =>
+        /dessert|cake|pie|ice cream|sweet|cookie/i.test(item.name.toLowerCase())
+      ))
+    }
+
+    return {
+      items: menuItems.slice(0, 50),
+      averagePrices,
+      currency: 'USD',
+      source: 'square',
+      lastUpdated: new Date().toISOString()
+    }
+
+  } catch (error) {
+    console.error('Square API error:', error)
+    return null
+  }
+}
+
+// Helper functions
+function extractCategory($element: cheerio.Cheerio<any>, $: cheerio.CheerioAPI): string {
+  // Try to find category from parent elements
+  const categorySelectors = ['.menu-category', '.category', '.section', 'h2', 'h3', 'h4']
+  for (const selector of categorySelectors) {
+    const category = $element.closest(selector).text().trim() ||
+                    $element.prevAll(selector).first().text().trim()
+    if (category) return category
+  }
+  return 'General'
+}
+
+function calculateAverage(items: MenuItem[]): number | undefined {
+  if (items.length === 0) return undefined
+  const sum = items.reduce((total, item) => total + item.price, 0)
+  return Math.round(sum / items.length)
+}
+
+// Main menu scraping function that tries multiple sources
+export async function scrapeMenuData(venue: {
+  name: string
+  website?: string
+  yelpBusinessId?: string
+  squareLocationId?: string
+}): Promise<MenuData | null> {
+  const YELP_API_KEY = process.env.YELP_API_KEY
+  const SQUARE_ACCESS_TOKEN = process.env.SQUARE_ACCESS_TOKEN
+
+  // Try Square first (most accurate)
+  if (venue.squareLocationId && SQUARE_ACCESS_TOKEN) {
+    const squareData = await scrapeSquareMenu(venue.squareLocationId, SQUARE_ACCESS_TOKEN)
+    if (squareData) return squareData
+  }
+
+  // Try Yelp menu URL
+  if (venue.yelpBusinessId && YELP_API_KEY) {
+    const yelpData = await scrapeYelpMenu(venue.yelpBusinessId, YELP_API_KEY)
+    if (yelpData) return yelpData
+  }
+
+  // Try direct website scraping
+  if (venue.website) {
+    const websiteData = await scrapeWebsiteMenu(venue.website, 'website')
+    if (websiteData) return websiteData
+  }
+
+  return null
+}</content>
+<parameter name="filePath">/workspaces/Datenight/lib/menu-scraper.ts
