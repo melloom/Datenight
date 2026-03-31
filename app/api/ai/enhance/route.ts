@@ -668,7 +668,12 @@ Return JSON array (same order):
       if (aiModel) {
         try {
           const result = await aiModel.generateContent(
-            `Search the web for the best date night venues in ${location}. Find real, currently operating ${vibes} venues for budget ${budget}. Suggest 4 specific Google Maps search queries to find these real venues (1 bar, 1 restaurant, 1 activity). Include specific venue names or neighborhoods you find. Return JSON: {"queries": ["query1","query2","query3","query4"]}`
+            `Search the web for the best date night venues in ${location}. Find real, currently operating ${vibes} venues for budget ${budget}.
+
+IMPORTANT: All venues MUST be in the SAME neighborhood or area of ${location} so they are within walking distance or a very short drive of each other. Pick ONE specific neighborhood or district and find all venues there.
+
+Suggest 4 specific Google Maps search queries to find these real venues (1 bar, 1 restaurant, 1 activity) all in the same area. Include the specific neighborhood name in each query.
+Return JSON: {"queries": ["query1","query2","query3","query4"], "neighborhood": "name of area"}`
           )
           const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
           const parsed = JSON.parse(text)
@@ -677,6 +682,23 @@ Return JSON array (same order):
       }
 
       const venues = await findRealVenues(location, searchQueries, [], 3)
+
+      // Verify venues are close together, reorder if needed
+      if (venues.length >= 2) {
+        const travelData = await getDirectionsBetweenVenues(venues)
+        // Check if any pair is too far (>20 min drive)
+        let needsReorder = false
+        for (const key of Object.keys(travelData)) {
+          if (travelData[key].minutes > 20) needsReorder = true
+        }
+        if (needsReorder && venues.length >= 3) {
+          // Pick the tightest pair and find closest third
+          const reordered = selectClusteredVenues(venues, 3)
+          return NextResponse.json({ venues: reordered, travelTimes: travelData })
+        }
+        return NextResponse.json({ venues, travelTimes: travelData })
+      }
+
       return NextResponse.json({ venues })
     }
 
@@ -714,8 +736,18 @@ Return JSON array (same order):
       const { location, criteria, currentVenues, feedback } = body
       const vibes = criteria?.vibes?.join(' ') || 'romantic'
       const loc = location || criteria?.location || 'the city'
-      const excludeNames = (currentVenues || body.currentPlan || []).map((v: any) => v.name)
+      const currentPlanVenues = currentVenues || body.currentPlan || []
+      const excludeNames = currentPlanVenues.map((v: any) => v.name)
       const aiModel = groundedModel || model
+
+      // Get the center of current venues for neighborhood targeting
+      let neighborhoodHint = ''
+      const venuesWithCoords = currentPlanVenues.filter((v: any) => v.coordinates?.lat && v.coordinates?.lng)
+      if (venuesWithCoords.length > 0) {
+        const avgLat = venuesWithCoords.reduce((s: number, v: any) => s + v.coordinates.lat, 0) / venuesWithCoords.length
+        const avgLng = venuesWithCoords.reduce((s: number, v: any) => s + v.coordinates.lng, 0) / venuesWithCoords.length
+        neighborhoodHint = ` near coordinates ${avgLat.toFixed(4)},${avgLng.toFixed(4)}`
+      }
 
       // Use grounded AI to generate targeted search queries from user feedback
       let searchQueries = [
@@ -728,7 +760,11 @@ Return JSON array (same order):
         try {
           const userFeedback = feedback || 'I want better options'
           const result = await aiModel.generateContent(
-            `Search the web for date night venues in ${loc}. User feedback: "${userFeedback}". Vibes: ${vibes}, Budget: ${criteria?.budget || '$$'}. Current venues to avoid: ${excludeNames.join(', ') || 'none'}. Find real, currently operating replacements. Suggest 5 specific Google Maps search queries using real venue names or neighborhoods you found. Return JSON: {"queries": ["q1","q2","q3","q4","q5"]}`
+            `Search the web for date night venues in ${loc}${neighborhoodHint}. User feedback: "${userFeedback}". Vibes: ${vibes}, Budget: ${criteria?.budget || '$$'}. Current venues to avoid: ${excludeNames.join(', ') || 'none'}.
+
+IMPORTANT: All replacement venues MUST be in the SAME neighborhood or within a short drive of each other. Do NOT suggest venues far apart. Pick a specific area and find all venues there.
+
+Suggest 5 specific Google Maps search queries using real venue names or neighborhoods. Return JSON: {"queries": ["q1","q2","q3","q4","q5"]}`
           )
           const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
           const parsed = JSON.parse(text)
@@ -752,7 +788,13 @@ Return JSON array (same order):
         venues[2].category = 'activity'
       }
 
-      return NextResponse.json({ venues })
+      // Get real travel times for the improved plan
+      let travelTimes = {}
+      if (venues.length >= 2) {
+        travelTimes = await getDirectionsBetweenVenues(venues)
+      }
+
+      return NextResponse.json({ venues, travelTimes })
     } else if (action === 'swap-venue') {
       const { venue, criteria, currentPlan, swapCategory } = body
       const customReq = criteria?.customRequests || body.customRequests || ''
@@ -760,6 +802,15 @@ Return JSON array (same order):
       const vibes = criteria?.vibes?.join(' ') || 'romantic'
       const excludeNames = (currentPlan || []).map((v: any) => v.name)
       const aiModel = groundedModel || model
+
+      // Find the center of OTHER venues in the plan to search near them
+      const otherVenues = (currentPlan || []).filter((v: any) => v.name !== venue.name && v.coordinates?.lat && v.coordinates?.lng)
+      let searchLat = 0
+      let searchLng = 0
+      if (otherVenues.length > 0) {
+        searchLat = otherVenues.reduce((s: number, v: any) => s + v.coordinates.lat, 0) / otherVenues.length
+        searchLng = otherVenues.reduce((s: number, v: any) => s + v.coordinates.lng, 0) / otherVenues.length
+      }
 
       const typeMap: Record<string, string> = { dinner: 'restaurant', drinks: 'bar cocktail lounge', activity: 'entertainment fun' }
       let searchQueries = [
@@ -770,8 +821,13 @@ Return JSON array (same order):
       // Use grounded AI to make smarter queries based on web search
       if (aiModel && (customReq || vibes)) {
         try {
+          const otherNames = otherVenues.map((v: any) => v.name).join(', ')
           const result = await aiModel.generateContent(
-            `Search the web for a replacement ${swapCategory} venue in ${loc} for a date night. Replacing "${venue.name}". User wants: "${customReq || 'something different'}". Vibes: ${vibes}, Budget: ${criteria?.budget || '$$'}. Find real, currently open venues. Suggest 3 Google Maps search queries using specific venue names you found. Return JSON: {"queries": ["q1","q2","q3"]}`
+            `Search the web for a replacement ${swapCategory} venue in ${loc} for a date night. Replacing "${venue.name}". User wants: "${customReq || 'something different'}". Vibes: ${vibes}, Budget: ${criteria?.budget || '$$'}.
+
+IMPORTANT: The replacement MUST be CLOSE to the other date venues${otherNames ? ': ' + otherNames : ''}. Find venues in the same neighborhood or within a short drive. Do NOT suggest venues far away.
+
+Suggest 3 Google Maps search queries using specific venue names. Return JSON: {"queries": ["q1","q2","q3"]}`
           )
           const text = result.response.text().replace(/```json\n?|\n?```/g, '').trim()
           const parsed = JSON.parse(text)
@@ -779,8 +835,51 @@ Return JSON array (same order):
         } catch { /* use defaults */ }
       }
 
-      const venues = await findRealVenues(loc, searchQueries, excludeNames, 1)
-      const newVenue = venues[0] || null
+      // If we know where the other venues are, search near them specifically
+      let foundVenues: any[]
+      if (searchLat && searchLng) {
+        const allPlaces: any[] = []
+        const seenIds = new Set<string>()
+        const searchResults = await Promise.all(
+          searchQueries.slice(0, 3).map(q => searchGooglePlaces(q, searchLat, searchLng, 8000))
+        )
+        for (const results of searchResults) {
+          for (const place of results) {
+            if (seenIds.has(place.place_id)) continue
+            if (excludeNames.some((n: string) => place.name.toLowerCase().includes(n.toLowerCase()))) continue
+            seenIds.add(place.place_id)
+            // Only keep venues within 8 miles of other plan venues
+            if (place.geometry?.location) {
+              const dist = haversineDistance({ lat: searchLat, lng: searchLng }, { lat: place.geometry.location.lat, lng: place.geometry.location.lng })
+              if (dist > 8) continue
+            }
+            allPlaces.push(place)
+          }
+        }
+        allPlaces.sort((a, b) => {
+          const scoreA = (a.rating || 0) * Math.log10((a.user_ratings_total || 1) + 1)
+          const scoreB = (b.rating || 0) * Math.log10((b.user_ratings_total || 1) + 1)
+          return scoreB - scoreA
+        })
+        const topPlaces = allPlaces.slice(0, 3)
+        foundVenues = await Promise.all(
+          topPlaces.map(async (place) => {
+            const details = await fetchPlaceDetails(place.place_id)
+            return placeToVenue(place, details)
+          })
+        )
+        // Sort by distance to other venues — closest first
+        foundVenues.sort((a, b) => {
+          const geo = { lat: searchLat, lng: searchLng }
+          const distA = a.coordinates ? haversineDistance(geo, a.coordinates) : 999
+          const distB = b.coordinates ? haversineDistance(geo, b.coordinates) : 999
+          return distA - distB
+        })
+      } else {
+        foundVenues = await findRealVenues(loc, searchQueries, excludeNames, 1)
+      }
+
+      const newVenue = foundVenues[0] || null
       if (newVenue) {
         newVenue.category = swapCategory
         // Add features/highlights from grounded AI

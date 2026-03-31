@@ -499,9 +499,9 @@ class VenueSearcher {
     let score = 0
     const reasons: string[] = []
 
-    // Budget matching (20% weight)
+    // Budget matching (15% weight)
     const budgetScore = this.calculateBudgetScore(venue, criteria.budget)
-    score += budgetScore * 0.20
+    score += budgetScore * 0.15
     if (budgetScore > 0.8) reasons.push('Great budget match')
 
     // Rating quality (15% weight) — use combined rating if available
@@ -510,19 +510,19 @@ class VenueSearcher {
     score += ratingScore * 0.15
     if (effectiveRating >= 4.5) reasons.push('Excellent rating')
 
-    // Vibe compatibility (20% weight) — use scraped vibeScore if available
+    // Vibe compatibility (15% weight) — use scraped vibeScore if available
     const vibeScore = venue.vibeScore ?? this.calculateVibeScore(venue, criteria.vibes)
-    score += vibeScore * 0.20
+    score += vibeScore * 0.15
     if (vibeScore > 0.8) reasons.push('Perfect vibe match')
 
-    // Custom preferences scoring (10% weight)
+    // Custom preferences scoring (5% weight)
     const customScore = this.calculateCustomPreferencesScore(venue, criteria)
-    score += customScore * 0.10
+    score += customScore * 0.05
     if (customScore > 0.8) reasons.push('Matches custom preferences')
 
-    // Category diversity (10% weight)
+    // Category diversity (5% weight)
     const categoryScore = this.getCategoryScore(venue.category)
-    score += categoryScore * 0.10
+    score += categoryScore * 0.05
 
     // Time compatibility (10% weight) — boost verified-open venues
     const timeScore = venue.isOpenAtPlannedTime === true ? 1.0
@@ -546,13 +546,14 @@ class VenueSearcher {
     score += seasonalScore * 0.05
     if (seasonalScore > 0.8) reasons.push('Perfect for the season')
 
-    // Travel time bonus (up to 0.15 points)
+    // Proximity bonus (20% weight) — heavily reward closer venues
     const travelBonus = this.calculateTravelBonus(venue, criteria.location)
-    score += travelBonus
-    if (travelBonus > 0.1) reasons.push('Great location')
+    score += travelBonus * 1.35 // Amplify: max 0.15 * 1.35 = ~0.20
+    if (travelBonus >= 0.12) reasons.push('Great location — very close')
+    else if (travelBonus >= 0.08) reasons.push('Good location')
 
-    // Random factor for variety (up to 0.1 points)
-    score += Math.random() * 0.1
+    // Random factor for variety (up to 0.05 points)
+    score += Math.random() * 0.05
 
     return score
   }
