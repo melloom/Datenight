@@ -237,3 +237,30 @@ input, textarea, [contenteditable] {
     font-size: 16px;
   }
 }
+
+/* PWA-specific checkbox fixes */
+@media (display-mode: standalone) {
+  [data-slot="checkbox"] {
+    border-radius: 50% !important;
+    border-radius: -webkit-calc(50%) !important;
+    -webkit-border-radius: 50% !important;
+    border-radius: 50% !important;
+  }
+  
+  [data-slot="checkbox-root"] {
+    border-radius: 50% !important;
+    -webkit-border-radius: 50% !important;
+  }
+}
+
+/* iOS PWA checkbox fixes */
+@media (display-mode: standalone) and (-webkit-touch-callout: none) {
+  [data-slot="checkbox"],
+  [data-slot="checkbox-root"] {
+    border-radius: 50% !important;
+    -webkit-border-radius: 50% !important;
+    border-radius: 50% !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+}
