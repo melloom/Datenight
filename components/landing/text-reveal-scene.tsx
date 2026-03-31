@@ -12,7 +12,7 @@ export function TextRevealScene() {
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-[80vh] md:min-h-screen flex items-center justify-center py-8 md:py-32 px-4"
+      className="relative min-h-[80vh] md:min-h-screen flex items-center justify-center py-8 md:py-16 px-4"
     >
       {/* Background accent line */}
       <div className="absolute left-0 top-1/2 w-full h-px bg-border" />

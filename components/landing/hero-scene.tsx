@@ -73,7 +73,7 @@ export function HeroScene({ scrollY }: HeroSceneProps) {
         style={{
           opacity,
           transform: `translateY(${translateY}px) scale(${scale})`,
-          paddingTop: 'calc(6rem + env(safe-area-inset-top))'
+          paddingTop: 'calc(4rem + env(safe-area-inset-top))'
         }}
       >
         {/* Eyebrow */}
