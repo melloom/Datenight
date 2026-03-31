@@ -107,6 +107,7 @@ interface SetupScreenProps {
 }
 
 export function SetupScreen({ onSubmit }: SetupScreenProps) {
+  const [isReady, setIsReady] = useState(false)
   const [budget, setBudget] = useState<Budget>("$$")
   const [location, setLocation] = useState("")
   const [vibes, setVibes] = useState<string[]>(["romantic"])
@@ -163,6 +164,11 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const locationDropdownRef = useRef<HTMLDivElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => setIsReady(true))
+    return () => window.cancelAnimationFrame(id)
+  }, [])
 
   // Load history from localStorage on mount
   useEffect(() => {
@@ -436,35 +442,51 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   }
 
   return (
-    <div className="flex flex-col min-h-svh bg-background relative">
+    <div className="relative min-h-svh overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-100">
       {/* Background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -right-32 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 w-72 h-72 bg-accent/8 rounded-full blur-3xl" />
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute -top-32 -right-20 h-80 w-80 rounded-full bg-amber-300/20 blur-3xl animate-float-slow" />
+        <div className="absolute top-1/4 -left-20 h-72 w-72 rounded-full bg-cyan-300/20 blur-3xl animate-float-slower" />
+        <div className="absolute -bottom-24 right-1/4 h-72 w-72 rounded-full bg-pink-300/15 blur-3xl animate-float-slow" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(100,116,139,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(100,116,139,0.06)_1px,transparent_1px)] bg-[size:30px_30px]" />
       </div>
 
-      <div className="relative z-10 flex flex-col px-5 md:px-12 pt-10 pb-6 flex-1 mx-auto w-full">
+      <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 pb-8 pt-8 sm:px-6 md:px-8 md:pt-12">
         {/* Header */}
-        <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="flex items-center justify-between w-full md:justify-center">
-            <div className="w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center md:mx-auto">
+        <div
+          className={`mb-8 rounded-3xl border border-white/70 bg-white/80 p-5 shadow-xl shadow-slate-200/50 backdrop-blur-sm transition-all duration-700 sm:p-6 ${
+            isReady ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
+          }`}
+          style={{ transitionDelay: "80ms" }}
+        >
+          <div className="flex items-center justify-between md:justify-center">
+            <div className="h-14 w-14 overflow-hidden rounded-2xl ring-4 ring-white flex items-center justify-center md:mx-auto">
               <Image src="/android-chrome-192x192.png" alt="Date Night" width={56} height={56} />
             </div>
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="md:hidden p-2 rounded-xl bg-card border border-border hover:bg-accent transition-colors"
+              className="md:hidden rounded-xl border border-slate-200 bg-white p-2.5 text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
               aria-label="Menu"
             >
               <Menu className="w-5 h-5" />
             </button>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Plan Your Night</h1>
-          <p className="text-muted-foreground text-sm text-center max-w-xs">Set your preferences and we'll curate the perfect evening</p>
+          <div className="mt-4 text-center">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Design Your Perfect Night Out</h1>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-slate-600 sm:text-base">
+              Pick the vibe, budget, and location. DateNight will build a polished plan with top matches and smooth timing.
+            </p>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">Smart local ranking</div>
+            <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-medium text-cyan-700">Curated multi-stop flow</div>
+            <div className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-medium text-violet-700">Built around your vibe</div>
+          </div>
         </div>
 
         {/* Mobile Menu */}
         {showMobileMenu && (
-          <div className="md:hidden mb-6 p-4 rounded-2xl bg-card border border-border space-y-4">
+          <div className="mb-6 space-y-4 rounded-2xl border border-white/70 bg-white/85 p-4 shadow-lg shadow-slate-200/50 backdrop-blur-sm md:hidden animate-slide-down-fade">
             {/* Budget in Mobile Menu */}
             <div>
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
@@ -476,10 +498,10 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                   <button
                     key={opt.value}
                     onClick={() => setBudget(opt.value)}
-                    className={`p-3 rounded-xl border transition-all ${
+                    className={`rounded-xl border p-3 transition-all ${
                       budget === opt.value
-                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                        : "bg-card border-border hover:border-primary/50"
+                        ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                        : "border-slate-200 bg-white hover:border-slate-400"
                     }`}
                   >
                     <div className="text-lg mb-0.5">{opt.emoji}</div>
@@ -497,7 +519,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                   handleSurpriseMe()
                   setShowMobileMenu(false)
                 }}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/30 text-primary text-xs font-medium hover:bg-primary/5 active:scale-[0.98] transition-all"
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-400/60 py-2.5 text-xs font-medium text-slate-700 transition-all active:scale-[0.98] hover:bg-slate-100"
               >
                 <Shuffle className="w-3.5 h-3.5" />
                 Surprise Me
@@ -508,7 +530,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                   setShowMobileMenu(false)
                   scrollToModal()
                 }}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-amber-500/30 text-amber-600 text-xs font-medium hover:bg-amber-500/5 active:scale-[0.98] transition-all"
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-dashed border-amber-400/60 py-2.5 text-xs font-medium text-amber-700 transition-all active:scale-[0.98] hover:bg-amber-50"
               >
                 <History className="w-3.5 h-3.5" />
                 History
@@ -518,7 +540,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
             <Link
               href="/plans"
               onClick={() => setShowMobileMenu(false)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-blue-500/30 text-blue-600 text-xs font-medium hover:bg-blue-500/5 active:scale-[0.98] transition-all"
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-cyan-400/70 py-2.5 text-xs font-medium text-cyan-700 transition-all active:scale-[0.98] hover:bg-cyan-50"
             >
               <CreditCard className="w-3.5 h-3.5" />
               Billing & Plans
@@ -527,52 +549,61 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
         )}
 
         {/* Randomize - Desktop Only */}
-        <button
-          onClick={handleSurpriseMe}
-          className="hidden md:flex mb-4 items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/30 text-primary text-xs font-medium hover:bg-primary/5 active:scale-[0.98] transition-all"
+        <div
+          className={`mb-6 hidden grid-cols-3 gap-3 transition-all duration-700 md:grid ${
+            isReady ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          }`}
+          style={{ transitionDelay: "140ms" }}
         >
-          <Shuffle className="w-3.5 h-3.5" />
-          Surprise Me
-        </button>
-
-        {/* History - Desktop Only */}
-        <button
-          onClick={() => {
-            setShowHistory(true)
-            scrollToModal()
-          }}
-          className="hidden md:flex mb-6 items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-amber-500/30 text-amber-600 text-xs font-medium hover:bg-amber-500/5 active:scale-[0.98] transition-all"
-        >
-          <History className="w-3.5 h-3.5" />
-          View Past Plans
-        </button>
-
-        <Link
-          href="/plans"
-          className="hidden md:flex mb-6 items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-blue-500/30 text-blue-600 text-xs font-medium hover:bg-blue-500/5 active:scale-[0.98] transition-all"
-        >
-          <CreditCard className="w-3.5 h-3.5" />
-          Billing & Plans
-        </Link>
+          <button
+            onClick={handleSurpriseMe}
+            className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-400/60 bg-white/70 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition-all active:scale-[0.98] hover:bg-slate-100"
+          >
+            <Shuffle className="w-3.5 h-3.5" />
+            Surprise Me
+          </button>
+          <button
+            onClick={() => {
+              setShowHistory(true)
+              scrollToModal()
+            }}
+            className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-amber-400/60 bg-white/70 py-2.5 text-xs font-semibold text-amber-700 shadow-sm transition-all active:scale-[0.98] hover:bg-amber-50"
+          >
+            <History className="w-3.5 h-3.5" />
+            View Past Plans
+          </button>
+          <Link
+            href="/plans"
+            className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-cyan-400/70 bg-white/70 py-2.5 text-xs font-semibold text-cyan-700 shadow-sm transition-all active:scale-[0.98] hover:bg-cyan-50"
+          >
+            <CreditCard className="w-3.5 h-3.5" />
+            Billing & Plans
+          </Link>
+        </div>
 
         {/* Form */}
-        <div className="flex flex-col gap-7 sm:gap-6 flex-1">
+        <div
+          className={`flex flex-1 flex-col gap-5 rounded-3xl border border-white/70 bg-white/85 p-4 shadow-xl shadow-slate-200/40 backdrop-blur-sm transition-all duration-700 sm:p-6 ${
+            isReady ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0"
+          }`}
+          style={{ transitionDelay: "220ms" }}
+        >
           {/* Location */}
-          <section data-tutorial="location">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+          <section data-tutorial="location" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+            <label className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <MapPin className="w-3 h-3" />
               Location
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Compass className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/60 z-10" />
+                <Compass className="absolute left-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <input
                   ref={locationInputRef}
                   type="text"
                   value={location}
                   onChange={(e) => handleLocationChange(e.target.value)}
                   onFocus={() => { if (locationResults.length > 0) setShowLocationDropdown(true) }}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-sm transition-all"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-3 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 transition-all focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
                   placeholder="City or neighborhood..."
                   autoComplete="off"
                 />
@@ -580,15 +611,12 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                 )}
                 {showLocationDropdown && locationResults.length > 0 && (
-                  <div
-                    ref={locationDropdownRef}
-                    className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden z-50"
-                  >
+                  <div ref={locationDropdownRef} className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
                     {locationResults.map((result, idx) => (
                       <button
                         key={`${result.label}-${idx}`}
                         onClick={() => selectLocation(result.label)}
-                        className="w-full flex items-start gap-2.5 px-3.5 py-2.5 text-left hover:bg-primary/5 transition-colors border-b border-border/50 last:border-b-0"
+                        className="w-full border-b border-slate-100 px-3.5 py-2.5 text-left transition-colors last:border-b-0 hover:bg-slate-50"
                       >
                         <MapPin className="w-3.5 h-3.5 text-primary/60 mt-0.5 shrink-0" />
                         <div className="min-w-0">
@@ -605,7 +633,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
               <button
                 onClick={handleLocate}
                 disabled={isLocating}
-                className="px-3.5 rounded-xl bg-card border border-border text-primary hover:bg-primary/5 active:scale-95 transition-all disabled:opacity-50"
+                className="rounded-xl border border-slate-200 bg-white px-3.5 text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-95 disabled:opacity-50"
               >
                 {isLocating ? (
                   <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -617,12 +645,12 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </section>
 
           {/* Date Selection */}
-          <section data-tutorial="date">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+          <section data-tutorial="date" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+            <label className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <CalendarDays className="w-3 h-3" />
               Date Night
             </label>
-            <div className="px-3 py-2 rounded-xl bg-card border border-border">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2">
               <input
                 type="date"
                 value={selectedDate.toISOString().split('T')[0]}
@@ -632,22 +660,22 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                   setSelectedDate(new Date(year, month - 1, day, 0, 0, 0, 0))
                 }}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full bg-transparent text-foreground text-sm focus:outline-none"
+                className="w-full bg-transparent text-sm text-slate-900 focus:outline-none"
               />
             </div>
-            <p className="mt-1.5 text-xs text-muted-foreground">
+            <p className="mt-1.5 text-xs text-slate-500">
               {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
             </p>
           </section>
 
           {/* Party Size + Time (side by side) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <section data-tutorial="party-size">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <section data-tutorial="party-size" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+              <label className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 <Users className="w-3 h-3" />
                 Party Size
               </label>
-              <div className="flex gap-1.5 p-1 bg-card border border-border rounded-xl">
+              <div className="flex gap-1.5 rounded-xl border border-slate-200 bg-slate-50/80 p-1">
                 {[2, 3, 4, 5, 6].map((size) => (
                   <button
                     key={size}
@@ -664,12 +692,12 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
               </div>
             </section>
 
-            <section data-tutorial="time">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+            <section data-tutorial="time" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+              <label className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 <Clock className="w-3 h-3" />
                 Time
               </label>
-              <div className="flex gap-1.5 p-1 bg-card border border-border rounded-xl">
+              <div className="flex gap-1.5 rounded-xl border border-slate-200 bg-slate-50/80 p-1">
                 {TIME_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -690,8 +718,8 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
 
           {/* Budget */}
           {/* Budget - Desktop Only (Mobile has it in hamburger menu) */}
-          <section data-tutorial="budget" className="hidden md:block">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+          <section data-tutorial="budget" className="hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md md:block">
+            <label className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <DollarSign className="w-3 h-3" />
               Budget
             </label>
@@ -702,8 +730,8 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                   onClick={() => setBudget(opt.value)}
                   className={`flex flex-col items-center gap-1 py-3 px-1 rounded-xl border transition-all ${
                     budget === opt.value
-                      ? "bg-primary/10 border-primary/50 text-foreground ring-1 ring-primary/20"
-                      : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                      ? "border-slate-900 bg-slate-900/5 text-slate-900 ring-1 ring-slate-400/40"
+                      : "border-slate-200 bg-slate-50/60 text-slate-600 hover:border-slate-400"
                   }`}
                 >
                   <span className="text-lg leading-none">{opt.emoji}</span>
@@ -715,8 +743,8 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </section>
 
           {/* Vibes */}
-          <section data-tutorial="vibes">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between mb-2.5">
+          <section data-tutorial="vibes" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+            <label className="mb-2.5 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
               <span className="flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3" />
                 Vibe
@@ -733,8 +761,8 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                     onClick={() => toggleVibe(v.id)}
                     className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-medium border transition-all ${
                       isSelected
-                        ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
-                        : "bg-card border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                        ? "bg-slate-900/5 border-slate-900/40 text-slate-900 ring-1 ring-slate-300"
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-900"
                     }`}
                   >
                     <Icon className={`w-3.5 h-3.5 ${isSelected ? v.color : ""}`} />
@@ -758,8 +786,8 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                   onClick={() => setShowCustomVibe(true)}
                   className={`flex items-center gap-1 px-3.5 py-2 rounded-full text-xs font-medium border transition-all ${
                     showCustomVibe
-                      ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
-                      : "bg-card border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                      ? "bg-slate-900/5 border-slate-900/40 text-slate-900 ring-1 ring-slate-300"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-900"
                   }`}
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -775,7 +803,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                     value={customVibe}
                     onChange={(e) => handleCustomInput('vibe', e.target.value, setCustomVibe)}
                     onKeyDown={(e) => { if (e.key === 'Enter') addCustomVibe() }}
-                    className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
+                    className={`flex-1 rounded-xl border bg-slate-50/80 px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 transition-all focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 ${
                       inputErrors.vibe ? 'border-destructive' : 'border-border'
                     }`}
                     placeholder="e.g. Cozy, Lively, Classy..."
@@ -808,7 +836,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
 
           {/* More Options — Cuisine + Activity */}
           <Collapsible open={showMoreOptions} onOpenChange={setShowMoreOptions}>
-            <CollapsibleTrigger className="w-full flex items-center justify-between py-2.5 px-3 rounded-xl border border-dashed border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all">
+            <CollapsibleTrigger className="w-full flex items-center justify-between rounded-2xl border border-dashed border-slate-300 bg-white px-3 py-3 text-xs font-semibold text-slate-600 transition-all hover:border-slate-500 hover:text-slate-900">
               <span className="flex items-center gap-1.5">
                 More Options
                 {(cuisine !== "any" || activity !== "none") && (
@@ -822,10 +850,10 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
               </span>
               <ChevronDown className={`w-4 h-4 transition-transform ${showMoreOptions ? "rotate-180" : ""}`} />
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-6 mt-4">
+            <CollapsibleContent className="mt-4 space-y-4">
           {/* Cuisine Preference */}
-          <section data-tutorial="cuisine">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+              <section data-tutorial="cuisine" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+                <label className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <Utensils className="w-3 h-3" />
               Cuisine
             </label>
@@ -836,8 +864,8 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                   onClick={() => { setCuisine(c.id); setShowCustomCuisine(false) }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                     cuisine === c.id
-                      ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
-                      : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                      ? "bg-slate-900/5 border-slate-900/40 text-slate-900 ring-1 ring-slate-300"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-400"
                   }`}
                 >
                   {c.label}
@@ -847,8 +875,8 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                 onClick={() => { setCuisine("custom"); setShowCustomCuisine(true) }}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                   cuisine === "custom"
-                    ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
-                    : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                    ? "bg-slate-900/5 border-slate-900/40 text-slate-900 ring-1 ring-slate-300"
+                    : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-400"
                 }`}
               >
                 <Plus className="w-3 h-3" />
@@ -862,7 +890,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                     type="text"
                     value={customCuisine}
                     onChange={(e) => handleCustomInput('cuisine', e.target.value, setCustomCuisine)}
-                    className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
+                    className={`flex-1 rounded-xl border bg-slate-50/80 px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 transition-all focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 ${
                       inputErrors.cuisine ? 'border-destructive' : 'border-border'
                     }`}
                     placeholder="e.g. Korean BBQ, Peruvian, Sushi..."
@@ -887,8 +915,8 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </section>
 
           {/* Activity Preference */}
-          <section data-tutorial="activity">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
+              <section data-tutorial="activity" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+                <label className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <Music className="w-3 h-3" />
               After Dinner
             </label>
@@ -901,8 +929,8 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                     onClick={() => { setActivity(a.id); setShowCustomActivity(false) }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                       activity === a.id
-                        ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
-                        : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                        ? "bg-slate-900/5 border-slate-900/40 text-slate-900 ring-1 ring-slate-300"
+                        : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-400"
                     }`}
                   >
                     <Icon className="w-3 h-3" />
@@ -914,8 +942,8 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                 onClick={() => { setActivity("custom"); setShowCustomActivity(true) }}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                   activity === "custom"
-                    ? "bg-primary/10 border-primary/50 text-primary ring-1 ring-primary/20"
-                    : "bg-card border-border text-muted-foreground hover:border-primary/30"
+                    ? "bg-slate-900/5 border-slate-900/40 text-slate-900 ring-1 ring-slate-300"
+                    : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-400"
                 }`}
               >
                 <Plus className="w-3 h-3" />
@@ -929,7 +957,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                     type="text"
                     value={customActivity}
                     onChange={(e) => handleCustomInput('activity', e.target.value, setCustomActivity)}
-                    className={`flex-1 px-3 py-2 rounded-xl bg-card border text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 text-xs transition-all ${
+                    className={`flex-1 rounded-xl border bg-slate-50/80 px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 transition-all focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 ${
                       inputErrors.activity ? 'border-destructive' : 'border-border'
                     }`}
                     placeholder="e.g. Bowling, Comedy show, Karaoke..."
@@ -957,12 +985,12 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
         </div>
 
         {/* CTA */}
-        <div className="mt-6 pt-4 border-t border-border/60">
+        <div className="mt-2 border-t border-slate-200/80 pt-5">
           <button
             onClick={handleSubmit}
             data-tutorial="submit"
             disabled={vibes.length === 0 || !location || location.trim().length === 0 || hasInputErrors()}
-            className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/25 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full rounded-2xl bg-slate-900 py-4 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition-all hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Sparkles className="w-4 h-4" />
             Plan My Night
@@ -1093,6 +1121,43 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes floatSlow {
+          0% { transform: translate3d(0, 0, 0); }
+          50% { transform: translate3d(0, -14px, 0); }
+          100% { transform: translate3d(0, 0, 0); }
+        }
+
+        @keyframes floatSlower {
+          0% { transform: translate3d(0, 0, 0); }
+          50% { transform: translate3d(0, 10px, 0); }
+          100% { transform: translate3d(0, 0, 0); }
+        }
+
+        @keyframes slideDownFade {
+          from {
+            opacity: 0;
+            transform: translate3d(0, -8px, 0);
+          }
+          to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+          }
+        }
+
+        .animate-float-slow {
+          animation: floatSlow 9s ease-in-out infinite;
+        }
+
+        .animate-float-slower {
+          animation: floatSlower 11s ease-in-out infinite;
+        }
+
+        .animate-slide-down-fade {
+          animation: slideDownFade 240ms ease-out;
+        }
+      `}</style>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Wine, UtensilsCrossed, Sparkles, Music, Check, MapPin } from "lucide-react"
+import { Wine, UtensilsCrossed, Sparkles, Check, MapPin, Database, Globe, Store } from "lucide-react"
 import { venueSearcher, Venue, SearchCriteria } from "@/lib/venue-search"
 import { LateNightResponse } from "@/lib/late-night-detector"
 
@@ -135,24 +135,61 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
     return selected.slice(0, 3)
   }
 
+  const statusTone =
+    searchStatus.includes("❌") || searchStatus.includes("⏰")
+      ? "text-rose-600 bg-rose-500/10 border-rose-500/30"
+      : searchStatus.includes("✅")
+      ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/30"
+      : "text-amber-700 bg-amber-500/10 border-amber-500/30"
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-svh bg-background px-6">
-      <div className="flex flex-col items-center gap-8 w-full max-w-xs">
-        {/* Progress ring */}
-        <div className="relative w-28 h-28 flex items-center justify-center">
-          <svg className="absolute w-full h-full -rotate-90" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted/50" />
-            <circle
-              cx="50" cy="50" r="44" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"
-              className="text-primary transition-all duration-300"
-              strokeDasharray={`${progress * 2.76} 276`}
-            />
-          </svg>
-          <span className="text-2xl font-bold text-primary">{Math.round(progress)}%</span>
+    <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-neutral-950 px-4 py-10">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-20 top-10 h-72 w-72 rounded-full bg-cyan-500/20 blur-3xl" />
+        <div className="absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-emerald-400/20 blur-3xl" />
+        <div className="absolute inset-0 opacity-30 [background:linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:40px_40px]" />
+      </div>
+
+      <div className="relative w-full max-w-xl rounded-3xl border border-white/15 bg-white/90 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur md:p-8">
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.28em] text-slate-500">Live Venue Scraper</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">Building your night out</h2>
+          </div>
+          <div className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+            {Math.round(progress)}% done
+          </div>
         </div>
 
-        {/* Steps */}
-        <div className="flex flex-col gap-2 w-full">
+        <div className="mb-6 flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[11px] font-medium text-cyan-700">
+            <Globe className="h-3.5 w-3.5" />
+            Web Data
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+            <Store className="h-3.5 w-3.5" />
+            Venue APIs
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700">
+            <Database className="h-3.5 w-3.5" />
+            Smart Ranking
+          </span>
+        </div>
+
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="mb-3 flex items-center justify-between text-xs text-slate-500">
+            <span>Pipeline progress</span>
+            <span>{Math.round(progress)}/100</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 transition-all duration-300"
+              style={{ width: `${Math.min(100, Math.round(progress))}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2.5">
           {STEPS.map((step, index) => {
             const Icon = step.icon
             const isCompleted = completedSteps.includes(index)
@@ -161,33 +198,40 @@ export function LoadingScreen({ onComplete, searchCriteria }: LoadingScreenProps
             return (
               <div
                 key={index}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 ${
+                className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-300 ${
                   isCompleted
-                    ? "bg-primary/10 border border-primary/20"
+                    ? "border-emerald-200 bg-emerald-50"
                     : isCurrent
-                    ? "bg-card border border-border"
-                    : "opacity-30"
+                    ? "border-cyan-300 bg-cyan-50"
+                    : "border-slate-200 bg-slate-50 opacity-70"
                 }`}
               >
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
-                  isCompleted ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                }`}>
-                  {isCompleted ? <Check className="w-3.5 h-3.5" /> : <Icon className={`w-3.5 h-3.5 ${isCurrent ? "animate-pulse" : ""}`} />}
+                <div
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
+                    isCompleted
+                      ? "bg-emerald-600 text-white"
+                      : isCurrent
+                      ? "bg-cyan-600 text-white"
+                      : "bg-slate-200 text-slate-500"
+                  }`}
+                >
+                  {isCompleted ? <Check className="h-4 w-4" /> : <Icon className={`h-4 w-4 ${isCurrent ? "animate-pulse" : ""}`} />}
                 </div>
-                <span className={`text-xs font-medium ${isCompleted ? "text-foreground" : "text-muted-foreground"}`}>
-                  {step.label}
-                </span>
+                <div className="flex-1">
+                  <p className={`text-sm font-medium ${isCompleted || isCurrent ? "text-slate-900" : "text-slate-500"}`}>{step.label}</p>
+                </div>
                 {isCurrent && !isCompleted && (
-                  <div className="ml-auto w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-300 border-t-cyan-700" />
                 )}
               </div>
             )
           })}
         </div>
 
-        {/* Status */}
         {searchStatus && (
-          <p className="text-xs text-center text-muted-foreground">{searchStatus}</p>
+          <div className={`mt-5 rounded-xl border px-3 py-2 text-xs font-medium ${statusTone}`}>
+            {searchStatus}
+          </div>
         )}
       </div>
     </div>
