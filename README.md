@@ -71,6 +71,15 @@ STRIPE_SECRET_KEY=sk_test_xxx_or_sk_live_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
 STRIPE_PRICE_MONTHLY=price_1TH6kyEykVDCxwrv7i14qTAM
 STRIPE_PRICE_YEARLY=price_1TH6kyEykVDCxwrva1gKcy0L
+
+# SMTP billing emails (Hostinger)
+SMTP_HOST=smtp.hostinger.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=contact@mellowsites.com
+SMTP_PASS=replace_me
+SMTP_FROM="DateNight <contact@mellowsites.com>"
+BILLING_ALERT_EMAIL=contact@mellowsites.com
 ```
 
 Current live plan setup:
@@ -95,6 +104,18 @@ For local testing, use Stripe CLI:
 ```bash
 stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
+
+Billing API routes:
+- POST /api/stripe/checkout
+- POST /api/stripe/portal
+- POST /api/stripe/cancel (sets cancel_at_period_end)
+- GET /api/stripe/status
+- POST /api/stripe/webhook
+
+Webhook-driven billing emails are sent when SMTP variables are configured:
+- New subscription purchase confirmation
+- Payment failure notice
+- Cancellation and cancel-at-period-end notices
 
 Never commit live Stripe keys or webhook secrets to source control.
 

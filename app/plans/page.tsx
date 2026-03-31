@@ -5,6 +5,7 @@ import Link from "next/link"
 import { CreditCard, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import {
+  cancelStripeSubscription,
   createBillingPortalSession,
   createStripeCheckout,
   fetchBillingStatus,
@@ -16,10 +17,11 @@ export default function PlansPage() {
   const [pendingPlan, setPendingPlan] = useState<PlanInterval | null>(null)
   const [openingPortal, setOpeningPortal] = useState(false)
   const [refreshingStatus, setRefreshingStatus] = useState(false)
+  const [canceling, setCanceling] = useState(false)
   const [statusSummary, setStatusSummary] = useState<string>("")
   const [error, setError] = useState<string>("")
 
-  const isBusy = useMemo(() => !!pendingPlan || openingPortal || refreshingStatus, [pendingPlan, openingPortal, refreshingStatus])
+  const isBusy = useMemo(() => !!pendingPlan || openingPortal || refreshingStatus || canceling, [pendingPlan, openingPortal, refreshingStatus, canceling])
 
   const handleCheckout = async (plan: PlanInterval) => {
     setError("")
@@ -70,6 +72,21 @@ export default function PlansPage() {
       setError(message)
     } finally {
       setRefreshingStatus(false)
+    }
+  }
+
+  const handleCancelAtPeriodEnd = async () => {
+    setError("")
+    setCanceling(true)
+
+    try {
+      await cancelStripeSubscription(false)
+      setStatusSummary("Subscription will cancel at period end. Premium access remains until then.")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to cancel subscription"
+      setError(message)
+    } finally {
+      setCanceling(false)
     }
   }
 
@@ -135,6 +152,13 @@ export default function PlansPage() {
               className="rounded-lg border border-border px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
               Refresh billing status
+            </button>
+            <button
+              onClick={handleCancelAtPeriodEnd}
+              disabled={loading || !user || isBusy}
+              className="rounded-lg border border-destructive/40 px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancel at period end
             </button>
           </div>
 

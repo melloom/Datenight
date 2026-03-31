@@ -27,6 +27,14 @@ interface BillingStatusResponse {
   }
 }
 
+interface CancelSubscriptionResponse {
+  ok: boolean
+  canceledImmediately: boolean
+  subscriptionId: string
+  status: string
+  cancelAtPeriodEnd: boolean
+}
+
 export async function createStripeCheckout(plan: PlanInterval): Promise<CheckoutResponse> {
   const res = await authJsonFetch('/api/stripe/checkout', { plan })
   if (!res.ok) {
@@ -63,5 +71,14 @@ export async function fetchBillingStatus(): Promise<BillingStatusResponse> {
     throw new Error(body.error || 'Unable to fetch billing status')
   }
 
+  return res.json()
+}
+
+export async function cancelStripeSubscription(immediately = false): Promise<CancelSubscriptionResponse> {
+  const res = await authJsonFetch('/api/stripe/cancel', { immediately })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || 'Unable to cancel subscription')
+  }
   return res.json()
 }
