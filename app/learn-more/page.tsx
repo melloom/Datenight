@@ -98,8 +98,8 @@ export default function LearnMorePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
+        <div className="max-w-7xl mx-auto px-4 md:px-6 pb-3 md:pb-4 flex items-center justify-between">
           <Link
             href="/landing"
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
