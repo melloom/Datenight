@@ -96,7 +96,7 @@ export function FinalScene() {
           }`}
         >
           <div className="text-center">
-            <span className="block font-serif text-3xl md:text-5xl text-primary">100K+</span>
+            <span className="block font-serif text-3xl md:text-5xl text-primary">10K+</span>
             <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1 block">Venues</span>
           </div>
           <div className="w-px h-10 bg-border hidden sm:block" />
@@ -106,7 +106,7 @@ export function FinalScene() {
           </div>
           <div className="w-px h-10 bg-border hidden sm:block" />
           <div className="text-center">
-            <span className="block font-serif text-3xl md:text-5xl text-primary">200+</span>
+            <span className="block font-serif text-3xl md:text-5xl text-primary">50+</span>
             <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1 block">Activity Types</span>
           </div>
         </div>
