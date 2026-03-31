@@ -77,10 +77,11 @@ export const metadata: Metadata = {
     description: 'Discover the perfect date night with AI-powered recommendations. Find romantic restaurants, fun activities, and unique venues tailored to your preferences.',
     images: [
       {
-        url: '/android-chrome-512x512.png',
-        width: 512,
-        height: 512,
-        alt: 'Date Night Planner Logo',
+        url: '/api/og?title=Plan+the+Perfect+Date+Night',
+        width: 1200,
+        height: 630,
+        alt: 'Date Night Planner - AI-Powered Date Ideas',
+        type: 'image/png',
       }
     ],
   },
@@ -88,7 +89,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Date Night Planner - AI-Powered Date Ideas',
     description: 'Discover the perfect date night with AI-powered recommendations. Find romantic restaurants and unique venues.',
-    images: ['/android-chrome-512x512.png'],
+    images: ['/api/og?title=Plan+the+Perfect+Date+Night'],
     creator: '@datenightapp',
   },
   robots: {
