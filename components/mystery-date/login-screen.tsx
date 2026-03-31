@@ -52,7 +52,11 @@ export function LoginScreen() {
       {/* Back button */}
       <Link 
         href="/landing" 
-        className="absolute top-6 left-6 flex items-center gap-2 px-3 py-2 rounded-lg bg-card/50 hover:bg-card/80 border border-border/50 hover:border-border transition-all duration-200 text-sm text-muted-foreground hover:text-foreground z-20"
+        className="absolute flex items-center gap-2 px-3 py-2 rounded-lg bg-card/50 hover:bg-card/80 border border-border/50 hover:border-border transition-all duration-200 text-sm text-muted-foreground hover:text-foreground z-20"
+        style={{
+          top: "max(env(safe-area-inset-top, 0px), 1rem)",
+          left: "max(env(safe-area-inset-left, 0px), 1rem)",
+        }}
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Back</span>
@@ -150,6 +154,7 @@ export function LoginScreen() {
               checked={agree} 
               onCheckedChange={handleCheckboxChange}
               disabled={!canAgree}
+              className="mt-0.5 h-5 w-5 min-h-5 min-w-5 aspect-square rounded-full data-[state=checked]:rounded-full"
             />
             <label
               htmlFor="terms"
