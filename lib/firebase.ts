@@ -14,6 +14,10 @@ type FirebaseWebConfig = {
   measurementId?: string
 }
 
+const DEFAULT_FIREBASE_PROJECT_ID = 'datenight-a2dbb'
+const DEFAULT_FIREBASE_AUTH_DOMAIN = `${DEFAULT_FIREBASE_PROJECT_ID}.firebaseapp.com`
+const DEFAULT_FIREBASE_DATABASE_URL = 'https://datenight-a2dbb-default-rtdb.firebaseio.com'
+
 type FirebaseDebugInfo = {
   source: 'env' | 'server-api' | 'hosting-proxy' | 'unavailable'
   attempts: string[]
@@ -24,9 +28,9 @@ type FirebaseDebugInfo = {
 
 const envFirebaseConfig: FirebaseWebConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || DEFAULT_FIREBASE_AUTH_DOMAIN,
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || DEFAULT_FIREBASE_DATABASE_URL,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || DEFAULT_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
@@ -188,6 +192,43 @@ async function loadHostedFirebaseConfig(): Promise<FirebaseWebConfig | null> {
   }
 }
 
+async function loadHostedFirebaseConfigDirect(): Promise<FirebaseWebConfig | null> {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  const projectId = firebaseConfig.projectId || DEFAULT_FIREBASE_PROJECT_ID
+
+  try {
+    const response = await fetch(`https://${projectId}.firebaseapp.com/__/firebase/init.json`, {
+      cache: "no-store",
+      credentials: "omit",
+    })
+
+    if (!response.ok) {
+      updateFirebaseDebugInfo({ lastError: `hosting-direct: ${response.status}`, projectId })
+      return null
+    }
+
+    const hostedConfig = await response.json() as FirebaseWebConfig
+    return {
+      apiKey: hostedConfig.apiKey,
+      authDomain: hostedConfig.authDomain || DEFAULT_FIREBASE_AUTH_DOMAIN,
+      databaseURL: hostedConfig.databaseURL || DEFAULT_FIREBASE_DATABASE_URL,
+      projectId: hostedConfig.projectId || projectId,
+      storageBucket: hostedConfig.storageBucket,
+      messagingSenderId: hostedConfig.messagingSenderId,
+      appId: hostedConfig.appId,
+      measurementId: hostedConfig.measurementId,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    updateFirebaseDebugInfo({ lastError: `hosting-direct: ${message}`, projectId })
+    console.error("Failed to load direct hosted Firebase config", error)
+    return null
+  }
+}
+
 export async function ensureFirebaseInitialized(): Promise<FirebaseServices> {
   if (app && auth && rtdb && googleProvider) {
     return { app, auth, rtdb, googleProvider }
@@ -240,9 +281,21 @@ export async function ensureFirebaseInitialized(): Promise<FirebaseServices> {
       return assignFirebaseServices(hostedConfig)
     }
 
+    const directHostedConfig = await loadHostedFirebaseConfigDirect()
+    if (directHostedConfig && hasRequiredConfig(directHostedConfig)) {
+      updateFirebaseDebugInfo({
+        source: 'hosting-proxy',
+        attempts: ['env', 'server-api', 'hosting-proxy', 'hosting-direct'],
+        missingKeys: [],
+        projectId: directHostedConfig.projectId,
+        lastError: undefined,
+      })
+      return assignFirebaseServices(directHostedConfig)
+    }
+
     updateFirebaseDebugInfo({
       source: 'unavailable',
-      attempts: ['env', 'server-api', 'hosting-proxy'],
+      attempts: ['env', 'server-api', 'hosting-proxy', 'hosting-direct'],
       missingKeys: getMissingKeys(firebaseConfig),
     })
 
