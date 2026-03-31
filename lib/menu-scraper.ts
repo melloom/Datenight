@@ -65,7 +65,7 @@ export async function scrapeWebsiteMenu(url: string, source: string = 'website')
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 })
 
     // Wait for menu content to load
-    await page.waitForTimeout(2000)
+    await new Promise(resolve => setTimeout(resolve, 2000))
 
     const content = await page.content()
     const $ = cheerio.load(content)
@@ -246,7 +246,7 @@ export async function scrapeSquareMenu(locationId: string, accessToken: string):
 }
 
 // Helper functions
-function extractCategory($element: cheerio.Cheerio, $: cheerio.Root): string {
+function extractCategory($element: cheerio.Cheerio<any>, $: cheerio.CheerioAPI): string {
   // Try to find category from parent elements
   const categorySelectors = ['.menu-category', '.category', '.section', 'h2', 'h3', 'h4']
   for (const selector of categorySelectors) {
@@ -292,5 +292,4 @@ export async function scrapeMenuData(venue: {
   }
 
   return null
-}</content>
-<parameter name="filePath">/workspaces/Datenight/lib/menu-scraper.ts
+}
