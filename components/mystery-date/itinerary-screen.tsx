@@ -517,7 +517,8 @@ function StepCard({
   totalSteps,
   onVenuesUpdate,
   handleSwapVenue,
-  isSwapping
+  isSwapping,
+  isLoadingTravelTimes
 }: {
   step: Step
   index: number
@@ -528,6 +529,7 @@ function StepCard({
   onVenuesUpdate?: (venues: Venue[]) => void
   handleSwapVenue?: (index: number) => void
   isSwapping?: number | null
+  isLoadingTravelTimes?: boolean
 }) {
   const [isSaved, setIsSaved] = useState(false)
 
@@ -2096,6 +2098,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                 onVenuesUpdate={onVenuesUpdate}
                 handleSwapVenue={handleSwapVenue}
                 isSwapping={isSwapping}
+                isLoadingTravelTimes={isLoadingTravelTimes}
               />
               {/* Travel time between this venue and the next */}
               {index < steps.length - 1 && index < revealedCount && index + 1 < revealedCount && (
