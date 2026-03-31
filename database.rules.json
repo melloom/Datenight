@@ -3,12 +3,26 @@
     "users": {
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
-        ".write": "auth != null && auth.uid == $uid"
+        "profile": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "preferences": {
+          ".write": "auth != null && auth.uid == $uid"
+        },
+        "billing": {
+          ".write": false
+        },
+        "dates": {
+          ".write": "auth != null && auth.uid == $uid && (root.child('users/' + $uid + '/billing/entitlementActive').val() == true || root.child('users/' + $uid + '/billing/grandfathered').val() == true)"
+        },
+        "favorites": {
+          ".write": "auth != null && auth.uid == $uid && (root.child('users/' + $uid + '/billing/entitlementActive').val() == true || root.child('users/' + $uid + '/billing/grandfathered').val() == true)"
+        }
       }
     },
     "shared": {
       ".read": true,
-      ".write": "auth != null"
+      ".write": "auth != null && (root.child('users/' + auth.uid + '/billing/entitlementActive').val() == true || root.child('users/' + auth.uid + '/billing/grandfathered').val() == true)"
     }
   }
 }

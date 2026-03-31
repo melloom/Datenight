@@ -65,6 +65,8 @@ import { AIRecommendation } from "@/components/ai/ai-recommendation"
 import { LateNightAlert } from "@/components/ui/late-night-alert"
 import { AlternativeSuggestion, SameDayOption } from "@/lib/late-night-detector"
 import { googleMapsService } from "@/lib/google-maps"
+import { authJsonFetch } from "@/lib/client-auth-fetch"
+import { createStripeCheckout, createBillingPortalSession, type PlanInterval } from "@/lib/subscription"
 
 interface Step {
   id: number
@@ -1398,7 +1400,62 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [isGeneratingAlternative, setIsGeneratingAlternative] = useState(false)
   const [isLoadingTravelTimes, setIsLoadingTravelTimes] = useState(false)
   const [isOptimizingRoute, setIsOptimizingRoute] = useState(false)
+  const [showBillingPrompt, setShowBillingPrompt] = useState(false)
+  const [billingErrorMessage, setBillingErrorMessage] = useState<string | null>(null)
+  const [checkoutPlan, setCheckoutPlan] = useState<PlanInterval | null>(null)
+  const [isOpeningPortal, setIsOpeningPortal] = useState(false)
   const { signOut } = useAuth()
+
+  const handleSubscriptionRequired = async (response: Response): Promise<boolean> => {
+    if (response.status !== 402) return false
+
+    const body = await response.json().catch(() => ({} as { code?: string }))
+    if (body?.code !== 'SUBSCRIPTION_REQUIRED') return false
+
+    setBillingErrorMessage('AI features require an active subscription. Start your 3-day trial to continue.')
+    setShowBillingPrompt(true)
+    return true
+  }
+
+  const requestAIEnhance = async (payload: unknown): Promise<Response | null> => {
+    const response = await authJsonFetch('/api/ai/enhance', payload)
+    if (await handleSubscriptionRequired(response)) {
+      return null
+    }
+    return response
+  }
+
+  const handleStartCheckout = async (plan: PlanInterval) => {
+    setBillingErrorMessage(null)
+    setCheckoutPlan(plan)
+    try {
+      const result = await createStripeCheckout(plan)
+      if (result.url) {
+        window.location.href = result.url
+        return
+      }
+      setBillingErrorMessage('Unable to open Stripe checkout right now. Please try again.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to start checkout.'
+      setBillingErrorMessage(message)
+    } finally {
+      setCheckoutPlan(null)
+    }
+  }
+
+  const handleOpenBillingPortal = async () => {
+    setBillingErrorMessage(null)
+    setIsOpeningPortal(true)
+    try {
+      const result = await createBillingPortalSession()
+      window.location.href = result.url
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to open billing portal.'
+      setBillingErrorMessage(message)
+    } finally {
+      setIsOpeningPortal(false)
+    }
+  }
 
   // Scroll to specific modal when it opens
   useEffect(() => {
@@ -1469,24 +1526,24 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
     setIsOptimizingRoute(true)
     try {
-      const response = await fetch('/api/ai/enhance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'optimize-route',
-          venues: venues.map(v => ({
-            name: v.name,
-            category: v.category,
-            address: v.address,
-            coordinates: v.coordinates
-          })),
-          criteria: {
-            location: searchCriteria?.location,
-            time: searchCriteria?.time,
-            vibes: searchCriteria?.vibes
-          }
-        })
+      const response = await requestAIEnhance({
+        action: 'optimize-route',
+        venues: venues.map(v => ({
+          name: v.name,
+          category: v.category,
+          address: v.address,
+          coordinates: v.coordinates
+        })),
+        criteria: {
+          location: searchCriteria?.location,
+          time: searchCriteria?.time,
+          vibes: searchCriteria?.vibes
+        }
       })
+
+      if (!response) {
+        return
+      }
 
       if (response.ok) {
         const result = await response.json()
@@ -1753,8 +1810,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       }
 
       // Get domain from environment or browser hostname
-      const uidDomain = typeof window !== 'undefined' 
-        ? window.location.hostname 
+      const uidDomain = typeof window !== 'undefined'
+        ? window.location.hostname
         : process.env.NEXT_PUBLIC_APP_URL?.replace(/https?:\/\//, '') || 'dat3night.com'
 
       icalContent += `BEGIN:VEVENT\n`
@@ -2005,22 +2062,18 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     const venuesMissingPricing = venues.filter(v => !v.pricing || !v.pricing.source)
     if (venuesMissingPricing.length > 0) {
       pricingFetchedRef.current = true
-      fetch('/api/ai/enhance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'fetch-pricing',
-          venues: venuesMissingPricing.map(v => ({
-            name: v.name,
-            category: v.category,
-            description: v.description,
-            address: v.address,
-            priceRange: v.priceRange,
-            tags: v.tags || []
-          }))
-        })
+      requestAIEnhance({
+        action: 'fetch-pricing',
+        venues: venuesMissingPricing.map(v => ({
+          name: v.name,
+          category: v.category,
+          description: v.description,
+          address: v.address,
+          priceRange: v.priceRange,
+          tags: v.tags || []
+        }))
       })
-        .then(res => res.ok ? res.json() : null)
+        .then(res => res && res.ok ? res.json() : null)
         .then(result => {
           if (!result?.pricing) return
 
@@ -2132,17 +2185,17 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
     try {
       const venueToSwap = venues[index]
-      const response = await fetch('/api/ai/enhance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'swap-venue',
-          venue: venueToSwap,
-          criteria: { ...searchCriteria, customRequests: customRequest },
-          currentPlan: venues,
-          swapCategory: venueToSwap.category
-        })
+      const response = await requestAIEnhance({
+        action: 'swap-venue',
+        venue: venueToSwap,
+        criteria: { ...searchCriteria, customRequests: customRequest },
+        currentPlan: venues,
+        swapCategory: venueToSwap.category
       })
+
+      if (!response) {
+        return
+      }
 
       if (response.ok) {
         const data = await response.json()
@@ -2165,15 +2218,15 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     setIsImproving(true)
 
     try {
-      const response = await fetch('/api/ai/enhance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'improve-plan',
-          currentPlan: venues,
-          criteria: searchCriteria
-        })
+      const response = await requestAIEnhance({
+        action: 'improve-plan',
+        currentPlan: venues,
+        criteria: searchCriteria
       })
+
+      if (!response) {
+        return
+      }
 
       if (response.ok) {
         const data = await response.json()
@@ -2195,17 +2248,17 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     setIsAIEditing(true)
 
     try {
-      const response = await fetch('/api/ai/enhance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'improve-plan',
-          location: searchCriteria.location,
-          criteria: searchCriteria,
-          currentVenues: venues,
-          feedback: aiEditInput.trim()
-        })
+      const response = await requestAIEnhance({
+        action: 'improve-plan',
+        location: searchCriteria.location,
+        criteria: searchCriteria,
+        currentVenues: venues,
+        feedback: aiEditInput.trim()
       })
+
+      if (!response) {
+        return
+      }
 
       if (response.ok) {
         const data = await response.json()
@@ -2322,6 +2375,51 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       )}
 
       <div className="mx-auto px-4 md:px-12 py-6 w-full">
+        {showBillingPrompt && (
+          <div className="mb-5 rounded-2xl border border-primary/25 bg-primary/5 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">AI features are part of Date Night Pro</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Start your 3-day trial to keep improving plans with AI, or manage your current subscription.
+                </p>
+                {billingErrorMessage && (
+                  <p className="text-xs text-red-500 mt-2">{billingErrorMessage}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setShowBillingPrompt(false)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => handleStartCheckout('monthly')}
+                disabled={checkoutPlan !== null}
+                className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50"
+              >
+                {checkoutPlan === 'monthly' ? 'Starting...' : 'Start Monthly Trial'}
+              </button>
+              <button
+                onClick={() => handleStartCheckout('yearly')}
+                disabled={checkoutPlan !== null}
+                className="px-3 py-2 rounded-lg bg-primary/90 text-primary-foreground text-xs font-semibold hover:opacity-90 transition-all disabled:opacity-50"
+              >
+                {checkoutPlan === 'yearly' ? 'Starting...' : 'Start Yearly Trial'}
+              </button>
+              <button
+                onClick={handleOpenBillingPortal}
+                disabled={isOpeningPortal}
+                className="px-3 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-all disabled:opacity-50"
+              >
+                {isOpeningPortal ? 'Opening...' : 'Manage Billing'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Progress */}
         <div className="text-center mb-6">
           <h1 className="text-xl font-bold text-foreground mb-1">Your Date Night</h1>

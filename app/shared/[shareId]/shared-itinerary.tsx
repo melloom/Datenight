@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Wine, UtensilsCrossed, Sparkles, Star, Clock, MapPin, DollarSign, AlertCircle, Heart, Users, Calendar, PiggyBank, Receipt, CheckCircle2, Loader2 } from "lucide-react"
+import { authJsonFetch } from "@/lib/client-auth-fetch"
 
 interface VenuePricing {
   tickets?: number
@@ -169,10 +170,7 @@ export default function SharedItinerary({ shareId }: { shareId: string }) {
     if (venuesMissingPricing.length === 0) return
 
     setPricingLoading(true)
-    fetch('/api/ai/enhance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      authJsonFetch('/api/ai/enhance', {
         action: 'fetch-pricing',
         venues: venuesMissingPricing.map(v => ({
           name: v.name,
@@ -182,7 +180,6 @@ export default function SharedItinerary({ shareId }: { shareId: string }) {
           priceRange: v.priceRange
         }))
       })
-    })
       .then(res => res.ok ? res.json() : null)
       .then(result => {
         if (!result?.pricing) return

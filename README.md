@@ -55,7 +55,42 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
 NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
+GEMINI_API_KEY=your_gemini_api_key
+
+# Firebase Admin (server-side)
+FIREBASE_DATABASE_URL=https://your_project.firebaseio.com
+FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
+# or use the split vars instead of FIREBASE_SERVICE_ACCOUNT_KEY:
+# FIREBASE_PROJECT_ID=your_project_id
+# FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@your_project.iam.gserviceaccount.com
+# FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+# Stripe Billing
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx_or_pk_live_xxx
+STRIPE_SECRET_KEY=sk_test_xxx_or_sk_live_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+STRIPE_PRICE_MONTHLY=price_xxx
+STRIPE_PRICE_YEARLY=price_xxx
 ```
+
+### Stripe Webhook Route
+
+- Endpoint: /api/stripe/webhook
+- Required events:
+	- checkout.session.completed
+	- customer.subscription.created
+	- customer.subscription.updated
+	- customer.subscription.deleted
+	- invoice.paid
+	- invoice.payment_failed
+
+For local testing, use Stripe CLI:
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+Never commit live Stripe keys or webhook secrets to source control.
 
 ## 🛠️ Tech Stack
 

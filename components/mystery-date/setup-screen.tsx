@@ -27,9 +27,11 @@ import {
   Archive,
   CalendarDays,
   Trash2,
-  Menu
+  Menu,
+  CreditCard
 } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 import { validateCustomInput } from "@/lib/profanity-filter"
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 
@@ -512,6 +514,15 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
                 History
               </button>
             </div>
+
+            <Link
+              href="/plans"
+              onClick={() => setShowMobileMenu(false)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-blue-500/30 text-blue-600 text-xs font-medium hover:bg-blue-500/5 active:scale-[0.98] transition-all"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              Billing & Plans
+            </Link>
           </div>
         )}
 
@@ -535,6 +546,14 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           <History className="w-3.5 h-3.5" />
           View Past Plans
         </button>
+
+        <Link
+          href="/plans"
+          className="hidden md:flex mb-6 items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-blue-500/30 text-blue-600 text-xs font-medium hover:bg-blue-500/5 active:scale-[0.98] transition-all"
+        >
+          <CreditCard className="w-3.5 h-3.5" />
+          Billing & Plans
+        </Link>
 
         {/* Form */}
         <div className="flex flex-col gap-7 sm:gap-6 flex-1">

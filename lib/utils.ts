@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { headers } from 'next/headers'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -26,6 +25,7 @@ export function getAppUrl(): string {
  */
 export async function getAppUrlFromHeaders(): Promise<string> {
   try {
+    const { headers } = await import('next/headers')
     const headersList = await headers()
     const host = headersList.get('host') || headersList.get('x-forwarded-host') || ''
     

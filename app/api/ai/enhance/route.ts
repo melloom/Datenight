@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { z } from 'zod'
 import { scrapeMenuData, MenuData } from '@/lib/menu-scraper'
+import { canUsePremiumFeatures } from '@/lib/billing'
+import { verifyRequestUser, UnauthorizedError } from '@/lib/server-auth'
 
 const enhanceSearchSchema = z.object({
   action: z.literal('enhance-search'),
@@ -123,6 +125,19 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const decoded = await verifyRequestUser(request)
+    const entitlement = await canUsePremiumFeatures(decoded.uid)
+
+    if (!entitlement.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Active subscription required',
+          code: 'SUBSCRIPTION_REQUIRED',
+        },
+        { status: 402 }
+      )
+    }
+
     const body = await request.json()
     const { action } = body
     const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || ''
@@ -1089,7 +1104,11 @@ Return JSON:
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
-  } catch {
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
