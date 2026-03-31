@@ -1,21 +1,11 @@
 import { initializeApp, getApps, getApp } from "firebase/app"
 import { getAnalytics, isSupported } from "firebase/analytics"
-import { browserLocalPersistence, getAuth, GoogleAuthProvider, setPersistence } from "firebase/auth"
+import { browserLocalPersistence, getAuth, GoogleAuthProvider, setPersistence, signInWithRedirect, getRedirectResult } from "firebase/auth"
 import { getDatabase } from "firebase/database"
-
-const productionAuthHosts = new Set(["dat3night.com", "www.dat3night.com"])
-
-const getAuthDomain = () => {
-  if (typeof window !== "undefined" && productionAuthHosts.has(window.location.hostname)) {
-    return window.location.hostname
-  }
-
-  return process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-}
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: getAuthDomain(),
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,

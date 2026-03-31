@@ -6,6 +6,8 @@ import {
   UserCredential,
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut as firebaseSignOut,
 } from "firebase/auth"
 import { ref, set, get } from "firebase/database"
@@ -34,6 +36,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!auth || !rtdb) {
       return
     }
+
+    // Check for redirect result (fallback sign-in method)
+    getRedirectResult(auth).then((result) => {
+      if (result?.user) {
+        setUser(result.user)
+      }
+    }).catch(() => {
+      // Redirect result check failed — not critical
+    })
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
@@ -73,14 +84,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
       return true
     } catch (error: unknown) {
-      if (
-        typeof error === "object" &&
-        error !== null &&
-        "code" in error &&
-        (error as { code?: string }).code === "auth/popup-closed-by-user"
-      ) {
+      const code = typeof error === "object" && error !== null && "code" in error
+        ? (error as { code?: string }).code
+        : ""
+
+      // User closed popup — not an error
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
         return false
       }
+
+      // Popup blocked or unauthorized domain — fall back to redirect
+      if (
+        code === "auth/popup-blocked" ||
+        code === "auth/unauthorized-domain" ||
+        code === "auth/operation-not-supported-in-this-environment"
+      ) {
+        await signInWithRedirect(auth, googleProvider)
+        return false
+      }
+
       throw error
     }
   }

@@ -34,8 +34,10 @@ export function LoginScreen() {
       if (didSignIn) {
         router.replace("/")
       }
-    } catch {
-      setError("Sign-in failed. Please try again.")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error"
+      console.error("Google sign-in error:", err)
+      setError(`Sign-in failed: ${message}`)
     } finally {
       setIsLoading(false)
     }
