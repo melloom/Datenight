@@ -878,6 +878,7 @@ interface VenueCost {
   foodCost: number
   drinkCost: number
   activityCost: number
+  ticketCost: number
   totalCost: number
   costPerPerson: number
 }
@@ -936,7 +937,8 @@ function calculateBudgetBreakdown(steps: Step[], partySize: number): BudgetBreak
           drinkCost = 12 * priceMultiplier * partySize
           foodCost = 10 * priceMultiplier * partySize // appetizers
         } else if (step.category === 'activity') {
-          activityCost = 30 * priceMultiplier * partySize
+          // For activities, entry fees are treated as tickets, not activity costs
+          ticketCost = 30 * priceMultiplier * partySize
           drinkCost = 5 * priceMultiplier * partySize
           foodCost = 8 * priceMultiplier * partySize // snacks
         }
@@ -952,9 +954,10 @@ function calculateBudgetBreakdown(steps: Step[], partySize: number): BudgetBreak
         drinkCost = 12 * priceMultiplier * partySize
         foodCost = 10 * priceMultiplier * partySize // appetizers
       } else if (step.category === 'activity') {
-        activityCost = 30 * priceMultiplier * partySize
-        drinkCost = 5 * priceMultiplier * partySize
-        foodCost = 8 * priceMultiplier * partySize // snacks
+          // For activities, entry fees are treated as tickets, not activity costs
+          ticketCost = 30 * priceMultiplier * partySize
+          drinkCost = 5 * priceMultiplier * partySize
+          foodCost = 8 * priceMultiplier * partySize // snacks
       }
     }
     
@@ -966,6 +969,7 @@ function calculateBudgetBreakdown(steps: Step[], partySize: number): BudgetBreak
       foodCost,
       drinkCost,
       activityCost,
+      ticketCost,
       totalCost: venueTotal,
       costPerPerson: venueTotal / partySize
     })
@@ -2216,10 +2220,10 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                             <span className="text-sm font-semibold">${venue.totalCost.toFixed(2)}</span>
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-xs">
-                            {venue.venue.pricing?.tickets && venue.venue.pricing.tickets > 0 && (
+                            {venue.ticketCost > 0 && (
                               <div className="flex items-center gap-1">
                                 <Ticket className="w-3 h-3" />
-                                <span>Tickets: ${venue.venue.pricing.tickets.toFixed(2)}</span>
+                                <span>Tickets: ${venue.ticketCost.toFixed(2)}</span>
                               </div>
                             )}
                             {venue.foodCost > 0 && (
