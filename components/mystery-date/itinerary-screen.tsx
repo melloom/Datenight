@@ -193,11 +193,11 @@ function calculateTravelTime(from: { lat: number; lng: number }, to: { lat: numb
     Math.sin(dLng/2) * Math.sin(dLng/2)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
   const distance = R * c
-  
+
   // Estimate travel time (average speed: 25 mph in city, 40 mph highway)
   const avgSpeed = distance < 5 ? 25 : 40
   const minutes = Math.round((distance / avgSpeed) * 60)
-  
+
   return { minutes, miles: Math.round(distance * 10) / 10 }
 }
 
@@ -383,48 +383,53 @@ function formatItineraryForShare(steps: Step[], searchCriteria?: any): string {
     block += `\n⏰ ${s.time} · ${s.priceRange}`
     if (s.address) block += `\n📍 ${s.address}`
 
-    // Use actual venue description if available, otherwise use a more personalized one
-    if (s.description && s.description.length > 10 && !s.description.includes("moderately priced")) {
-      block += `\n💬 ${s.description}`
+    // Generate description with real pricing data when available
+    let desc = ''
+
+    // Try to use actual venue description if it's not generic
+    if (s.description && s.description.length > 10 && !s.description.includes("moderately priced") && !s.description.includes("excellent service")) {
+      desc = s.description
     } else {
-      // Generate more specific descriptions based on venue data and actual pricing
+      // Generate personalized description based on venue data
       const highlights = s.highlights?.slice(0, 2).join(', ') || ''
       const features = s.features?.slice(0, 2).join(', ') || ''
       const vibe = s.vibe || ''
 
-      let desc = `${s.place} offers`
+      desc = `${s.place} offers`
       if (highlights) desc += ` ${highlights.toLowerCase()}`
       else if (features) desc += ` ${features.toLowerCase()}`
       else if (vibe) desc += ` a ${vibe.toLowerCase()} atmosphere`
       else desc += ` excellent ${label.toLowerCase()} options`
-
       desc += `.`
-
-      // Add actual pricing information if available
-      if (s.pricing) {
-        const pricing = s.pricing
-        if (s.category === 'dinner' && pricing.food) {
-          desc += ` Entrees typically $${pricing.food}-${pricing.food + 10}.`
-        } else if (s.category === 'drinks' && pricing.drinks) {
-          desc += ` Drinks around $${pricing.drinks}.`
-        } else if (s.category === 'activity' && pricing.tickets) {
-          desc += ` Tickets $${pricing.tickets}.`
-        }
-      }
-
-      // Add quality indicators
-      if (s.rating && s.rating >= 4.0) {
-        desc += ` Highly rated (${s.rating}⭐) for exceptional quality.`
-      } else if (s.rating && s.rating >= 3.5) {
-        desc += ` Well-rated (${s.rating}⭐) with positive reviews.`
-      }
-
-      if (s.hours && s.hours.includes('Currently open')) {
-        desc += ` Currently open and ready to welcome guests.`
-      }
-
-      block += `\n💬 ${desc}`
     }
+
+    // Always add real pricing information if available
+    if (s.pricing) {
+      const pricing = s.pricing
+      if (s.category === 'dinner' && pricing.food) {
+        desc += ` Entrees $${pricing.food}-${pricing.food + 10}.`
+      } else if (s.category === 'drinks' && pricing.drinks) {
+        desc += ` Drinks ~$${pricing.drinks}.`
+      } else if (s.category === 'activity' && pricing.tickets) {
+        desc += ` Tickets from $${pricing.tickets}.`
+      } else if (pricing.minimumSpend) {
+        desc += ` Minimum spend $${pricing.minimumSpend}.`
+      }
+    }
+
+    // Add quality indicators
+    if (s.rating && s.rating >= 4.0) {
+      desc += ` Highly rated (${s.rating}⭐).`
+    } else if (s.rating && s.rating >= 3.5) {
+      desc += ` Well-rated (${s.rating}⭐).`
+    }
+
+    // Add hours info if relevant
+    if (s.hours && s.hours.includes('Currently open')) {
+      desc += ` Currently open.`
+    }
+
+    block += `\n💬 ${desc}`
 
     // Add website link if available
     if (s.website) {
@@ -1080,27 +1085,27 @@ interface DatePlanHistory {
 function calculateBudgetBreakdown(steps: Step[], partySize: number): BudgetBreakdown {
   const venues: VenueCost[] = []
   let totalCost = 0
-  
+
   steps.forEach(step => {
     let foodCost = 0
     let drinkCost = 0
     let activityCost = 0
     let ticketCost = 0
-    
+
     // Use real pricing data if available, otherwise fall back to estimates
     if (step.pricing) {
       const pricing = step.pricing
-      
+
       // Use real pricing data
       foodCost = (pricing.food || 0) * partySize
       drinkCost = (pricing.drinks || 0) * partySize
       activityCost = (pricing.activities || 0) * partySize
       ticketCost = (pricing.tickets || 0) * partySize
-      
+
       // If no specific pricing, use price range estimates
       if (!pricing.food && !pricing.drinks && !pricing.activities && !pricing.tickets) {
         const priceMultiplier = getPriceMultiplier(step.priceRange)
-        
+
         if (step.category === 'dinner') {
           foodCost = 25 * priceMultiplier * partySize
           drinkCost = 8 * priceMultiplier * partySize
@@ -1117,7 +1122,7 @@ function calculateBudgetBreakdown(steps: Step[], partySize: number): BudgetBreak
     } else {
       // Fall back to estimates for venues without pricing data
       const priceMultiplier = getPriceMultiplier(step.priceRange)
-      
+
       if (step.category === 'dinner') {
         foodCost = 25 * priceMultiplier * partySize
         drinkCost = 8 * priceMultiplier * partySize
@@ -1131,10 +1136,10 @@ function calculateBudgetBreakdown(steps: Step[], partySize: number): BudgetBreak
           foodCost = 8 * priceMultiplier * partySize // snacks
       }
     }
-    
+
     const venueTotal = foodCost + drinkCost + activityCost + ticketCost
     totalCost += venueTotal
-    
+
     venues.push({
       venue: step,
       foodCost,
@@ -1145,7 +1150,7 @@ function calculateBudgetBreakdown(steps: Step[], partySize: number): BudgetBreak
       costPerPerson: venueTotal / partySize
     })
   })
-  
+
   return {
     totalCost,
     costPerPerson: totalCost / partySize,
@@ -1162,34 +1167,34 @@ function getPriceMultiplier(priceRange: string): number {
 
 function generateMoneySavingTips(steps: Step[]): string[] {
   const tips = []
-  
+
   // Check for expensive venues
   const expensiveVenues = steps.filter(s => s.priceRange === '$$$' || s.priceRange === '$$$$')
   if (expensiveVenues.length > 0) {
     tips.push(`Consider visiting ${expensiveVenues[0].place} during happy hour for 20-30% savings`)
   }
-  
+
   // Check for activities
   const activities = steps.filter(s => s.category === 'activity')
   if (activities.length > 0) {
     tips.push(`Look for Groupon or LivingSocial deals for ${activities[0].place} to save 15-25%`)
   }
-  
+
   // General tips
   tips.push('Split appetizers and desserts to reduce costs')
   tips.push('Check for early bird specials (usually 5-6 PM)')
   tips.push('Consider lunch dates for better prices at dinner venues')
-  
+
   if (steps.length >= 2) {
     tips.push('Walk between nearby venues to save on transportation costs')
   }
-  
+
   return tips.slice(0, 4) // Return top 4 tips
 }
 
 function generateAlternatives(steps: Step[], partySize: number): { venue: Step; savings: number; alternative: string }[] {
   const alternatives: { venue: Step; savings: number; alternative: string }[] = []
-  
+
   steps.forEach(step => {
     if (step.priceRange === '$$$$') {
       alternatives.push({
@@ -1211,7 +1216,7 @@ function generateAlternatives(steps: Step[], partySize: number): { venue: Step; 
       })
     }
   })
-  
+
   return alternatives.slice(0, 3) // Return top 3 alternatives
 }
 
@@ -1219,7 +1224,7 @@ function generateAlternatives(steps: Step[], partySize: number): { venue: Step; 
 function generateCalendarEvents(steps: Step[], date: Date, travelTimes: any[], startTime: string = '19:00', includeTravelTime: boolean = true, notes: string = '', reminders: boolean = true): any[] {
   const events: any[] = []
   let currentTime = new Date(date)
-  
+
   // Parse start time (format: "19:00")
   const [hours, minutes] = startTime.split(':').map(Number)
   currentTime.setHours(hours, minutes || 0, 0, 0)
@@ -1269,7 +1274,7 @@ async function fetchWeather(location: string): Promise<any> {
 
 function getWeatherRecommendation(weather: any, steps: Step[]): string[] {
   const recommendations = []
-  
+
   if (!weather) {
     return ['Weather data unavailable - plan for both indoor and outdoor options']
   }
@@ -1326,11 +1331,11 @@ function generateReservationLinks(steps: Step[]): { venue: Step; link: string; t
 function createGoogleCalendarUrl(events: any[]): string {
   const baseUrl = 'https://calendar.google.com/calendar/render'
   const params = new URLSearchParams()
-  
+
   events.forEach((event, index) => {
     const startDate = event.start.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
     const endDate = event.end.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-    
+
     params.append(`text${index}`, event.title)
     params.append(`dates${index}`, `${startDate}/${endDate}`)
     params.append(`location${index}`, event.location)
@@ -1485,7 +1490,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       if (response.ok) {
         const result = await response.json()
-        
+
         // Update venues with optimized order
         if (result.optimizedVenues && onVenuesUpdate) {
           onVenuesUpdate(result.optimizedVenues)
@@ -1493,8 +1498,8 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
         // Show success message with savings
         if (result.timeSavings > 0) {
-          const savingsMsg = result.timeSavings > 0 
-            ? `Route optimized! Saved ${result.timeSavings} minutes of travel time.` 
+          const savingsMsg = result.timeSavings > 0
+            ? `Route optimized! Saved ${result.timeSavings} minutes of travel time.`
             : 'Route analyzed with real travel times.'
           console.log(savingsMsg, result.reasoning)
         }
@@ -1527,9 +1532,9 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
     const planDate = selectedDate // Use the selected date from calendar
     const planDateString = planDate.toDateString() // e.g., "Mon Mar 29 2026"
-    
+
     // Check if there's already a plan for the selected date
-    const existingPlanIndex = datePlanHistory.findIndex(item => 
+    const existingPlanIndex = datePlanHistory.findIndex(item =>
       new Date(item.date).toDateString() === planDateString
     )
 
@@ -1545,7 +1550,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     }
 
     let updatedHistory: DatePlanHistory[]
-    
+
     if (existingPlanIndex !== -1) {
       // Update existing plan for the selected date
       updatedHistory = [...datePlanHistory]
@@ -1568,21 +1573,21 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
   // Late night alert handlers
   const handleSuggestionSelect = async (suggestion: AlternativeSuggestion) => {
-    
+
     try {
       setIsGeneratingAlternative(true)
-      
+
       // Generate new search criteria based on the suggestion
       const newCriteria = generateCriteriaFromSuggestion(suggestion, searchCriteria)
-      
+
       if (newCriteria) {
-        
+
         // Navigate back to setup with pre-filled criteria for a real search
         setShowLateNightAlert(false)
-        
+
         // Store the new criteria in session storage for the setup screen to use
         sessionStorage.setItem('alternativeSearchCriteria', JSON.stringify(newCriteria))
-        
+
         // Navigate back to setup screen to trigger a real search
         onReset()
       }
@@ -1702,23 +1707,23 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   // Calendar export functions
   const exportToGoogleCalendar = () => {
     const events = generateCalendarEvents(steps, selectedDate, steps.map((step, index) => step.travelTimeToNext || 10), startTime, includeTravelTime, calendarNotes, reminders)
-    
+
     events.forEach((event, index) => {
       const startDate = new Date(event.startTime)
       const endDate = new Date(event.endTime)
-      
+
       // Format dates for Google Calendar URL
       const formatDate = (date: Date) => {
         return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
       }
-      
+
       const startTimeStr = formatDate(startDate)
       const endTimeStr = formatDate(endDate)
-      
+
       // Create Google Calendar URL
       const details = event.description.replace(/\n/g, '\\n')
       const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${startTimeStr}/${endTimeStr}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(event.location)}`
-      
+
       // Open in new tab
       window.open(googleCalendarUrl, '_blank')
     })
@@ -1726,27 +1731,27 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
   const exportToICalendar = () => {
     const events = generateCalendarEvents(steps, selectedDate, steps.map((step, index) => step.travelTimeToNext || 10), startTime, includeTravelTime, calendarNotes, reminders)
-    
+
     // Generate iCalendar content
     let icalContent = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Date Night Planner//Date Night//EN\nCALSCALE:GREGORIAN\n'
-    
+
     events.forEach((event) => {
       const startDate = new Date(event.startTime)
       const endDate = new Date(event.endTime)
-      
+
       // Format dates for iCalendar
       const formatDate = (date: Date) => {
         return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '') + 'Z'
       }
-      
+
       const startTimeStr = formatDate(startDate)
       const endTimeStr = formatDate(endDate)
-      
+
       // Escape special characters
       const escapeText = (text: string) => {
         return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
       }
-      
+
       icalContent += `BEGIN:VEVENT\n`
       icalContent += `UID:${event.id}@datenight.app\n`
       icalContent += `DTSTART:${startTimeStr}\n`
@@ -1756,9 +1761,9 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       icalContent += `LOCATION:${escapeText(event.location)}\n`
       icalContent += `END:VEVENT\n`
     })
-    
+
     icalContent += 'END:VCALENDAR'
-    
+
     // Create and download file
     const blob = new Blob([icalContent], { type: 'text/calendar;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -1773,23 +1778,23 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
   const exportToOutlook = () => {
     const events = generateCalendarEvents(steps, selectedDate, steps.map((step, index) => step.travelTimeToNext || 10), startTime, includeTravelTime, calendarNotes, reminders)
-    
+
     events.forEach((event) => {
       const startDate = new Date(event.startTime)
       const endDate = new Date(event.endTime)
-      
+
       // Format dates for Outlook URL
       const formatDate = (date: Date) => {
         return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
       }
-      
+
       const startTimeStr = formatDate(startDate)
       const endTimeStr = formatDate(endDate)
-      
+
       // Create Outlook Calendar URL
       const details = event.description.replace(/\n/g, '%0A')
       const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(event.title)}&startdt=${startTimeStr}&enddt=${endTimeStr}&body=${encodeURIComponent(details)}&location=${encodeURIComponent(event.location)}`
-      
+
       // Open in new tab
       window.open(outlookUrl, '_blank')
     })
@@ -1836,12 +1841,38 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       pricingFetchedRef.current = false
     }
 
-    // Sort venues by logical date night flow: drinks first, then dinner, then activities
+    // Sort venues by logical date night flow: early drinks, dinner, then late activities/drinks
     const sortedVenues = [...venues].sort((a, b) => {
-      const categoryOrder = { drinks: 1, dinner: 2, activity: 3 }
-      const aOrder = categoryOrder[a.category] || 4
-      const bOrder = categoryOrder[b.category] || 4
-      return aOrder - bOrder
+      // Define logical order for date night flow
+      const getFlowOrder = (venue: Venue) => {
+        const timePref = searchCriteria?.time || 'prime'
+
+        // For early time preference: drinks first, then dinner, then activities
+        if (timePref === 'early') {
+          if (venue.category === 'drinks') return 1
+          if (venue.category === 'dinner') return 2
+          return 3 // activities
+        }
+
+        // For prime time: dinner first (main event), then drinks, then activities
+        if (timePref === 'prime') {
+          if (venue.category === 'dinner') return 1
+          if (venue.category === 'drinks') return 2
+          return 3 // activities
+        }
+
+        // For late time: activities first, then drinks, then any remaining dinner
+        if (timePref === 'late') {
+          if (venue.category === 'activity') return 1
+          if (venue.category === 'drinks') return 2
+          return 3 // dinner
+        }
+
+        // Default fallback
+        return venue.category === 'dinner' ? 1 : venue.category === 'drinks' ? 2 : 3
+      }
+
+      return getFlowOrder(a) - getFlowOrder(b)
     })
 
     // Dynamic time slots — each venue gets a realistic duration, then travel time is added
@@ -1987,11 +2018,11 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
         .then(res => res.ok ? res.json() : null)
         .then(result => {
           if (!result?.pricing) return
-          
+
           // Update the sorted venues with new pricing data
           const updatedSortedVenues = sortedVenues.map(v => {
             // Find matching venue in the pricing results
-            const pricingIndex = venuesMissingPricing.findIndex(missing => 
+            const pricingIndex = venuesMissingPricing.findIndex(missing =>
               missing.name === v.name && missing.address === v.address
             )
             if (pricingIndex >= 0 && result.pricing[pricingIndex]) {
@@ -1999,7 +2030,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             }
             return v
           })
-          
+
           // Recreate steps with updated pricing
           const updatedConvertedSteps = updatedSortedVenues.map((venue, index) => {
             const assignedTime = dynamicSlots[index] || dynamicSlots[dynamicSlots.length - 1]
@@ -2033,7 +2064,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             if (p === 'AM' && hh === 12) hh = 0
             return hh * 60 + mm
           })()
-          
+
           const finalSteps = updatedStepsWithTravel.map((step, i) => {
             const hrs = Math.floor(recalcTime / 60) % 24
             const mins = recalcTime % 60
@@ -2045,13 +2076,13 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             recalcTime += dur + (i < updatedStepsWithTravel.length - 1 ? travel : 0)
             return { ...step, time: newTime }
           })
-          
+
           setSteps(finalSteps)
-          
+
           // Propagate updated venues to parent (preserve original order for parent component)
           if (onVenuesUpdate) {
             const updatedOriginalVenues = venues.map(originalVenue => {
-              const sortedIndex = sortedVenues.findIndex(sorted => 
+              const sortedIndex = sortedVenues.findIndex(sorted =>
                 sorted.name === originalVenue.name && sorted.address === originalVenue.address
               )
               if (sortedIndex >= 0) {
@@ -2093,7 +2124,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const executeSwapVenue = async (index: number, customRequest?: string) => {
     if (!searchCriteria || !onVenuesUpdate) return
     setIsSwapping(index)
-    
+
     try {
       const venueToSwap = venues[index]
       const response = await fetch('/api/ai/enhance', {
@@ -2127,7 +2158,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const handleImprovePlan = async () => {
     if (!searchCriteria || !onVenuesUpdate) return
     setIsImproving(true)
-    
+
     try {
       const response = await fetch('/api/ai/enhance', {
         method: 'POST',
@@ -2488,7 +2519,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
             <p className="text-sm text-muted-foreground mb-4">
               Replace "{steps[showSwapDialog]?.place}" with something else?
             </p>
-            
+
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1">
@@ -2501,7 +2532,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                   className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
-              
+
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => executeSwapVenue(showSwapDialog, swapRequest)}
@@ -2527,7 +2558,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                   Cancel
                 </button>
               </div>
-              
+
               <div className="text-xs text-muted-foreground">
                 💡 Leave empty for a random alternative, or describe what you want
               </div>
@@ -2877,7 +2908,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-medium text-sm">{event.title}</span>
                         <span className="text-xs text-muted-foreground">
-                          {event.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - 
+                          {event.start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} -
                           {event.end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                         </span>
                       </div>
@@ -2960,7 +2991,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                     Copy to Clipboard
                   </button>
                 </div>
-                
+
                 {/* Calendar Summary */}
                 <div className="mt-4 p-3 bg-muted/50 rounded-lg">
                   <div className="text-xs text-muted-foreground space-y-1">
@@ -2988,7 +3019,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                     )}
                   </div>
                 </div>
-                
+
                 <div className="mt-3 text-xs text-muted-foreground text-center">
                   Events include venue details, locations, and {reminders ? 'automatic reminders' : 'no reminders'}
                 </div>
@@ -3173,7 +3204,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                             {step.category === 'dinner' ? '🍽️ Dinner' : step.category === 'drinks' ? '🍷 Drinks' : '🎯 Activity'}
                           </span>
                         </div>
-                        
+
                         {/* Show special occasion features */}
                         {(step.features || []).length > 0 && (
                           <div className="mb-2">
@@ -3187,7 +3218,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                             </div>
                           </div>
                         )}
-                        
+
                         {/* Show AI insights if available */}
                         {step.aiInsights && (
                           <div className="space-y-2">
@@ -3199,7 +3230,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                                 </div>
                               </div>
                             )}
-                            
+
                             {step.aiInsights.insiderTips && step.aiInsights.insiderTips.length > 0 && (
                               <div>
                                 <div className="text-xs font-medium text-purple-700 mb-1">Insider Tips:</div>
@@ -3208,7 +3239,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                                 </div>
                               </div>
                             )}
-                            
+
                             {step.aiInsights.photoSpots && step.aiInsights.photoSpots.length > 0 && (
                               <div>
                                 <div className="text-xs font-medium text-purple-700 mb-1">Photo Spots:</div>
@@ -3219,7 +3250,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                             )}
                           </div>
                         )}
-                        
+
                         {/* Show pricing if available */}
                         {step.pricing && (
                           <div className="mt-2 pt-2 border-t border-purple-500/20">
@@ -3232,7 +3263,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                             </div>
                           </div>
                         )}
-                        
+
                         {/* Show status */}
                         <div className="mt-2 pt-2 border-t border-purple-500/20">
                           <div className="flex items-center gap-2 text-xs text-green-600">
@@ -3360,7 +3391,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                           </button>
                         </div>
                       </div>
-                      
+
                       {/* Venue Preview */}
                       <div className="border-t border-border/60 pt-3">
                         <div className="text-xs font-medium text-muted-foreground mb-2">Venues ({plan.venues.length}):</div>
@@ -3391,7 +3422,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
                     </div>
                     <div>
                       <div className="font-medium text-blue-600">
-                        {datePlanHistory.length > 0 ? 
+                        {datePlanHistory.length > 0 ?
                           new Set(datePlanHistory.map(p => p.location)).size : 0
                         }
                       </div>

@@ -172,7 +172,7 @@ export default function LearnMorePage() {
                     {/* Phone frame */}
                     <rect x="120" y="20" width="160" height="260" rx="20" className="stroke-foreground/20" strokeWidth="2" fill="var(--card)" />
                     <rect x="168" y="30" width="64" height="6" rx="3" className="fill-foreground/10" />
-                    
+
                     {/* Preference sliders */}
                     <text x="145" y="75" className="fill-foreground/60" fontSize="10" fontWeight="500">Cuisine</text>
                     <rect x="145" y="82" width="110" height="6" rx="3" className="fill-foreground/10" />
@@ -234,7 +234,7 @@ export default function LearnMorePage() {
                     <circle cx="200" cy="150" r="100" className="stroke-foreground/10" strokeWidth="1" strokeDasharray="4 4" />
                     <circle cx="200" cy="150" r="70" className="stroke-foreground/10" strokeWidth="1" strokeDasharray="4 4" />
                     <circle cx="200" cy="150" r="40" className="stroke-foreground/10" strokeWidth="1" strokeDasharray="4 4" />
-                    
+
                     {/* Radar sweep */}
                     <line x1="200" y1="150" x2="200" y2="50" className="stroke-primary/40" strokeWidth="2">
                       <animateTransform attributeName="transform" type="rotate" from="0 200 150" to="360 200 150" dur="3s" repeatCount="indefinite" />
@@ -306,10 +306,10 @@ export default function LearnMorePage() {
                     {/* Recommendation cards stack */}
                     {/* Card 3 (back) */}
                     <rect x="130" y="50" width="180" height="110" rx="12" className="fill-card stroke-border" strokeWidth="1" opacity="0.5" transform="rotate(3 220 105)" />
-                    
+
                     {/* Card 2 (middle) */}
                     <rect x="118" y="55" width="180" height="110" rx="12" className="fill-card stroke-border" strokeWidth="1" opacity="0.7" transform="rotate(-2 208 110)" />
-                    
+
                     {/* Card 1 (front — main) */}
                     <g>
                       <animate attributeName="opacity" values="0.9;1;0.9" dur="3s" repeatCount="indefinite" />
@@ -329,7 +329,7 @@ export default function LearnMorePage() {
                       <rect x="168" y="130" width="60" height="18" rx="9" className="fill-accent/15" />
                       <text x="176" y="143" fontSize="8" className="fill-accent">98% Match</text>
                     </g>
-                    
+
                     {/* Match percentage animation */}
                     <g transform="translate(115, 190)">
                       <text x="0" y="12" fontSize="10" className="fill-foreground/50" fontWeight="500">Your Top Picks</text>
@@ -373,7 +373,7 @@ export default function LearnMorePage() {
                   <svg viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
                     {/* Itinerary timeline */}
                     <line x1="160" y1="40" x2="160" y2="260" className="stroke-border" strokeWidth="2" />
-                    
+
                     {/* Timeline node 1 — Dinner */}
                     <g>
                       <circle cx="160" cy="65" r="10" className="fill-primary" stroke="var(--card)" strokeWidth="3">
