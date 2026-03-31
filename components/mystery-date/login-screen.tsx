@@ -3,14 +3,21 @@
 import { useState } from "react"
 import { Sparkles, MapPin, Wine } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export function LoginScreen() {
   const { signInWithGoogle } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [agree, setAgree] = useState(false)
 
   const handleGoogleSignIn = async () => {
+    if (!agree) {
+      setError("Please agree to the Terms of Service and Privacy Policy.")
+      return
+    }
     try {
       setIsLoading(true)
       setError(null)
@@ -96,9 +103,15 @@ export function LoginScreen() {
           )}
         </div>
 
-        <p className="text-[10px] text-muted-foreground/50 text-center">
-          By continuing, you agree to our Terms &amp; Privacy Policy
-        </p>
+        <div className="flex items-center space-x-2">
+          <Checkbox id="terms" checked={agree} onCheckedChange={() => setAgree(!agree)} />
+          <label
+            htmlFor="terms"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            I agree to the <Link href="/legal/terms-of-service" className="underline">Terms of Service</Link> and <Link href="/legal/privacy-policy" className="underline">Privacy Policy</Link>.
+          </label>
+        </div>
       </div>
     </div>
   )
