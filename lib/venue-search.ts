@@ -63,7 +63,15 @@ export interface Venue {
   verifiedOpen?: boolean
   yelpRating?: number
   combinedRating?: number // weighted avg of Google + Yelp
-  seasonalFit?: number // 0-1 how well venue fits current season/weather
+  seasonalFit?: number // 0-1 score for current season/weather
+  // Event-specific fields (for Ticketmaster events)
+  eventId?: string
+  eventDate?: string
+  eventTime?: string
+  venueName?: string
+  ticketUrl?: string
+  minPrice?: number
+  maxPrice?: number
 }
 
 export interface VenuePricing {
@@ -290,6 +298,9 @@ class VenueSearcher {
     // #5: Multi-query search — diverse phrasings for better coverage
     const multiQueryPromise = this.multiQuerySearch(criteria)
 
+    // Search Ticketmaster events for concerts, shows, sports
+    const ticketmasterPromise = this.searchTicketmaster(criteria)
+
     // Wait for all searches to complete with overall timeout
     const searchResults = await Promise.all([
       ...searchPromises, 
@@ -300,6 +311,10 @@ class VenueSearcher {
       Promise.race([
         multiQueryPromise,
         new Promise<Venue[]>(resolve => setTimeout(() => resolve([]), 10000))
+      ]),
+      Promise.race([
+        ticketmasterPromise,
+        new Promise<Venue[]>(resolve => setTimeout(() => resolve([]), 8000))
       ])
     ])
     allVenues.push(...searchResults.flat())
@@ -416,12 +431,13 @@ class VenueSearcher {
         return false
       }
 
-      // Enhanced filtering
-      if (!this.hasGoodRating(venue)) {
+      // Enhanced filtering — skip rating/review filters for events (Ticketmaster has no ratings)
+      const isEvent = venue.id.startsWith('ticketmaster-') || !!venue.eventId
+      if (!isEvent && !this.hasGoodRating(venue)) {
         return false
       }
 
-      if (!this.hasSufficientReviews(venue)) {
+      if (!isEvent && !this.hasSufficientReviews(venue)) {
         return false
       }
 
@@ -956,7 +972,25 @@ class VenueSearcher {
         'boardwalk', 'waterfront', 'farmers market',
         'food hall', 'wine tasting', 'brewery tour',
         'paintball', 'rock climbing gym',
-        'drive in theater', 'roller skating'
+        'drive in theater', 'roller skating',
+        // Events & live entertainment
+        'concert venue live music',
+        'comedy show standup',
+        'theater performance',
+        'pop-up event',
+        'festival food festival',
+        'outdoor cinema',
+        'night market',
+        'jazz club live band',
+        'open mic night',
+        'trivia night bar',
+        'paint and sip',
+        'cooking class couples',
+        'dance class salsa',
+        'speakeasy hidden bar',
+        'immersive experience',
+        'drag show cabaret',
+        'poetry slam spoken word',
       ]
 
       // Pick activity-relevant terms from AI or defaults
@@ -1122,6 +1156,143 @@ class VenueSearcher {
       return venues
     } catch {
       return []
+    }
+  }
+
+  // Search Ticketmaster events for concerts, shows, sports, comedy
+  private async searchTicketmaster(criteria: SearchCriteria): Promise<Venue[]> {
+    try {
+      const location = await this.geocodeLocation(criteria.location)
+      if (!location) return []
+
+      const radius = TIME_FILTERS[criteria.time].searchRadius * 1609
+      const venues: Venue[] = []
+
+      // Search for date-appropriate events — concerts, shows, comedy, festivals, pop-ups
+      const vibeStr = (criteria.vibes || []).slice(0, 2).join(' ')
+      const searchTerms = [
+        'concerts live music',
+        'comedy shows theater',
+        `${vibeStr} events entertainment`,
+        'festival pop-up food',
+      ]
+
+      for (const term of searchTerms.slice(0, 3)) { // Search 3 terms for broader coverage
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 4000)
+
+        const response = await fetch('/api/venues/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'ticketmaster-events',
+            query: term,
+            lat: location.lat,
+            lng: location.lng,
+            radius: Math.min(radius, 160934) // Max 100 miles
+          }),
+          signal: controller.signal
+        })
+        clearTimeout(timeoutId)
+
+        if (!response.ok) continue
+        const data = await response.json()
+        const events = data._embedded?.events || []
+
+        // Convert Ticketmaster events to Venue format
+        const converted = events.slice(0, 3).map((event: any) => 
+          this.convertTicketmasterEventToVenue(event, criteria)
+        )
+        venues.push(...converted)
+
+        if (venues.length >= 5) break // Limit total results
+        await new Promise(resolve => setTimeout(resolve, 200)) // Rate limit
+      }
+
+      return venues
+    } catch {
+      return []
+    }
+  }
+
+  // Convert Ticketmaster event to Venue format
+  private convertTicketmasterEventToVenue(event: any, criteria: SearchCriteria): Venue {
+    const venue = event._embedded?.venues?.[0] || {}
+    const priceRanges = event.priceRanges || []
+    const images = event.images || []
+    
+    // Extract price info
+    const minPrice = priceRanges.length > 0 ? Math.min(...priceRanges.map((p: any) => p.min || 0)) : 0
+    const maxPrice = priceRanges.length > 0 ? Math.max(...priceRanges.map((p: any) => p.max || 0)) : 0
+    const avgPrice = minPrice > 0 ? (minPrice + maxPrice) / 2 : 0
+
+    // Build price range string
+    let priceRange = ''
+    if (avgPrice > 0) {
+      if (avgPrice < 30) priceRange = '$'
+      else if (avgPrice < 60) priceRange = '$$'
+      else if (avgPrice < 100) priceRange = '$$$'
+      else priceRange = '$$$$'
+    }
+
+    // Build a rich description for the event
+    const eventDateStr = event.dates?.start?.localDate
+      ? new Date(event.dates.start.localDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+      : ''
+    const eventTimeStr = event.dates?.start?.localTime
+      ? new Date(`2000-01-01T${event.dates.start.localTime}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      : ''
+    const genre = event.classifications?.[0]?.genre?.name || ''
+    const segment = event.classifications?.[0]?.segment?.name || 'Event'
+    const priceStr = minPrice > 0 ? `Tickets from $${minPrice}${maxPrice > minPrice ? `–$${maxPrice}` : ''}` : ''
+
+    const descParts = [
+      event.info || event.description || `${event.name} at ${venue.name || 'a local venue'}`,
+      eventDateStr && eventTimeStr ? `${eventDateStr} at ${eventTimeStr}` : eventDateStr || '',
+      priceStr,
+    ].filter(Boolean)
+
+    return {
+      id: `ticketmaster-${event.id}`,
+      name: event.name,
+      category: 'activity',
+      rating: 4.5, // Events don't have ratings — use neutral-high so they pass filters
+      reviewCount: 50, // Enough to pass the review filter
+      priceRange: priceRange || '$$',
+      address: [venue.address?.line1, venue.city?.name, venue.state?.stateCode].filter(Boolean).join(', ') || venue.name || 'Location TBD',
+      phone: venue.boxOffice?.phoneOnlyNumber || '',
+      website: event.url || '',
+      imageUrl: images.find((img: any) => img.ratio === '16_9')?.url || images[0]?.url || '',
+      description: descParts.join('. ') + '.',
+      highlights: [
+        genre || segment,
+        eventDateStr || 'Date TBD',
+        venue.name || '',
+        priceStr,
+      ].filter(Boolean),
+      coordinates: {
+        lat: parseFloat(venue.location?.latitude) || 0,
+        lng: parseFloat(venue.location?.longitude) || 0
+      },
+      hours: eventDateStr && eventTimeStr ? `${eventDateStr} — Doors at ${eventTimeStr}` : undefined,
+      tags: [segment, genre, 'Live Event', event.classifications?.[0]?.subGenre?.name].filter(Boolean),
+      features: ['Live Event', genre && `${genre} Event`, venue.name && `At ${venue.name}`].filter(Boolean) as string[],
+      vibe: genre?.toLowerCase().includes('comedy') ? 'fun' : genre?.toLowerCase().includes('rock') || genre?.toLowerCase().includes('pop') ? 'lively' : 'adventurous',
+      // Event-specific fields
+      eventId: event.id,
+      eventDate: event.dates?.start?.localDate || '',
+      eventTime: event.dates?.start?.localTime || '',
+      venueName: venue.name || '',
+      ticketUrl: event.url || '',
+      minPrice,
+      maxPrice,
+      reservationLinks: event.url ? [{ url: event.url, platform: 'Ticketmaster' }] : [],
+      pricing: avgPrice > 0 ? {
+        tickets: Math.round(avgPrice),
+        currency: priceRanges[0]?.currency || 'USD',
+        source: 'Ticketmaster',
+        lastUpdated: new Date().toISOString()
+      } : undefined
     }
   }
 

@@ -7,9 +7,11 @@ const GOOGLE_PLACES_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY || '
 const FOURSQUARE_CLIENT_ID = process.env.FOURSQUARE_CLIENT_ID || ''
 const FOURSQUARE_CLIENT_SECRET = process.env.FOURSQUARE_CLIENT_SECRET || ''
 const YELP_API_KEY = process.env.YELP_API_KEY || ''
+const TICKETMASTER_CONSUMER_KEY = process.env.TICKETMASTER_CONSUMER_KEY || ''
+const TICKETMASTER_CONSUMER_SECRET = process.env.TICKETMASTER_CONSUMER_SECRET || ''
 
 const venueSearchSchema = z.object({
-  action: z.enum(['google-places', 'google-text-search', 'google-geocode', 'google-place-details', 'foursquare', 'overpass', 'yelp-search', 'yelp-match']),
+  action: z.enum(['google-places', 'google-text-search', 'google-geocode', 'google-place-details', 'foursquare', 'overpass', 'yelp-search', 'yelp-match', 'ticketmaster-events']),
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
   radius: z.number().min(1).max(50000).optional(),
@@ -306,6 +308,56 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'Yelp Match API timeout' }, { status: 504 })
         }
         return NextResponse.json({ error: 'Yelp Match API failed' }, { status: 502 })
+      }
+    }
+
+    // Ticketmaster Events — find concerts, shows, sports, events for date activities
+    if (action === 'ticketmaster-events') {
+      if (!TICKETMASTER_CONSUMER_KEY || !TICKETMASTER_CONSUMER_SECRET) {
+        return NextResponse.json({ error: 'Ticketmaster API not configured' }, { status: 503 })
+      }
+
+      const { query: searchTerm } = body
+      const radiusInMiles = Math.min((radius || 16000) / 1609.34, 100) // Convert to miles, max 100
+
+      // First get OAuth token
+      const tokenResponse = await fetch('https://api.ticketmaster.com/oauth2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `grant_type=client_credentials&client_id=${TICKETMASTER_CONSUMER_KEY}&client_secret=${TICKETMASTER_CONSUMER_SECRET}`
+      })
+      if (!tokenResponse.ok) {
+        return NextResponse.json({ error: 'Ticketmaster auth failed' }, { status: 502 })
+      }
+      const { access_token } = await tokenResponse.json()
+
+      // Search events
+      const params = new URLSearchParams({
+        keyword: searchTerm || 'date night music concerts theater comedy',
+        lat: String(lat || 0),
+        lng: String(lng || 0),
+        radius: String(radiusInMiles),
+        size: '20',
+        sort: 'date,asc',
+        includeAllDates: 'true'
+      })
+
+      const fetchPromise = fetch(`https://api.ticketmaster.com/discovery/v2/events.json?${params}`, {
+        headers: { 'Authorization': `Bearer ${access_token}` }
+      }).then(response => {
+        if (!response.ok) throw new Error(`Ticketmaster API error: ${response.status}`)
+        return response.json()
+      })
+
+      try {
+        const data = await Promise.race([fetchPromise, timeoutPromise]) as any
+        return NextResponse.json(data)
+      } catch (error) {
+        console.error('Ticketmaster API error:', error)
+        if (error instanceof Error && error.message === 'Request timeout') {
+          return NextResponse.json({ error: 'Ticketmaster API timeout' }, { status: 504 })
+        }
+        return NextResponse.json({ error: 'Ticketmaster API failed' }, { status: 502 })
       }
     }
 
