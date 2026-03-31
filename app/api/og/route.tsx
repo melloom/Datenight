@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   // Get the current domain from the request
   const host = request.headers.get('host') || 'datenight.app'
-  const logoUrl = `${origin}/apple-touch-icon.png`
+  const logoUrl = `${origin}/android-chrome-512x512.png`
 
   // Parse venue names
   const venueList = venues ? venues.split('|').slice(0, 3) : []
