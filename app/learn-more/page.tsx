@@ -269,20 +269,20 @@ export default function LearnMorePage() {
                     </circle>
 
                     {/* Labels floating */}
-                    <rect x="248" y="98" width="60" height="18" rx="4" className="fill-card" stroke="var(--border)" strokeWidth="1">
+                    <rect x="248" y="98" width="65" height="18" rx="4" className="fill-card" stroke="var(--border)" strokeWidth="1">
                       <animate attributeName="opacity" values="0;1;1;0" dur="3s" repeatCount="indefinite" />
                     </rect>
                     <text x="258" y="111" fontSize="8" className="fill-foreground/70">
                       <animate attributeName="opacity" values="0;1;1;0" dur="3s" repeatCount="indefinite" />
-                      Italian ★ 4.8
+                      The Olive Branch ★ 4.8
                     </text>
 
-                    <rect x="90" y="115" width="58" height="18" rx="4" className="fill-card" stroke="var(--border)" strokeWidth="1">
+                    <rect x="85" y="115" width="65" height="18" rx="4" className="fill-card" stroke="var(--border)" strokeWidth="1">
                       <animate attributeName="opacity" values="0;0;1;1;0" dur="3s" repeatCount="indefinite" />
                     </rect>
-                    <text x="99" y="128" fontSize="8" className="fill-foreground/70">
+                    <text x="94" y="128" fontSize="8" className="fill-foreground/70">
                       <animate attributeName="opacity" values="0;0;1;1;0" dur="3s" repeatCount="indefinite" />
-                      Jazz Bar ★ 4.6
+                      Blue Note Jazz ★ 4.6
                     </text>
                   </svg>
                 </div>
@@ -381,7 +381,7 @@ export default function LearnMorePage() {
                       </circle>
                       <rect x="185" y="45" width="140" height="40" rx="10" className="fill-card" stroke="var(--primary)" strokeWidth="1" />
                       <text x="198" y="62" fontSize="10" fontWeight="600" className="fill-foreground">7:00 PM — Dinner</text>
-                      <text x="198" y="76" fontSize="8" className="fill-foreground/50">Bella Notte Italian</text>
+                      <text x="198" y="76" fontSize="8" className="fill-foreground/50">The Olive Branch</text>
                       {/* Checkmark */}
                       <circle cx="310" cy="65" r="8" className="fill-primary/15" />
                       <path d="M305 65 L308 68 L315 61" className="stroke-primary" strokeWidth="1.5" strokeLinecap="round" />
@@ -394,7 +394,7 @@ export default function LearnMorePage() {
                       </circle>
                       <rect x="185" y="105" width="140" height="40" rx="10" className="fill-card" stroke="var(--accent)" strokeWidth="1" />
                       <text x="198" y="122" fontSize="10" fontWeight="600" className="fill-foreground">8:30 PM — Drinks</text>
-                      <text x="198" y="136" fontSize="8" className="fill-foreground/50">Skyline Rooftop Bar</text>
+                      <text x="198" y="136" fontSize="8" className="fill-foreground/50">Blue Note Jazz Club</text>
                       <circle cx="310" cy="125" r="8" className="fill-accent/15" />
                       <path d="M305 125 L308 128 L315 121" className="stroke-accent" strokeWidth="1.5" strokeLinecap="round" />
                     </g>
@@ -406,7 +406,7 @@ export default function LearnMorePage() {
                       </circle>
                       <rect x="185" y="165" width="140" height="40" rx="10" className="fill-card" stroke="var(--border)" strokeWidth="1" />
                       <text x="198" y="182" fontSize="10" fontWeight="600" className="fill-foreground">10:00 PM — Walk</text>
-                      <text x="198" y="196" fontSize="8" className="fill-foreground/50">Riverside Moonlight Trail</text>
+                      <text x="198" y="196" fontSize="8" className="fill-foreground/50">Waterfront Park</text>
                     </g>
 
                     {/* Share button */}

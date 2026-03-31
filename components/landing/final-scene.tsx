@@ -96,17 +96,17 @@ export function FinalScene() {
           }`}
         >
           <div className="text-center">
-            <span className="block font-serif text-3xl md:text-5xl text-primary">1K+</span>
-            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1 block">Date Spots</span>
+            <span className="block font-serif text-3xl md:text-5xl text-primary">500+</span>
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1 block">Restaurants</span>
           </div>
           <div className="w-px h-10 bg-border hidden sm:block" />
           <div className="text-center">
-            <span className="block font-serif text-3xl md:text-5xl text-primary">4.9</span>
-            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1 block">User Rating</span>
+            <span className="block font-serif text-3xl md:text-5xl text-primary">4.8</span>
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1 block">Avg Rating</span>
           </div>
           <div className="w-px h-10 bg-border hidden sm:block" />
           <div className="text-center">
-            <span className="block font-serif text-3xl md:text-5xl text-primary">50+</span>
+            <span className="block font-serif text-3xl md:text-5xl text-primary">25+</span>
             <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1 block">Activity Types</span>
           </div>
         </div>

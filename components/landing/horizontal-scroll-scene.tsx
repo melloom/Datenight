@@ -6,73 +6,73 @@ import Image from "next/image"
 const experiences = [
   {
     id: 1,
-    title: "Candlelit Discovery",
-    category: "Romantic Dinner",
+    title: "The Olive Branch",
+    category: "Italian Restaurant",
     image: "/images/experience-1.jpg",
-    description: "Elegant restaurant atmosphere with warm lighting"
+    description: "Cozy trattoria with handmade pasta and wine pairings"
   },
   {
     id: 2,
-    title: "Concert Vibes",
-    category: "Live Music",
+    title: "Blue Note Jazz",
+    category: "Live Music Venue",
     image: "/images/experience-2.jpg",
-    description: "Feel the energy of live performances together"
+    description: "Intimate jazz club with craft cocktails and soulful performances"
   },
   {
     id: 3,
-    title: "Chef's Table",
-    category: "Cooking",
+    title: "Sunset Kayaking",
+    category: "Outdoor Activity",
     image: "/images/experience-3.jpg",
-    description: "Create culinary magic side by side"
+    description: "Paddle through calm waters as the sun sets over the horizon"
   },
   {
     id: 4,
-    title: "Mountain Trails",
-    category: "Adventure",
+    title: "Art Gallery Walk",
+    category: "Cultural Experience",
     image: "/images/experience-4.jpg",
-    description: "Explore breathtaking peaks together"
+    description: "Explore local galleries and discover emerging artists together"
   },
   {
     id: 5,
-    title: "Urban Bites",
-    category: "Foodie",
+    title: "Brewery Tour",
+    category: "Food & Drink",
     image: "/images/experience-5.jpg",
-    description: "Trendy spots for modern cuisine lovers"
+    description: "Sample craft beers and learn about local brewing traditions"
   },
   {
     id: 6,
-    title: "Rooftop Cocktails",
-    category: "Nightlife",
+    title: "Rooftop Cinema",
+    category: "Entertainment",
     image: "/images/experience-6.jpg",
-    description: "Sip drinks with stunning city views"
+    description: "Classic movies under the stars with skyline views"
   },
   {
     id: 7,
-    title: "Wine Country",
-    category: "Tasting",
+    title: "Farmers Market",
+    category: "Weekend Activity",
     image: "/images/experience-7.jpg",
-    description: "Savor local wines and artisan pairings"
+    description: "Browse local produce and enjoy fresh street food together"
   },
   {
     id: 8,
-    title: "Beach Escape",
-    category: "Getaway",
+    title: "Beach Bonfire",
+    category: "Outdoor Experience",
     image: "/images/experience-8.jpg",
-    description: "Sandy shores and ocean sunsets"
+    description: "Cozy fireside evening with waves and starry skies"
   },
   {
     id: 9,
-    title: "Festival Nights",
-    category: "Entertainment",
+    title: "Comedy Club",
+    category: "Nightlife",
     image: "/images/experience-9.jpg",
-    description: "Crowds, lights, and unforgettable moments"
+    description: "Laugh together at stand-up shows and open mic nights"
   },
   {
     id: 10,
-    title: "Pure Relaxation",
-    category: "Spa",
+    title: "Couples Cooking",
+    category: "Interactive Class",
     image: "/images/experience-10.jpg",
-    description: "Unwind with couples massage and serenity"
+    description: "Learn to make sushi or pasta in a hands-on cooking class"
   }
 ]
 
