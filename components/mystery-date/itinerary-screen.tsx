@@ -64,6 +64,7 @@ import { shareItinerary, SavedDate } from "@/lib/db"
 import { AIRecommendation } from "@/components/ai/ai-recommendation"
 import { LateNightAlert } from "@/components/ui/late-night-alert"
 import { AlternativeSuggestion, SameDayOption } from "@/lib/late-night-detector"
+import { googleMapsService } from "@/lib/google-maps"
 
 interface Step {
   id: number
@@ -549,7 +550,12 @@ function StepCard({
         {index < totalSteps - 1 && (
           <div className="relative flex-1 mt-2 flex flex-col items-center">
             <div className={`w-px flex-1 ${isRevealed ? color.dot + "/30" : "bg-border"}`} style={{ minHeight: "2rem" }} />
-            {isRevealed && step.travelTimeToNext && (
+            {isRevealed && (isLoadingTravelTimes ? (
+              <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 ${color.bg} ${color.text} text-[10px] font-medium px-2 py-1 rounded-full border ${color.border} flex items-center gap-1 shadow-sm`}>
+                <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                Loading...
+              </div>
+            ) : step.travelTimeToNext ? (
               <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 ${color.bg} ${color.text} text-[10px] font-medium px-2 py-1 rounded-full border ${color.border} flex items-center gap-1 shadow-sm`}>
                 <Navigation className="w-2.5 h-2.5" />
                 {step.travelTimeToNext} min
@@ -557,7 +563,7 @@ function StepCard({
                   <span className="opacity-75">· {step.distanceToNext} mi</span>
                 )}
               </div>
-            )}
+            ) : null)}
           </div>
         )}
       </div>
@@ -1219,6 +1225,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [datePlanHistory, setDatePlanHistory] = useState<DatePlanHistory[]>([])
   const [showLateNightAlert, setShowLateNightAlert] = useState(true)
   const [isGeneratingAlternative, setIsGeneratingAlternative] = useState(false)
+  const [isLoadingTravelTimes, setIsLoadingTravelTimes] = useState(false)
   const { signOut } = useAuth()
 
   // Scroll to top when any modal opens
@@ -1230,6 +1237,47 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       }, 50)
     }
   }, [showHistory, showSpecialOccasions, showCalendarDialog, showBudgetCalculator])
+
+  // Fetch real travel times using Google Maps API
+  const fetchTravelTimes = async (venueSteps: Step[]) => {
+    if (venueSteps.length < 2) return venueSteps
+
+    setIsLoadingTravelTimes(true)
+    const updatedSteps = [...venueSteps]
+
+    try {
+      for (let i = 0; i < venueSteps.length - 1; i++) {
+        const from = venueSteps[i]
+        const to = venueSteps[i + 1]
+
+        if (from.coordinates && to.coordinates) {
+          const travelInfo = await googleMapsService.getDirections(
+            from.coordinates,
+            to.coordinates,
+            'driving'
+          )
+
+          if (travelInfo) {
+            const formatted = googleMapsService.formatTravelInfo(travelInfo)
+            updatedSteps[i] = {
+              ...updatedSteps[i],
+              travelTimeToNext: formatted.minutes,
+              travelDistanceToNext: formatted.miles,
+              distanceToNext: formatted.miles
+            }
+          }
+        }
+      }
+
+      setSteps(updatedSteps)
+    } catch (error) {
+      console.error('Error fetching travel times:', error)
+    } finally {
+      setIsLoadingTravelTimes(false)
+    }
+
+    return updatedSteps
+  }
 
   // Load history from localStorage on mount
   useEffect(() => {
@@ -1637,10 +1685,11 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
       return step
     })
 
-    // Calculate travel times between consecutive venues
+    // Calculate travel times between consecutive venues using Google Maps API
     const stepsWithTravel = convertedSteps.map((step, index) => {
       if (index < convertedSteps.length - 1) {
         const nextStep = convertedSteps[index + 1]
+        // Use fallback calculation initially, will be updated by Google Maps API
         const travel = calculateTravelTime(step.coordinates, nextStep.coordinates)
         return {
           ...step,
@@ -1652,6 +1701,9 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
     })
 
     setSteps(stepsWithTravel)
+
+    // Fetch real travel times from Google Maps API
+    fetchTravelTimes(stepsWithTravel)
 
     // Only fetch pricing once per set of venues to prevent infinite loop
     if (pricingFetchedRef.current) return
