@@ -5,8 +5,8 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <div className="container mx-auto px-4 py-16 max-w-4xl">
-        <Link 
-          href="/" 
+        <Link
+          href="/"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -37,7 +37,7 @@ export default function ContactPage() {
                 contact@mellowsites.com
               </a>
             </div>
-            
+
             <div className="group text-center p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5">
               <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                 <MessageSquare className="w-7 h-7 text-primary" />
@@ -45,7 +45,7 @@ export default function ContactPage() {
               <h3 className="font-semibold text-lg mb-2">Support</h3>
               <p className="text-muted-foreground">Available via email</p>
             </div>
-            
+
             <div className="group text-center p-6 rounded-2xl bg-card/50 backdrop-blur-sm border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5">
               <div className="w-14 h-14 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
                 <MapPin className="w-7 h-7 text-primary" />

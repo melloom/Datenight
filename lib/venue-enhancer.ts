@@ -484,6 +484,9 @@ export function enhanceVenueWithScrapedData(venue: Venue, details: any, criteria
   // #14: Social media
   const socialMedia = detectSocialMedia(details.website || venue.website, reviews)
 
+  // #15: Menu data scraping (async operation - will be handled separately)
+  // Menu scraping is done asynchronously in the main search function
+
   // Enhanced features from Google data
   const enhancedFeatures = [...(venue.features || [])]
   if (details.reservable && !enhancedFeatures.includes('Reservable')) enhancedFeatures.push('Reservable')

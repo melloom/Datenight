@@ -3,6 +3,7 @@ import { geminiAI } from './gemini'
 import { sanitizeForSearch } from './profanity-filter'
 import { lateNightDetector, LateNightResponse } from './late-night-detector'
 import { enhanceVenueWithScrapedData, preferClusteredVenues, calculateSeasonalFit, findBestCluster } from './venue-enhancer'
+import { scrapeMenuData, MenuData } from './menu-scraper'
 
 export interface Venue {
   id: string
@@ -73,6 +74,10 @@ export interface Venue {
   ticketUrl?: string
   minPrice?: number
   maxPrice?: number
+  // Menu scraping fields
+  menuData?: MenuData
+  yelpBusinessId?: string
+  squareLocationId?: string
 }
 
 export interface VenuePricing {
@@ -375,8 +380,20 @@ class VenueSearcher {
       pricedPlan = optimizedPlan
     }
 
+    // Scrape menu data for venues with websites (async, non-blocking)
+    let menuEnhancedPlan = pricedPlan
+    try {
+      const menuPromise = this.scrapeMenuDataForVenues(pricedPlan)
+      const menuTimeout = new Promise<Venue[]>(resolve =>
+        setTimeout(() => resolve(pricedPlan), 8000) // 8s max for menu scraping
+      )
+      menuEnhancedPlan = await Promise.race([menuPromise, menuTimeout])
+    } catch {
+      menuEnhancedPlan = pricedPlan
+    }
+
     // If no venues found, return empty array - NO FAKE FALLBACKS
-    let finalPlan = pricedPlan
+    let finalPlan = menuEnhancedPlan
     if (pricedPlan.length === 0) {
     }
 
@@ -3841,6 +3858,58 @@ Be realistic and specific to ${venue.name} in ${venue.address}. Consider local p
     }
 
     return enhancedVenues
+  }
+
+  // Scrape menu data for venues with websites or API access
+  private async scrapeMenuDataForVenues(venues: Venue[]): Promise<Venue[]> {
+    const menuPromises = venues.map(async (venue): Promise<Venue> => {
+      try {
+        // Skip if already has menu data
+        if (venue.menuData) return venue
+
+        // Prepare venue data for menu scraping
+        const menuVenueData = {
+          name: venue.name,
+          website: venue.website,
+          yelpBusinessId: venue.yelpBusinessId,
+          squareLocationId: venue.squareLocationId
+        }
+
+        // Scrape menu data with timeout
+        const menuPromise = scrapeMenuData(menuVenueData)
+        const timeout = new Promise<MenuData | null>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 6000) // 6s timeout per venue
+        )
+
+        const menuData = await Promise.race([menuPromise, timeout])
+
+        if (menuData) {
+          // Update pricing with real menu data if available
+          let updatedPricing = venue.pricing
+          if (menuData.averagePrices) {
+            updatedPricing = {
+              ...venue.pricing,
+              food: menuData.averagePrices.entrees || menuData.averagePrices.appetizers || venue.pricing?.food,
+              drinks: menuData.averagePrices.drinks || venue.pricing?.drinks,
+              source: 'menu-scraped',
+              lastUpdated: menuData.lastUpdated
+            }
+          }
+
+          return {
+            ...venue,
+            menuData,
+            pricing: updatedPricing
+          }
+        }
+
+        return venue
+      } catch {
+        return venue
+      }
+    })
+
+    return Promise.all(menuPromises)
   }
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { z } from 'zod'
+import { scrapeMenuData } from '../../../lib/menu-scraper'
 
 const enhanceSearchSchema = z.object({
   action: z.literal('enhance-search'),
@@ -428,7 +429,49 @@ Return JSON array (same order):
         })
       }
 
-      return NextResponse.json({ pricing: finalPricing })
+      // Step 4: Try to enhance pricing with real menu data (non-blocking)
+      try {
+        const menuEnhancedPricing = await Promise.all(
+          finalPricing.map(async (pricing, idx) => {
+            const venue = venues[idx]
+            if (!venue.website && !venue.yelpBusinessId && !venue.squareLocationId) {
+              return pricing
+            }
+
+            const menuVenueData = {
+              name: venue.name,
+              website: venue.website,
+              yelpBusinessId: venue.yelpBusinessId,
+              squareLocationId: venue.squareLocationId
+            }
+
+            const menuData = await Promise.race([
+              scrapeMenuData(menuVenueData),
+              new Promise<MenuData | null>((_, reject) =>
+                setTimeout(() => reject(new Error('timeout')), 4000)
+              )
+            ]).catch(() => null)
+
+            if (menuData?.averagePrices) {
+              // Update pricing with real menu averages
+              return {
+                ...pricing,
+                food: menuData.averagePrices.entrees || menuData.averagePrices.appetizers || pricing.food,
+                drinks: menuData.averagePrices.drinks || pricing.drinks,
+                source: 'menu-scraped',
+                lastUpdated: menuData.lastUpdated
+              }
+            }
+
+            return pricing
+          })
+        )
+
+        return NextResponse.json({ pricing: menuEnhancedPricing })
+      } catch {
+        // Menu scraping failed, return original pricing
+        return NextResponse.json({ pricing: finalPricing })
+      }
     }
 
     // ─── Google Maps Directions API for routing ─────────────────────────────────────
