@@ -5,17 +5,26 @@ import { Sparkles, MapPin, Wine } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
+import { useLegal } from "@/lib/legal-context"
 import { Checkbox } from "@/components/ui/checkbox"
 
 export function LoginScreen() {
   const { signInWithGoogle } = useAuth()
+  const { hasScrolledTerms, hasScrolledPrivacy } = useLegal()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [agree, setAgree] = useState(false)
 
+  // Check if both documents have been scrolled
+  const canAgree = hasScrolledTerms && hasScrolledPrivacy
+
   const handleGoogleSignIn = async () => {
     if (!agree) {
       setError("Please agree to the Terms of Service and Privacy Policy.")
+      return
+    }
+    if (!canAgree) {
+      setError("Please read both the Terms of Service and Privacy Policy completely before agreeing.")
       return
     }
     try {
@@ -26,6 +35,17 @@ export function LoginScreen() {
       setError("Sign-in failed. Please try again.")
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleCheckboxChange = (checked: boolean) => {
+    if (checked && !canAgree) {
+      setError("Please read both documents completely before agreeing.")
+      return
+    }
+    setAgree(checked)
+    if (checked) {
+      setError(null)
     }
   }
 
@@ -103,14 +123,33 @@ export function LoginScreen() {
           )}
         </div>
 
-        <div className="flex items-center space-x-2">
-          <Checkbox id="terms" checked={agree} onCheckedChange={() => setAgree(!agree)} />
-          <label
-            htmlFor="terms"
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-          >
-            I agree to the <Link href="/legal/terms-of-service" className="underline">Terms of Service</Link> and <Link href="/legal/privacy-policy" className="underline">Privacy Policy</Link>.
-          </label>
+        <div className="space-y-3">
+          <div className="flex items-start space-x-2">
+            <Checkbox 
+              id="terms" 
+              checked={agree} 
+              onCheckedChange={handleCheckboxChange}
+              disabled={!canAgree}
+            />
+            <label
+              htmlFor="terms"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              I agree to the <Link href="/legal/terms-of-service" className="underline">Terms of Service</Link> and <Link href="/legal/privacy-policy" className="underline">Privacy Policy</Link>.
+            </label>
+          </div>
+          
+          {/* Scroll status indicators */}
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${hasScrolledTerms ? 'bg-green-500' : 'bg-gray-300'}`} />
+              <span>Terms of Service {hasScrolledTerms ? '✓ Read' : 'Please read'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${hasScrolledPrivacy ? 'bg-green-500' : 'bg-gray-300'}`} />
+              <span>Privacy Policy {hasScrolledPrivacy ? '✓ Read' : 'Please read'}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

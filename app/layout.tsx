@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, Geist_Mono } from 'next/font/google'
 import { AuthProvider } from '@/lib/auth-context'
 import { TutorialProvider } from '@/lib/tutorial-context'
+import { LegalProvider } from '@/lib/legal-context'
 import { TutorialOverlay } from '@/components/tutorial/tutorial-overlay'
 import { FullscreenToggle } from '@/components/fullscreen-toggle'
 import './globals.css'
@@ -179,12 +180,14 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
-        <AuthProvider>
-          <TutorialProvider>
-            {children}
-            <TutorialOverlay />
-          </TutorialProvider>
-        </AuthProvider>
+        <LegalProvider>
+          <AuthProvider>
+            <TutorialProvider>
+              {children}
+              <TutorialOverlay />
+            </TutorialProvider>
+          </AuthProvider>
+        </LegalProvider>
         <FullscreenToggle />
       </body>
     </html>

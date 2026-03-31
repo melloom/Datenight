@@ -36,8 +36,38 @@ const ScrollableDocument: React.FC<ScrollableDocumentProps> = ({ children, onScr
   }, [onScrollEnd]);
 
   return (
-    <div ref={scrollRef} style={{ height: '400px', overflowY: 'auto', border: '1px solid #ccc', padding: '1rem' }}>
-      {children}
+    <div 
+      ref={scrollRef} 
+      className="w-full h-[70vh] max-h-[600px] min-h-[400px] overflow-y-auto bg-card rounded-lg border shadow-sm"
+      style={{
+        // Safe area insets for notched devices
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+      }}
+    >
+      <div className="p-4 md:p-6 lg:p-8">
+        {children}
+      </div>
+      
+      {/* Scroll indicator */}
+      {!isScrolledToEnd && (
+        <div className="sticky bottom-0 left-0 right-0 bg-linear-to-t from-background to-transparent p-4 pointer-events-none">
+          <div className="text-center text-xs text-muted-foreground animate-pulse">
+            Scroll to bottom to continue ↓
+          </div>
+        </div>
+      )}
+      
+      {/* Completion indicator */}
+      {isScrolledToEnd && (
+        <div className="sticky bottom-0 left-0 right-0 bg-green-50 dark:bg-green-900/20 p-4 border-t border-green-200 dark:border-green-800">
+          <div className="text-center text-xs text-green-700 dark:text-green-300">
+            ✓ Document fully read
+          </div>
+        </div>
+      )}
     </div>
   );
 };

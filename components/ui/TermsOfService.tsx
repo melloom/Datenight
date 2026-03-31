@@ -1,8 +1,10 @@
 import React from 'react';
+import ScrollableDocument from './ScrollableDocument';
 
 const TermsOfService = () => {
   return (
-    <div>
+    <ScrollableDocument onScrollEnd={() => {}}>
+      <div className="prose prose-sm md:prose-base max-w-none">
 
 
       <h1>Terms of Service</h1>
@@ -165,7 +167,8 @@ const TermsOfService = () => {
 
       <h2>14. Contact Us</h2>
       <p>If you have any questions about these Terms, please contact us at contact@mellowsites.com.</p>
-    </div>
+      </div>
+    </ScrollableDocument>
   );
 };
 

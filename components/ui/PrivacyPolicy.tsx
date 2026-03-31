@@ -1,8 +1,10 @@
 import React from 'react';
+import ScrollableDocument from './ScrollableDocument';
 
 const PrivacyPolicy = () => {
   return (
-    <div>
+    <ScrollableDocument onScrollEnd={() => {}}>
+      <div className="prose prose-sm md:prose-base max-w-none">
 
 
       <h1>Privacy Policy</h1>
@@ -131,7 +133,8 @@ const PrivacyPolicy = () => {
 
       <h2>14. Contact Us</h2>
       <p>If you have any questions about this Privacy Policy, please contact us at contact@mellowsites.com.</p>
-    </div>
+      </div>
+    </ScrollableDocument>
   );
 };
 
