@@ -1228,13 +1228,25 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
   const [isLoadingTravelTimes, setIsLoadingTravelTimes] = useState(false)
   const { signOut } = useAuth()
 
-  // Scroll to top when any modal opens
+  // Scroll to specific modal when it opens
   useEffect(() => {
-    if (showHistory || showSpecialOccasions || showCalendarDialog || showBudgetCalculator) {
-      // Small delay to ensure modal is rendered
+    const scrollToModal = (modalId: string) => {
       setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-      }, 50)
+        const modal = document.querySelector(modalId)
+        if (modal) {
+          modal.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
+    }
+
+    if (showHistory) {
+      scrollToModal('[data-modal="history"]')
+    } else if (showSpecialOccasions) {
+      scrollToModal('[data-modal="special-occasions"]')
+    } else if (showCalendarDialog) {
+      scrollToModal('[data-modal="calendar"]')
+    } else if (showBudgetCalculator) {
+      scrollToModal('[data-modal="budget"]')
     }
   }, [showHistory, showSpecialOccasions, showCalendarDialog, showBudgetCalculator])
 
@@ -2190,7 +2202,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       {/* Budget Calculator Modal */}
       {showBudgetCalculator && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div data-modal="budget" className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl border p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto my-4 md:my-0">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
@@ -2376,7 +2388,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       {/* Calendar Integration Modal */}
       {showCalendarDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div data-modal="calendar" className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl border p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto my-4 md:my-0">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
@@ -2652,7 +2664,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       {/* Special Occasions Modal */}
       {showSpecialOccasions && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div data-modal="special-occasions" className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl border p-6 max-w-3xl w-full max-h-[85vh] overflow-y-auto my-4 md:my-0">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
@@ -2919,7 +2931,7 @@ export function ItineraryScreen({ onReset, venues, searchCriteria, onVenuesUpdat
 
       {/* Date Plan History Modal */}
       {showHistory && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div data-modal="history" className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl border p-6 max-w-4xl w-full max-h-[85vh] overflow-y-auto my-4 md:my-0">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
