@@ -8,16 +8,16 @@ import { FullscreenToggle } from '@/components/fullscreen-toggle'
 import { getAppUrl } from '@/lib/utils'
 import './globals.css'
 
-const inter = Inter({ 
-  subsets: ["latin"], 
+const inter = Inter({
+  subsets: ["latin"],
   variable: "--font-inter",
   display: 'swap',
   preload: true
 });
 
-const geistMono = Geist_Mono({ 
-  subsets: ["latin"], 
-  variable: "--font-geist-mono", 
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
   preload: false,
   display: 'swap'
 });
