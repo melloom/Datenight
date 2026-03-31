@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Sparkles, MapPin, Wine, ArrowLeft } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { useLegal } from "@/lib/legal-context"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -11,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 export function LoginScreen() {
   const { signInWithGoogle } = useAuth()
   const { hasScrolledTerms, hasScrolledPrivacy } = useLegal()
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [agree, setAgree] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -28,7 +30,10 @@ export function LoginScreen() {
     try {
       setIsLoading(true)
       setError(null)
-      await signInWithGoogle()
+      const didSignIn = await signInWithGoogle()
+      if (didSignIn) {
+        router.replace("/")
+      }
     } catch {
       setError("Sign-in failed. Please try again.")
     } finally {

@@ -6,6 +6,18 @@
   NODE_VERSION = "20"
 
 [[redirects]]
+  from = "/__/auth/*"
+  to = "https://datenight-a2dbb.firebaseapp.com/__/auth/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/__/firebase/init.json"
+  to = "https://datenight-a2dbb.firebaseapp.com/__/firebase/init.json"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "https://www.dat3night.com/*"
   to = "https://dat3night.com/:splat"
   status = 301

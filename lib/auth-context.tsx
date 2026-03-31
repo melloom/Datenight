@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react"
 import {
   User,
+  UserCredential,
   onAuthStateChanged,
   signInWithPopup,
   signOut as firebaseSignOut,
@@ -13,14 +14,14 @@ import { auth, rtdb, googleProvider } from "@/lib/firebase"
 interface AuthContextType {
   user: User | null
   loading: boolean
-  signInWithGoogle: () => Promise<void>
+  signInWithGoogle: () => Promise<boolean>
   signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  signInWithGoogle: async () => {},
+  signInWithGoogle: async () => false,
   signOut: async () => {},
 })
 
@@ -67,7 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error("Firebase authentication not available")
     }
     try {
-      await signInWithPopup(auth, googleProvider)
+      const result: UserCredential = await signInWithPopup(auth, googleProvider)
+      setUser(result.user)
+      setLoading(false)
+      return true
     } catch (error: unknown) {
       if (
         typeof error === "object" &&
@@ -75,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         "code" in error &&
         (error as { code?: string }).code === "auth/popup-closed-by-user"
       ) {
-        return
+        return false
       }
       throw error
     }

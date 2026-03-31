@@ -1,11 +1,21 @@
 import { initializeApp, getApps, getApp } from "firebase/app"
 import { getAnalytics, isSupported } from "firebase/analytics"
-import { getAuth, GoogleAuthProvider } from "firebase/auth"
+import { browserLocalPersistence, getAuth, GoogleAuthProvider, setPersistence } from "firebase/auth"
 import { getDatabase } from "firebase/database"
+
+const productionAuthHosts = new Set(["dat3night.com", "www.dat3night.com"])
+
+const getAuthDomain = () => {
+  if (typeof window !== "undefined" && productionAuthHosts.has(window.location.hostname)) {
+    return window.location.hostname
+  }
+
+  return process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+}
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  authDomain: getAuthDomain(),
   databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
@@ -29,6 +39,12 @@ const app = isFirebaseConfigValid() && getApps().length === 0 ? initializeApp(fi
 const auth = app ? getAuth(app) : null
 const rtdb = app ? getDatabase(app) : null
 const googleProvider = app ? new GoogleAuthProvider() : null
+
+if (auth) {
+  setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.error("Failed to enable Firebase auth persistence", error)
+  })
+}
 
 // Analytics only in browser
 let analytics: ReturnType<typeof getAnalytics> | null = null

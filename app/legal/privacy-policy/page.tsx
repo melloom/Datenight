@@ -1,18 +1,28 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import PrivacyPolicy from '@/components/ui/PrivacyPolicy';
 import ScrollableDocument from '@/components/ui/ScrollableDocument';
 import { useLegal } from '@/lib/legal-context';
 import { ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function PrivacyPolicyPage() {
-  const { hasScrolledPrivacy, setHasScrolledPrivacy } = useLegal();
+  const { setHasScrolledPrivacy } = useLegal();
+  const router = useRouter();
 
   const handleScrollEnd = () => {
     setHasScrolledPrivacy(true);
     console.log("Scrolled to the end of Privacy Policy");
+  };
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push('/login');
   };
 
   return (
@@ -27,13 +37,14 @@ export default function PrivacyPolicyPage() {
                paddingLeft: 'max(env(safe-area-inset-left, 0px), 1rem)',
                paddingRight: 'max(env(safe-area-inset-right, 0px), 1rem)',
              }}>
-          <Link 
-            href="/"
+          <button
+            type="button"
+            onClick={handleBack}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="text-sm font-medium">Back</span>
-          </Link>
+          </button>
           <h1 className="text-lg font-semibold">Privacy Policy</h1>
         </div>
       </div>
