@@ -188,7 +188,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const decoded = await verifyRequestUser(request)
-    const entitlement = await canUsePremiumFeatures(decoded.uid)
+    const entitlement = await canUsePremiumFeatures(decoded.uid, decoded.email)
 
     if (!entitlement.allowed) {
       return NextResponse.json(

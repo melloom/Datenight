@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     const uid = decoded.uid
-    const { allowed } = await canUsePremiumFeatures(uid)
+    const { allowed } = await canUsePremiumFeatures(uid, decoded.email)
     if (allowed) {
       return NextResponse.json({ error: 'User already has active premium access' }, { status: 409 })
     }

@@ -7,7 +7,7 @@ export const runtime = 'nodejs'
 export async function GET(request: NextRequest) {
   try {
     const decoded = await verifyRequestUser(request)
-    const result = await canUsePremiumFeatures(decoded.uid)
+    const result = await canUsePremiumFeatures(decoded.uid, decoded.email)
 
     return NextResponse.json({
       allowed: result.allowed,

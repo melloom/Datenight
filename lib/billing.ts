@@ -1,6 +1,7 @@
 import Stripe from 'stripe'
 import { getAdminDb } from '@/lib/firebase-admin'
 import { getStripe } from '@/lib/stripe'
+import { isForeverProUser } from '@/lib/forever-pro'
 
 const BILLING_ROOT = 'billing'
 
@@ -200,7 +201,20 @@ export async function syncBillingFromCheckoutSession(session: Stripe.Checkout.Se
   await syncBillingFromSubscription(uid, subscription)
 }
 
-export async function canUsePremiumFeatures(uid: string): Promise<{ allowed: boolean; billing: BillingState }> {
+export async function canUsePremiumFeatures(uid: string, email?: string | null): Promise<{ allowed: boolean; billing: BillingState }> {
+  if (isForeverProUser(uid, email)) {
+    const now = Date.now()
+    return {
+      allowed: true,
+      billing: {
+        status: 'active',
+        entitlementActive: true,
+        grandfathered: true,
+        updatedAt: now,
+      },
+    }
+  }
+
   const billing = await getBillingState(uid)
   const grandfathered = billing.grandfathered ?? (await setGrandfatheredIfMissing(uid))
   const merged: BillingState = {

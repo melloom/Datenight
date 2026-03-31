@@ -81,6 +81,11 @@ SMTP_USER=contact@mellowsites.com
 SMTP_PASS=replace_me
 SMTP_FROM="DateNight <contact@mellowsites.com>"
 BILLING_ALERT_EMAIL=contact@mellowsites.com
+
+# Forever Pro users (optional allowlist)
+# Comma-separated Firebase Auth UIDs and/or emails that always keep premium access
+FOREVER_PRO_UIDS=
+FOREVER_PRO_EMAILS=
 ```
 
 Current live plan setup:
