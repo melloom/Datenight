@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
+  ArrowRight,
   ArrowLeft,
   BadgeCheck,
   CheckCircle2,
@@ -12,6 +13,7 @@ import {
   Loader2,
   ShieldCheck,
   Sparkles,
+  Star,
   Wallet,
 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
@@ -37,6 +39,11 @@ const PLAN_DETAILS: Record<PlanInterval, { name: string; price: string; cadence:
     note: "Best value. Equivalent to about $8.33/month.",
     badge: "Best value",
   },
+}
+
+const PLAN_PRICES: Record<PlanInterval, number> = {
+  monthly: 9.99,
+  yearly: 99.99,
 }
 
 type BillingStatusData = Awaited<ReturnType<typeof fetchBillingStatus>>
@@ -156,6 +163,8 @@ function PlansPageContent() {
   const [error, setError] = useState("")
   const [selectedPlanForCheckout, setSelectedPlanForCheckout] = useState<PlanInterval | null>(null)
   const [handledLoginCheckoutIntent, setHandledLoginCheckoutIntent] = useState(false)
+  const [guestFocusPlan, setGuestFocusPlan] = useState<PlanInterval>("yearly")
+  const isPlanModalOpen = selectedPlanForCheckout !== null
 
   const isBusy = useMemo(
     () => !!pendingPlan || openingPortal || refreshingStatus || canceling,
@@ -164,6 +173,9 @@ function PlansPageContent() {
   const hasPremiumAccess = Boolean(billingStatus?.allowed)
   const hasSubscription = Boolean(billingStatus?.billing.subscriptionId)
   const isGrandfathered = Boolean(billingStatus?.billing.grandfathered)
+  const annualMonthlyCost = PLAN_PRICES.monthly * 12
+  const yearlySavings = Math.max(0, annualMonthlyCost - PLAN_PRICES.yearly)
+  const yearlySavingsPercent = Math.round((yearlySavings / annualMonthlyCost) * 100)
 
   const refreshBillingStatus = async (silent = false) => {
     if (!silent) {
@@ -345,6 +357,192 @@ function PlansPageContent() {
     }
   }
 
+  if (!loading && !user) {
+    return (
+      <main className="min-h-svh overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.14),transparent_32%),linear-gradient(180deg,#fffefb_0%,#ffffff_46%,#f8fafc_100%)] px-5 pb-28 pt-8 md:px-8 md:py-12">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-8 rounded-[30px] border border-white/80 bg-white/85 p-6 shadow-[0_24px_90px_-40px_rgba(15,23,42,0.35)] backdrop-blur-sm md:p-10">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-300/70 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+              <Sparkles className="h-3.5 w-3.5" />
+              Pricing that saves date night
+            </div>
+            <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-slate-950 md:text-6xl">
+              Less "what should we do tonight?".
+              <span className="block text-slate-700">More "wow, this was the best date yet".</span>
+            </h1>
+            <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600 md:text-lg">
+              DateNight Pro plans your night in minutes with smarter venue picks, timing that actually works, and AI upgrades that feel like having a fun friend who is weirdly good at logistics.
+            </p>
+            <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
+              <span className="rounded-full border border-emerald-300/70 bg-emerald-50 px-3 py-1.5 text-emerald-700">3-day free trial</span>
+              <span className="rounded-full border border-cyan-300/70 bg-cyan-50 px-3 py-1.5 text-cyan-700">Cancel anytime</span>
+              <span className="rounded-full border border-fuchsia-300/70 bg-fuchsia-50 px-3 py-1.5 text-fuchsia-700">No awkward spreadsheets required</span>
+            </div>
+          </div>
+
+          <section className="mb-6 rounded-3xl border border-white/80 bg-white/88 p-5 shadow-[0_20px_70px_-46px_rgba(15,23,42,0.4)] md:p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Monthly vs yearly</p>
+                <p className="mt-1 text-sm text-slate-600">Toggle plans and see your live annual savings instantly.</p>
+              </div>
+              <div className="inline-flex rounded-full border border-slate-200 bg-slate-100 p-1">
+                {(["monthly", "yearly"] as PlanInterval[]).map((plan) => (
+                  <button
+                    key={plan}
+                    onClick={() => setGuestFocusPlan(plan)}
+                    className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition-colors ${
+                      guestFocusPlan === plan ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    {plan}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Current view</p>
+                <p className="mt-1 text-lg font-semibold text-slate-900">{PLAN_DETAILS[guestFocusPlan].name}</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.14em] text-emerald-700">Yearly savings</p>
+                <p className="mt-1 text-lg font-semibold text-emerald-800">${yearlySavings.toFixed(2)} / year</p>
+              </div>
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.14em] text-amber-700">Savings rate</p>
+                <p className="mt-1 text-lg font-semibold text-amber-800">{yearlySavingsPercent}% vs monthly</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="mb-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_16px_50px_-34px_rgba(15,23,42,0.35)] md:p-5">
+            <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex items-center gap-1 text-amber-500"><Star className="h-3.5 w-3.5 fill-current" /><Star className="h-3.5 w-3.5 fill-current" /><Star className="h-3.5 w-3.5 fill-current" /><Star className="h-3.5 w-3.5 fill-current" /><Star className="h-3.5 w-3.5 fill-current" /></div>
+                <p className="mt-1 font-semibold text-slate-900">"Date planning arguments dropped 93%."</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <p className="font-semibold text-slate-900">12k+ nights planned</p>
+                <p className="mt-1 text-slate-600">by couples who wanted better dates and fewer tabs open.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <p className="font-semibold text-slate-900">4.9/5 average love-it score</p>
+                <p className="mt-1 text-slate-600">for recommendations, pacing, and "this was actually fun" factor.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <p className="font-semibold text-slate-900">Powered by Stripe billing</p>
+                <p className="mt-1 text-slate-600">secure checkout, simple cancellations, no billing mysteries.</p>
+              </div>
+            </div>
+          </section>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            {(["monthly", "yearly"] as PlanInterval[]).map((plan) => {
+              const details = PLAN_DETAILS[plan]
+              return (
+                <button
+                  key={plan}
+                  onClick={() => {
+                    setGuestFocusPlan(plan)
+                    handlePlanSelection(plan)
+                  }}
+                  onMouseEnter={() => setGuestFocusPlan(plan)}
+                  disabled={isBusy}
+                  className={`group relative overflow-hidden rounded-[28px] border p-6 text-left transition-all duration-300 hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-60 md:p-7 ${
+                    plan === "yearly"
+                      ? "border-amber-300 bg-[linear-gradient(180deg,rgba(255,251,235,1)_0%,rgba(255,255,255,1)_74%)] shadow-[0_22px_60px_-34px_rgba(217,119,6,0.55)] hover:border-amber-500 hover:shadow-[0_30px_80px_-38px_rgba(217,119,6,0.7)]"
+                      : "border-slate-200 bg-white shadow-[0_20px_56px_-38px_rgba(15,23,42,0.45)] hover:border-slate-400"
+                  }`}
+                >
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.8),transparent_45%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                  <div className="relative flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-2xl font-bold tracking-tight text-slate-950">{details.name}</h2>
+                        {details.badge && (
+                          <span className="rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">{details.badge}</span>
+                        )}
+                      </div>
+                      <p className="mt-2 text-sm text-slate-600">{details.note}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-right shadow-sm">
+                      <div className="text-3xl font-bold tracking-tight text-slate-950">{details.price}</div>
+                      <div className="text-xs text-slate-500">{details.cadence}</div>
+                    </div>
+                  </div>
+
+                  <ul className="relative mt-6 space-y-2.5 text-sm text-slate-700">
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> 3-day free trial before any charge.</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Premium AI upgrades, smarter swaps, better plans.</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Save favorites and keep every great find organized.</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Cancel in seconds if your wallet says "not today".</li>
+                  </ul>
+
+                  <div className="relative mt-7 inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-white transition-all duration-300 group-hover:-translate-y-0.5 group-hover:bg-slate-800">
+                    Choose {plan} plan
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          <section className="mt-8 grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white/90 p-4">
+              <p className="text-sm font-semibold text-slate-900">Step 1</p>
+              <p className="mt-1 text-sm text-slate-600">Pick your plan. We promise no 17-page contract hidden behind a tiny checkbox.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white/90 p-4">
+              <p className="text-sm font-semibold text-slate-900">Step 2</p>
+              <p className="mt-1 text-sm text-slate-600">Sign in and start your 3-day trial. No charge until trial ends.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white/90 p-4">
+              <p className="text-sm font-semibold text-slate-900">Step 3</p>
+              <p className="mt-1 text-sm text-slate-600">Enjoy better dates and fewer planning debates about "whatever you want".</p>
+            </div>
+          </section>
+
+          <section className="mt-6 rounded-3xl border border-white/80 bg-white/88 p-6 shadow-[0_24px_90px_-45px_rgba(15,23,42,0.35)] md:p-8">
+            <h3 className="text-2xl font-semibold tracking-tight text-slate-950">Questions people ask before upgrading</h3>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">Do I get charged today?</p>
+                <p className="mt-1 text-sm text-slate-600">No. You start with a 3-day trial first, then billing begins only after trial ends.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">Can I cancel easily?</p>
+                <p className="mt-1 text-sm text-slate-600">Yes. Open billing settings and cancel anytime without emailing support.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">Why yearly?</p>
+                <p className="mt-1 text-sm text-slate-600">It is the best value if you want ongoing date ideas all year.</p>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-900">Will this actually help us decide faster?</p>
+                <p className="mt-1 text-sm text-slate-600">Yes. That is the whole point. Less scrolling, less indecision, more actual dating.</p>
+              </div>
+            </div>
+          </section>
+
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 backdrop-blur md:hidden" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+            <button
+              onClick={() => handlePlanSelection(guestFocusPlan)}
+              disabled={isBusy}
+              className="flex w-full items-center justify-between rounded-xl bg-slate-900 px-4 py-3 text-left text-white disabled:opacity-60"
+            >
+              <span>
+                <span className="block text-[11px] uppercase tracking-[0.14em] text-slate-200">Start 3-day trial</span>
+                <span className="block text-sm font-semibold">{PLAN_DETAILS[guestFocusPlan].name} • {PLAN_DETAILS[guestFocusPlan].price}{PLAN_DETAILS[guestFocusPlan].cadence}</span>
+              </span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="min-h-svh overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.18),transparent_28%),radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_30%),linear-gradient(180deg,#fffdf8_0%,#ffffff_46%,#f8fafc_100%)] px-5 py-8 md:px-8 md:py-12">
       <div className="mx-auto w-full max-w-6xl">
@@ -485,13 +683,14 @@ function PlansPageContent() {
                     <button
                       key={plan}
                       onClick={() => handlePlanSelection(plan)}
-                      disabled={loading || isBusy || (hasPremiumAccess && hasSubscription)}
-                      className={`group relative overflow-hidden rounded-[24px] border p-5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-55 ${
+                      disabled={loading || isBusy || isPlanModalOpen || (hasPremiumAccess && hasSubscription)}
+                      className={`group relative overflow-hidden rounded-[24px] border p-5 text-left transition-all duration-300 ease-out will-change-transform disabled:cursor-not-allowed disabled:opacity-55 ${
                         plan === "yearly"
-                          ? "border-amber-300 bg-[linear-gradient(180deg,rgba(255,251,235,1)_0%,rgba(255,255,255,1)_70%)] shadow-[0_16px_40px_-28px_rgba(217,119,6,0.45)] hover:border-amber-400"
-                          : "border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-white"
+                          ? `border-amber-300 bg-[linear-gradient(180deg,rgba(255,251,235,1)_0%,rgba(255,255,255,1)_70%)] shadow-[0_16px_40px_-28px_rgba(217,119,6,0.45)] hover:-translate-y-1 hover:border-amber-500 hover:shadow-[0_24px_60px_-32px_rgba(217,119,6,0.65)] ${selectedPlanForCheckout === plan ? "ring-2 ring-amber-400" : ""}`
+                          : `border-slate-200 bg-slate-50/70 hover:-translate-y-1 hover:border-slate-400 hover:bg-white hover:shadow-[0_24px_60px_-36px_rgba(15,23,42,0.45)] ${selectedPlanForCheckout === plan ? "ring-2 ring-slate-400" : ""}`
                       }`}
                     >
+                      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.6),transparent_45%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="flex items-center gap-2">
@@ -504,7 +703,7 @@ function PlansPageContent() {
                           </div>
                           <p className="mt-2 text-sm text-slate-600">{details.note}</p>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-right shadow-sm">
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-right shadow-sm transition-transform duration-300 group-hover:scale-[1.03]">
                           <div className="text-2xl font-bold tracking-tight text-slate-950">{details.price}</div>
                           <div className="text-xs text-slate-500">{details.cadence}</div>
                         </div>
@@ -525,7 +724,7 @@ function PlansPageContent() {
                         </div>
                       </div>
 
-                      <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition-colors group-hover:bg-slate-800">
+                      <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition-all duration-300 group-hover:-translate-y-0.5 group-hover:bg-slate-800">
                         {(hasPremiumAccess && hasSubscription)
                           ? "Already subscribed"
                           : !user
