@@ -36,7 +36,12 @@ interface CancelSubscriptionResponse {
 }
 
 export async function createStripeCheckout(plan: PlanInterval): Promise<CheckoutResponse> {
-  const res = await authJsonFetch('/api/stripe/checkout', { plan })
+  let res = await authJsonFetch('/api/stripe/checkout', { plan })
+  if (res.status === 401) {
+    res = await authJsonFetch('/api/stripe/checkout', { plan }, {
+      forceRefreshToken: true,
+    })
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.error || 'Unable to start checkout')
@@ -45,7 +50,12 @@ export async function createStripeCheckout(plan: PlanInterval): Promise<Checkout
 }
 
 export async function createBillingPortalSession(): Promise<PortalResponse> {
-  const res = await authJsonFetch('/api/stripe/portal', {})
+  let res = await authJsonFetch('/api/stripe/portal', {})
+  if (res.status === 401) {
+    res = await authJsonFetch('/api/stripe/portal', {}, {
+      forceRefreshToken: true,
+    })
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.error || 'Unable to open billing portal')
@@ -75,7 +85,12 @@ export async function fetchBillingStatus(): Promise<BillingStatusResponse> {
 }
 
 export async function cancelStripeSubscription(immediately = false): Promise<CancelSubscriptionResponse> {
-  const res = await authJsonFetch('/api/stripe/cancel', { immediately })
+  let res = await authJsonFetch('/api/stripe/cancel', { immediately })
+  if (res.status === 401) {
+    res = await authJsonFetch('/api/stripe/cancel', { immediately }, {
+      forceRefreshToken: true,
+    })
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.error || 'Unable to cancel subscription')

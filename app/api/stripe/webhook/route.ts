@@ -150,6 +150,49 @@ async function notifyTrialWillEnd(subscription: Stripe.Subscription): Promise<vo
   ])
 }
 
+async function notifyUpcomingCharge(invoice: Stripe.Invoice): Promise<void> {
+  if (!isBillingEmailConfigured()) {
+    return
+  }
+
+  const chargeTimestamp = invoice.next_payment_attempt || invoice.due_date || null
+  if (!chargeTimestamp) {
+    return
+  }
+
+  const daysUntilCharge = Math.ceil((chargeTimestamp * 1000 - Date.now()) / (1000 * 60 * 60 * 24))
+  if (daysUntilCharge !== 2) {
+    // Stripe timing can vary, so enforce an exact 2-day reminder here.
+    return
+  }
+
+  const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
+  if (!customerId) {
+    return
+  }
+
+  const customer = await getStripe().customers.retrieve(customerId)
+  if (!customer || customer.deleted || !customer.email) {
+    return
+  }
+
+  const amount = typeof invoice.amount_due === 'number'
+    ? `$${(invoice.amount_due / 100).toFixed(2)}`
+    : 'your subscription amount'
+
+  await Promise.all([
+    sendBillingEmail({
+      to: customer.email,
+      subject: 'DateNight Pro renewal reminder (2 days)',
+      text: `Heads up: your DateNight Pro renewal of ${amount} is scheduled in about ${daysUntilCharge} days. You can review or update payment details in Billing & Plans.`,
+    }),
+    sendBillingTeamEmail(
+      'Renewal reminder sent',
+      `Sent ${daysUntilCharge}-day renewal reminder to ${customer.email}. Invoice: ${invoice.id}`,
+    ),
+  ])
+}
+
 async function syncFromInvoiceEvent(invoice: Stripe.Invoice): Promise<void> {
   const invoiceWithSubscription = invoice as Stripe.Invoice & {
     subscription?: string | Stripe.Subscription | null
@@ -227,12 +270,16 @@ export async function POST(request: NextRequest) {
       case 'invoice.paid':
       case 'invoice.payment_succeeded':
       case 'invoice.payment_failed':
+      case 'invoice.upcoming':
       case 'invoice.finalization_failed':
       case 'invoice.marked_uncollectible':
       case 'invoice.voided': {
         const invoice = event.data.object as Stripe.Invoice
         if (event.type === 'invoice.payment_failed') {
           await notifyPaymentFailed(invoice)
+        }
+        if (event.type === 'invoice.upcoming') {
+          await notifyUpcomingCharge(invoice)
         }
         await syncFromInvoiceEvent(invoice)
         break

@@ -51,6 +51,86 @@ function formatDate(timestamp?: number | null) {
   }).format(new Date(timestamp))
 }
 
+function formatBillingDate(timestamp: number | null | undefined, grandfathered?: boolean) {
+  if (timestamp) {
+    return formatDate(timestamp)
+  }
+
+  if (grandfathered) {
+    return "Grandfathered"
+  }
+
+  return "Not available"
+}
+
+function formatBillingDateFromState(
+  timestamp: number | null | undefined,
+  billing?: BillingStatusData["billing"],
+  allowed?: boolean
+) {
+  if (timestamp) {
+    return formatDate(timestamp)
+  }
+
+  if (billing?.grandfathered) {
+    return "Grandfathered"
+  }
+
+  // Legacy/forever premium accounts may be active without Stripe trial/period fields.
+  if (allowed && billing?.status === "active" && !billing?.subscriptionId) {
+    return "Included with account"
+  }
+
+  return "Not available"
+}
+
+function getNextChargeAt(billing?: BillingStatusData["billing"]): number | null {
+  if (!billing) {
+    return null
+  }
+
+  if (billing.status === "trialing" && billing.trialEnd) {
+    return billing.trialEnd
+  }
+
+  if (billing.subscriptionId && billing.currentPeriodEnd) {
+    return billing.currentPeriodEnd
+  }
+
+  return null
+}
+
+function formatNextChargeCountdown(
+  billing?: BillingStatusData["billing"],
+  allowed?: boolean
+): string {
+  if (!billing) {
+    return "Not available"
+  }
+
+  const nextChargeAt = getNextChargeAt(billing)
+  if (!nextChargeAt) {
+    if (billing.grandfathered || (allowed && billing.status === "active" && !billing.subscriptionId)) {
+      return "Included with account"
+    }
+
+    return "Not scheduled"
+  }
+
+  const msUntil = nextChargeAt - Date.now()
+  const daysUntil = Math.max(0, Math.ceil(msUntil / (1000 * 60 * 60 * 24)))
+
+  if (daysUntil === 0) {
+    return "Today"
+  }
+
+  if (daysUntil === 1) {
+    return "1 day"
+  }
+
+  return `${daysUntil} days`
+}
+
 function getStatusTone(status?: string) {
   if (status === "active" || status === "trialing") return "text-emerald-700"
   if (status === "past_due" || status === "unpaid") return "text-amber-700"
@@ -137,6 +217,14 @@ function PlansPageContent() {
       if (user) {
         void refreshBillingStatus(true)
       }
+      return
+    }
+
+    if (billingEvent === "portal_unavailable_grandfathered") {
+      setNotice("Billing portal is not required for this account because premium access is included (grandfathered/forever).")
+      if (user) {
+        void refreshBillingStatus(true)
+      }
     }
   }, [searchParams, user])
 
@@ -210,7 +298,12 @@ function PlansPageContent() {
       await refreshBillingStatus(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unable to cancel subscription"
-      setError(message)
+      if (message.toLowerCase().includes("no active subscription")) {
+        setNotice("There is no active Stripe subscription to cancel right now.")
+        await refreshBillingStatus(true)
+      } else {
+        setError(message)
+      }
     } finally {
       setCanceling(false)
     }
@@ -262,11 +355,15 @@ function PlansPageContent() {
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <p className="text-[11px] uppercase tracking-[0.16em] text-slate-300">Trial ends</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatDate(billingStatus?.billing.trialEnd)}</p>
+                  <p className="mt-2 text-lg font-semibold text-white">{formatBillingDateFromState(billingStatus?.billing.trialEnd, billingStatus?.billing, billingStatus?.allowed)}</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <p className="text-[11px] uppercase tracking-[0.16em] text-slate-300">Period ends</p>
-                  <p className="mt-2 text-lg font-semibold text-white">{formatDate(billingStatus?.billing.currentPeriodEnd)}</p>
+                  <p className="mt-2 text-lg font-semibold text-white">{formatBillingDateFromState(billingStatus?.billing.currentPeriodEnd, billingStatus?.billing, billingStatus?.allowed)}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-slate-300">Next charge in</p>
+                  <p className="mt-2 text-lg font-semibold text-white">{formatNextChargeCountdown(billingStatus?.billing, billingStatus?.allowed)}</p>
                 </div>
               </div>
               <div className="mt-5 flex flex-wrap gap-2 text-xs text-slate-200">
@@ -451,6 +548,12 @@ function PlansPageContent() {
                   </span>
                   <ShieldCheck className="h-4 w-4 text-rose-500" />
                 </button>
+
+                {!hasSubscription && !loading && user && (
+                  <p className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600">
+                    Cancellation becomes available after a Stripe subscription starts.
+                  </p>
+                )}
               </div>
 
               {isBusy && (
@@ -482,11 +585,15 @@ function PlansPageContent() {
                 </div>
                 <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <span>Trial ends</span>
-                  <span className="font-semibold text-slate-900">{formatDate(billingStatus?.billing.trialEnd)}</span>
+                  <span className="font-semibold text-slate-900">{formatBillingDateFromState(billingStatus?.billing.trialEnd, billingStatus?.billing, billingStatus?.allowed)}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <span>Current period end</span>
-                  <span className="font-semibold text-slate-900">{formatDate(billingStatus?.billing.currentPeriodEnd)}</span>
+                  <span className="font-semibold text-slate-900">{formatBillingDateFromState(billingStatus?.billing.currentPeriodEnd, billingStatus?.billing, billingStatus?.allowed)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <span>Next charge in</span>
+                  <span className="font-semibold text-slate-900">{formatNextChargeCountdown(billingStatus?.billing, billingStatus?.allowed)}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <span>Cancel at period end</span>

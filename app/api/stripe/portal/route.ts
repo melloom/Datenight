@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { canUsePremiumFeatures } from '@/lib/billing'
 import { ensureStripeCustomer, getBillingState } from '@/lib/billing'
 import { verifyRequestUser, UnauthorizedError } from '@/lib/server-auth'
 import { getStripe, getStripeAppUrl } from '@/lib/stripe'
@@ -10,6 +11,13 @@ export async function POST(request: NextRequest) {
     const decoded = await verifyRequestUser(request)
     const uid = decoded.uid
     const billing = await getBillingState(uid)
+    const premium = await canUsePremiumFeatures(uid, decoded.email)
+
+    if (premium.allowed && !billing.customerId && !billing.subscriptionId) {
+      return NextResponse.json({
+        url: `${getStripeAppUrl()}/plans?billing=portal_unavailable_grandfathered`,
+      })
+    }
 
     const customerId = billing.customerId || (await ensureStripeCustomer(uid, decoded.email, decoded.name))
 
