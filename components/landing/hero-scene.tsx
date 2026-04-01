@@ -49,16 +49,16 @@ export function HeroScene({ scrollY }: HeroSceneProps) {
           <div className="text-xl md:text-2xl font-bold text-foreground">
             Dat3Night
           </div>
-          <div className="flex gap-2 md:gap-4">
-            <Link href="/plans" className="px-4 md:px-6 py-2 border border-border rounded-full text-xs md:text-sm font-medium hover:bg-background/80 transition-colors whitespace-nowrap">
+          <div className="flex items-center gap-1.5 md:gap-3">
+            <Link href="/plans" className="shrink-0 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium whitespace-nowrap transition-colors hover:bg-background/80 md:px-6 md:py-2 md:text-sm">
               Pricing
             </Link>
             {user ? (
-              <Link href="/app" className="px-4 md:px-6 py-2 border border-border rounded-full text-xs md:text-sm font-medium hover:bg-background/80 transition-colors whitespace-nowrap">
+              <Link href="/app" className="shrink-0 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium whitespace-nowrap transition-colors hover:bg-background/80 md:px-6 md:py-2 md:text-sm">
                 Dashboard
               </Link>
             ) : (
-              <Link href="/login" className="px-4 md:px-6 py-2 border border-border rounded-full text-xs md:text-sm font-medium hover:bg-background/80 transition-colors whitespace-nowrap">
+              <Link href="/login" className="shrink-0 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium whitespace-nowrap transition-colors hover:bg-background/80 md:px-6 md:py-2 md:text-sm">
                 Sign In
               </Link>
             )}

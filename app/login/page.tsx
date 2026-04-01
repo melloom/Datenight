@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
+import { Suspense, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { LoginScreen } from "@/components/mystery-date/login-screen"
 
-export default function LoginPage() {
+function LoginPageContent() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -30,4 +30,21 @@ export default function LoginPage() {
   }
 
   return <LoginScreen returnTo={returnTo} />
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-svh bg-background">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
+  )
 }
