@@ -4,7 +4,10 @@
       "$uid": {
         ".read": "auth != null && auth.uid == $uid",
         "profile": {
-          ".write": "auth != null && auth.uid == $uid"
+          ".write": "auth != null && auth.uid == $uid",
+          "legalAcceptance": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['acceptedAt', 'privacyAcceptedAt', 'termsAcceptedAt', 'version']) && newData.child('acceptedAt').isNumber() && newData.child('privacyAcceptedAt').isNumber() && newData.child('termsAcceptedAt').isNumber() && newData.child('version').isNumber() && newData.child('version').val() == 1)"
+          }
         },
         "preferences": {
           ".write": "auth != null && auth.uid == $uid"

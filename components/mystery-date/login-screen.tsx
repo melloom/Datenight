@@ -11,25 +11,38 @@ import { Checkbox } from "@/components/ui/checkbox"
 
 export function LoginScreen() {
   const { signInWithGoogle } = useAuth()
-  const { hasScrolledTerms, hasScrolledPrivacy } = useLegal()
+  const {
+    hasScrolledTerms,
+    hasScrolledPrivacy,
+    hasAcceptedLegal,
+    legalAcceptanceLoading,
+    acceptLegalDocuments,
+  } = useLegal()
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [agree, setAgree] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  const canAgree = hasScrolledTerms && hasScrolledPrivacy
+  const requiresLegalAcceptance = !hasAcceptedLegal
+  const canAgree = hasAcceptedLegal || (hasScrolledTerms && hasScrolledPrivacy)
+
   const handleGoogleSignIn = async () => {
-    if (!agree) {
+    if (requiresLegalAcceptance && !agree) {
       setError("Please agree to the Terms of Service and Privacy Policy.")
       return
     }
-    if (!canAgree) {
+    if (requiresLegalAcceptance && !canAgree) {
       setError("Please read both the Terms of Service and Privacy Policy completely before agreeing.")
       return
     }
     try {
       setIsLoading(true)
       setError(null)
+
+      if (requiresLegalAcceptance) {
+        await acceptLegalDocuments()
+      }
+
       const didSignIn = await signInWithGoogle()
       if (didSignIn) {
         router.replace("/")
@@ -118,7 +131,7 @@ export function LoginScreen() {
         <div className="w-full space-y-4">
           <button
             onClick={handleGoogleSignIn}
-            disabled={isLoading || !canAgree}
+            disabled={isLoading || legalAcceptanceLoading || (!hasAcceptedLegal && !canAgree)}
             className="group relative w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:shadow-sm"
           >
             {/* Google Icon */}
@@ -144,45 +157,47 @@ export function LoginScreen() {
             )}
           </button>
 
-          {/* Terms text below button */}
-          <p className="text-[10px] text-muted-foreground/50 text-center px-4">
-            By continuing, you agree to our Terms &amp; Privacy Policy
-          </p>
+          {!hasAcceptedLegal && (
+            <p className="text-[10px] text-muted-foreground/50 text-center px-4">
+              By continuing, you agree to our Terms &amp; Privacy Policy
+            </p>
+          )}
 
           {error && (
             <p className="text-xs text-destructive text-center bg-destructive/10 rounded-lg py-2 px-3">{error}</p>
           )}
         </div>
 
-        <div className="space-y-3">
-          <div className="flex items-start space-x-2">
-            <Checkbox
-              id="terms"
-              checked={agree}
-              onCheckedChange={handleCheckboxChange}
-              disabled={!canAgree}
-              className="mt-0.5 h-5 w-5 min-h-5 min-w-5 aspect-square rounded-full data-[state=checked]:rounded-full"
-            />
-            <label
-              htmlFor="terms"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              I agree to the <Link href="/legal/terms-of-service" className="underline">Terms of Service</Link> and <Link href="/legal/privacy-policy" className="underline">Privacy Policy</Link>.
-            </label>
-          </div>
+        {!hasAcceptedLegal && (
+          <div className="space-y-3">
+            <div className="flex items-start space-x-2">
+              <Checkbox
+                id="terms"
+                checked={agree}
+                onCheckedChange={handleCheckboxChange}
+                disabled={!canAgree}
+                className="mt-0.5 h-5 w-5 min-h-5 min-w-5 aspect-square rounded-full data-[state=checked]:rounded-full"
+              />
+              <label
+                htmlFor="terms"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                I agree to the <Link href="/legal/terms-of-service" className="underline">Terms of Service</Link> and <Link href="/legal/privacy-policy" className="underline">Privacy Policy</Link>.
+              </label>
+            </div>
 
-          {/* Scroll status indicators */}
-          <div className="space-y-1 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${hasScrolledTerms ? 'bg-green-500' : 'bg-gray-300'}`} />
-              <span>Terms of Service {hasScrolledTerms ? '✓ Read' : 'Please read'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${hasScrolledPrivacy ? 'bg-green-500' : 'bg-gray-300'}`} />
-              <span>Privacy Policy {hasScrolledPrivacy ? '✓ Read' : 'Please read'}</span>
+            <div className="space-y-1 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${hasScrolledTerms ? 'bg-green-500' : 'bg-gray-300'}`} />
+                <span>Terms of Service {hasScrolledTerms ? '✓ Read' : 'Please read'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${hasScrolledPrivacy ? 'bg-green-500' : 'bg-gray-300'}`} />
+                <span>Privacy Policy {hasScrolledPrivacy ? '✓ Read' : 'Please read'}</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

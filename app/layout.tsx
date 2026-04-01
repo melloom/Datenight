@@ -185,14 +185,14 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
-        <LegalProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <LegalProvider>
             <TutorialProvider>
               {children}
               <TutorialOverlay />
             </TutorialProvider>
-          </AuthProvider>
-        </LegalProvider>
+          </LegalProvider>
+        </AuthProvider>
         <FullscreenToggle />
       </body>
     </html>
