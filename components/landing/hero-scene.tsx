@@ -50,6 +50,9 @@ export function HeroScene({ scrollY }: HeroSceneProps) {
             Dat3Night
           </div>
           <div className="flex gap-2 md:gap-4">
+            <Link href="/plans" className="px-4 md:px-6 py-2 border border-border rounded-full text-xs md:text-sm font-medium hover:bg-background/80 transition-colors whitespace-nowrap">
+              Pricing
+            </Link>
             {user ? (
               <Link href="/app" className="px-4 md:px-6 py-2 border border-border rounded-full text-xs md:text-sm font-medium hover:bg-background/80 transition-colors whitespace-nowrap">
                 Dashboard

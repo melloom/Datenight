@@ -9,7 +9,11 @@ import { useAuth } from "@/lib/auth-context"
 import { useLegal } from "@/lib/legal-context"
 import { Checkbox } from "@/components/ui/checkbox"
 
-export function LoginScreen() {
+interface LoginScreenProps {
+  returnTo?: string
+}
+
+export function LoginScreen({ returnTo = "/" }: LoginScreenProps) {
   const { signInWithGoogle } = useAuth()
   const {
     hasScrolledTerms,
@@ -45,7 +49,7 @@ export function LoginScreen() {
 
       const didSignIn = await signInWithGoogle()
       if (didSignIn) {
-        router.replace("/")
+        router.replace(returnTo)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error"

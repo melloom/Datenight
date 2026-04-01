@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { LoginScreen } from "@/components/mystery-date/login-screen"
@@ -8,12 +9,14 @@ import { LoginScreen } from "@/components/mystery-date/login-screen"
 export default function LoginPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = searchParams.get("returnTo") || "/"
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/")
+      router.replace(returnTo)
     }
-  }, [loading, router, user])
+  }, [loading, returnTo, router, user])
 
   if (loading || user) {
     return (
@@ -26,5 +29,5 @@ export default function LoginPage() {
     )
   }
 
-  return <LoginScreen />
+  return <LoginScreen returnTo={returnTo} />
 }

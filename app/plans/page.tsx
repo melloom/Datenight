@@ -138,8 +138,13 @@ function getStatusTone(status?: string) {
   return "text-slate-900"
 }
 
+function isPlanInterval(value: string | null): value is PlanInterval {
+  return value === "monthly" || value === "yearly"
+}
+
 function PlansPageContent() {
   const { user, loading } = useAuth()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [pendingPlan, setPendingPlan] = useState<PlanInterval | null>(null)
   const [openingPortal, setOpeningPortal] = useState(false)
@@ -150,6 +155,7 @@ function PlansPageContent() {
   const [notice, setNotice] = useState("")
   const [error, setError] = useState("")
   const [selectedPlanForCheckout, setSelectedPlanForCheckout] = useState<PlanInterval | null>(null)
+  const [handledLoginCheckoutIntent, setHandledLoginCheckoutIntent] = useState(false)
 
   const isBusy = useMemo(
     () => !!pendingPlan || openingPortal || refreshingStatus || canceling,
@@ -228,6 +234,29 @@ function PlansPageContent() {
     }
   }, [searchParams, user])
 
+  useEffect(() => {
+    if (loading || !user || handledLoginCheckoutIntent) {
+      return
+    }
+
+    const checkoutIntent = searchParams.get("checkout")
+    const planParam = searchParams.get("plan")
+
+    if (checkoutIntent !== "1" || !isPlanInterval(planParam)) {
+      return
+    }
+
+    if (hasPremiumAccess && hasSubscription) {
+      setNotice("You already have an active subscription on this account.")
+      setHandledLoginCheckoutIntent(true)
+      return
+    }
+
+    setNotice(`Nice choice. ${PLAN_DETAILS[planParam].name} is ready when you confirm checkout.`)
+    setSelectedPlanForCheckout(planParam)
+    setHandledLoginCheckoutIntent(true)
+  }, [loading, user, handledLoginCheckoutIntent, searchParams, hasPremiumAccess, hasSubscription])
+
   const startCheckout = async (plan: PlanInterval) => {
     setError("")
     setNotice("")
@@ -252,6 +281,13 @@ function PlansPageContent() {
   const handlePlanSelection = (plan: PlanInterval) => {
     setError("")
     setNotice("")
+
+    if (!user) {
+      const returnTo = `/plans?checkout=1&plan=${plan}`
+      router.push(`/login?returnTo=${encodeURIComponent(returnTo)}`)
+      return
+    }
+
     setSelectedPlanForCheckout(plan)
   }
 
@@ -321,8 +357,9 @@ function PlansPageContent() {
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-5xl">Billing &amp; Plans</h1>
               <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600 md:text-base">
-                Unlock DateNight Pro for premium AI planning, saved venues, and self-serve subscription management without leaving the app flow.
+                Start DateNight Pro with a 3-day free trial, then keep full premium planning with monthly flexibility or yearly savings.
               </p>
+              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">No contract lock-in. Cancel anytime.</p>
             </div>
             <Link
               href="/"
@@ -383,19 +420,19 @@ function PlansPageContent() {
             </div>
 
             <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">What you get</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Why couples upgrade</p>
               <ul className="mt-4 space-y-3 text-sm text-slate-600">
                 <li className="flex items-start gap-3">
                   <Crown className="mt-0.5 h-4 w-4 text-amber-500" />
-                  Premium AI plan improvements and smarter recommendations.
+                  Better date plans in less time with premium AI improvements and smarter venue matches.
                 </li>
                 <li className="flex items-start gap-3">
                   <CreditCard className="mt-0.5 h-4 w-4 text-cyan-600" />
-                  Secure checkout, invoices, and payment management in Stripe.
+                  Trusted Stripe checkout, invoices, and payment management.
                 </li>
                 <li className="flex items-start gap-3">
                   <ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-600" />
-                  Trial support, live billing refresh, and cancellation controls in one place.
+                  3-day trial on every plan, then cancel anytime from billing settings.
                 </li>
               </ul>
             </div>
@@ -432,7 +469,7 @@ function PlansPageContent() {
 
             {!loading && !user && (
               <div className="mb-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
-                Sign in first to start a subscription or open the Stripe billing portal.
+                Pick a plan to continue. You will sign in first, then go straight to checkout for your selected plan.
               </div>
             )}
 
@@ -448,7 +485,7 @@ function PlansPageContent() {
                     <button
                       key={plan}
                       onClick={() => handlePlanSelection(plan)}
-                      disabled={loading || !user || isBusy || (hasPremiumAccess && hasSubscription)}
+                      disabled={loading || isBusy || (hasPremiumAccess && hasSubscription)}
                       className={`group relative overflow-hidden rounded-[24px] border p-5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-55 ${
                         plan === "yearly"
                           ? "border-amber-300 bg-[linear-gradient(180deg,rgba(255,251,235,1)_0%,rgba(255,255,255,1)_70%)] shadow-[0_16px_40px_-28px_rgba(217,119,6,0.45)] hover:border-amber-400"
@@ -489,7 +526,11 @@ function PlansPageContent() {
                       </div>
 
                       <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition-colors group-hover:bg-slate-800">
-                        {(hasPremiumAccess && hasSubscription) ? "Already subscribed" : `Start ${plan} plan`}
+                        {(hasPremiumAccess && hasSubscription)
+                          ? "Already subscribed"
+                          : !user
+                          ? `Choose ${plan} plan`
+                          : `Start ${plan} plan`}
                       </div>
                     </button>
                   )

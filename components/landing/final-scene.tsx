@@ -75,15 +75,20 @@ export function FinalScene() {
             isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
         >
-          <Link href={user ? "/" : "/login"}>
+          <Link href={user ? "/" : "/plans"}>
             <button className="group relative px-8 md:px-10 py-3 md:py-4 bg-primary text-primary-foreground font-medium uppercase tracking-[0.15em] text-xs md:text-sm overflow-hidden rounded-full">
-              <span className="relative z-10">{user ? "Plan a Date Night" : "Get Started Free"}</span>
+              <span className="relative z-10">{user ? "Plan a Date Night" : "Start 3-Day Trial"}</span>
               <div className="absolute inset-0 bg-foreground transform translate-y-full group-hover:translate-y-0 transition-transform duration-500 rounded-full" />
               <span className="absolute inset-0 flex items-center justify-center text-background transform translate-y-full group-hover:translate-y-0 transition-transform duration-500 delay-75 font-medium uppercase tracking-[0.15em] text-sm">
-                {user ? "Plan a Date Night" : "Get Started Free"}
+                {user ? "Plan a Date Night" : "Start 3-Day Trial"}
               </span>
             </button>
           </Link>
+          {!user && (
+            <Link href="/login" className="px-6 md:px-8 py-3 md:py-4 border border-border rounded-full text-xs md:text-sm font-medium uppercase tracking-[0.15em] hover:border-primary/50 hover:text-primary transition-colors">
+              Sign In
+            </Link>
+          )}
           <Link href="/learn-more" className="px-6 md:px-8 py-3 md:py-4 border border-border rounded-full text-xs md:text-sm font-medium uppercase tracking-[0.15em] hover:border-primary/50 hover:text-primary transition-colors">
             Learn More
           </Link>
@@ -123,6 +128,7 @@ export function FinalScene() {
 
           <nav className="flex flex-wrap items-center justify-center gap-4 md:gap-8 text-xs md:text-sm text-muted-foreground">
             <a href="/about" className="hover:text-foreground transition-colors">About</a>
+            <a href="/plans" className="hover:text-foreground transition-colors">Pricing</a>
             <a href="/legal/privacy-policy" className="hover:text-foreground transition-colors">Privacy</a>
             <a href="/legal/terms-of-service" className="hover:text-foreground transition-colors">Terms</a>
             <a href="/contact" className="hover:text-foreground transition-colors">Contact</a>
