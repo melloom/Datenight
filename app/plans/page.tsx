@@ -361,6 +361,16 @@ function PlansPageContent() {
     return (
       <main className="min-h-svh overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.16),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.14),transparent_32%),linear-gradient(180deg,#fffefb_0%,#ffffff_46%,#f8fafc_100%)] px-5 pb-28 pt-8 md:px-8 md:py-12">
         <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-4">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Link>
+          </div>
+
           <div className="mb-8 rounded-[30px] border border-white/80 bg-white/85 p-6 shadow-[0_24px_90px_-40px_rgba(15,23,42,0.35)] backdrop-blur-sm md:p-10">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-300/70 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
               <Sparkles className="h-3.5 w-3.5" />
