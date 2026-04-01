@@ -13,20 +13,37 @@ netlify status || netlify login
 # Link site if not already linked
 netlify link || true
 
-# Read the service account JSON as a single line
-SA_KEY=$(cat /workspaces/Datenight/datenight-a2dbb-firebase-adminsdk-fbsvc-ed26340acb.json | tr -d '\n')
+# Read service account JSON from env var or provided file.
+SA_KEY="${FIREBASE_SERVICE_ACCOUNT_KEY:-}"
+SA_PATH="${FIREBASE_SERVICE_ACCOUNT_FILE:-}"
+
+if [[ -z "${SA_KEY}" ]] && [[ -n "${SA_PATH}" ]] && [[ -f "${SA_PATH}" ]]; then
+  SA_KEY="$(tr -d '\n' < "${SA_PATH}")"
+fi
+
+if [[ -z "${SA_KEY}" ]]; then
+  echo "Missing service account key. Set FIREBASE_SERVICE_ACCOUNT_KEY or FIREBASE_SERVICE_ACCOUNT_FILE."
+  exit 1
+fi
+
+PROJECT_ID="${FIREBASE_PROJECT_ID:-datenight-a2dbb}"
+DATABASE_URL="${FIREBASE_DATABASE_URL:-https://${PROJECT_ID}-default-rtdb.firebaseio.com}"
 
 echo "Setting FIREBASE_SERVICE_ACCOUNT_KEY..."
 netlify env:set FIREBASE_SERVICE_ACCOUNT_KEY "$SA_KEY"
 
 echo "Setting FIREBASE_DATABASE_URL..."
-netlify env:set FIREBASE_DATABASE_URL "https://datenight-a2dbb-default-rtdb.firebaseio.com"
+netlify env:set FIREBASE_DATABASE_URL "${DATABASE_URL}"
 
-echo "Setting FOREVER_PRO_UIDS..."
-netlify env:set FOREVER_PRO_UIDS "1UAubwQWrNMstulNOeoyDZBiP7x2"
+if [[ -n "${FOREVER_PRO_UIDS:-}" ]]; then
+  echo "Setting FOREVER_PRO_UIDS..."
+  netlify env:set FOREVER_PRO_UIDS "${FOREVER_PRO_UIDS}"
+fi
 
-echo "Setting FOREVER_PRO_EMAILS..."
-netlify env:set FOREVER_PRO_EMAILS "melvin.a.p.cruz@gmail.com"
+if [[ -n "${FOREVER_PRO_EMAILS:-}" ]]; then
+  echo "Setting FOREVER_PRO_EMAILS..."
+  netlify env:set FOREVER_PRO_EMAILS "${FOREVER_PRO_EMAILS}"
+fi
 
 echo ""
 echo "All environment variables set! Triggering a new deploy..."

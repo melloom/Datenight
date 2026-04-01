@@ -2,10 +2,28 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SA_PATH="${ROOT_DIR}/datenight-a2dbb-firebase-adminsdk-fbsvc-ed26340acb.json"
+SA_PATH="${1:-${FIREBASE_SERVICE_ACCOUNT_FILE:-}}"
+TEMP_SA_PATH=""
+
+if [[ -z "${SA_PATH}" ]] && [[ -n "${FIREBASE_SERVICE_ACCOUNT_KEY:-}" ]]; then
+  TEMP_SA_PATH="$(mktemp)"
+  printf '%s' "${FIREBASE_SERVICE_ACCOUNT_KEY}" > "${TEMP_SA_PATH}"
+  SA_PATH="${TEMP_SA_PATH}"
+fi
+
+cleanup() {
+  if [[ -n "${TEMP_SA_PATH}" ]] && [[ -f "${TEMP_SA_PATH}" ]]; then
+    rm -f "${TEMP_SA_PATH}"
+  fi
+}
+trap cleanup EXIT
 
 if [[ ! -f "${SA_PATH}" ]]; then
-  echo "Service account JSON not found at: ${SA_PATH}"
+  echo "Service account JSON not found."
+  echo "Provide one of:"
+  echo "  1) FIREBASE_SERVICE_ACCOUNT_FILE=/absolute/path/to/service-account.json"
+  echo "  2) FIREBASE_SERVICE_ACCOUNT_KEY='{...json...}'"
+  echo "  3) First script argument: ./scripts/fix-netlify-firebase-auth.sh /path/to/service-account.json"
   exit 1
 fi
 
