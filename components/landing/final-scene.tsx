@@ -54,8 +54,8 @@ export function FinalScene() {
             isInView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
           }`}
         >
-          <span className="block sm:inline">Your next</span>
-          <span className="text-outline block sm:inline mx-0 sm:mx-2">adventure</span>
+          <span className="block sm:inline">Your next </span>
+          <span className="text-outline block sm:inline">adventure </span>
           <span className="text-primary block sm:inline">starts now</span>
         </h2>
 
