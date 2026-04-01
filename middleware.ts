@@ -61,6 +61,7 @@ export function middleware(request: NextRequest) {
     const referer = request.headers.get('referer')
     const allowedOrigins = [
       'http://localhost:3000',
+      'https://dat3night.com',
       'https://www.dat3night.com',
       'https://www.dat3night.netlify.app',
       'https://dat3night.netlify.app',

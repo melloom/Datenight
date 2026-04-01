@@ -69,6 +69,7 @@ function PlansPageContent() {
   const [statusSummary, setStatusSummary] = useState("")
   const [notice, setNotice] = useState("")
   const [error, setError] = useState("")
+  const [selectedPlanForCheckout, setSelectedPlanForCheckout] = useState<PlanInterval | null>(null)
 
   const isBusy = useMemo(
     () => !!pendingPlan || openingPortal || refreshingStatus || canceling,
@@ -76,6 +77,7 @@ function PlansPageContent() {
   )
   const hasPremiumAccess = Boolean(billingStatus?.allowed)
   const hasSubscription = Boolean(billingStatus?.billing.subscriptionId)
+  const isGrandfathered = Boolean(billingStatus?.billing.grandfathered)
 
   const refreshBillingStatus = async (silent = false) => {
     if (!silent) {
@@ -138,7 +140,7 @@ function PlansPageContent() {
     }
   }, [searchParams, user])
 
-  const handleCheckout = async (plan: PlanInterval) => {
+  const startCheckout = async (plan: PlanInterval) => {
     setError("")
     setNotice("")
     setPendingPlan(plan)
@@ -157,6 +159,22 @@ function PlansPageContent() {
     } finally {
       setPendingPlan(null)
     }
+  }
+
+  const handlePlanSelection = (plan: PlanInterval) => {
+    setError("")
+    setNotice("")
+    setSelectedPlanForCheckout(plan)
+  }
+
+  const handleConfirmCheckout = async () => {
+    if (!selectedPlanForCheckout) {
+      return
+    }
+
+    const plan = selectedPlanForCheckout
+    setSelectedPlanForCheckout(null)
+    await startCheckout(plan)
   }
 
   const handlePortal = async () => {
@@ -306,9 +324,11 @@ function PlansPageContent() {
                 <CreditCard className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Choose your plan</h2>
+                <h2 className="text-2xl font-semibold tracking-tight text-slate-950">{isGrandfathered ? "Premium access included" : "Choose your plan"}</h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Start with a 3-day trial, then keep monthly flexibility or lock in the lower yearly rate.
+                  {isGrandfathered
+                    ? "Your account is grandfathered into premium access. You do not need to subscribe unless you choose to."
+                    : "Start with a 3-day trial, then keep monthly flexibility or lock in the lower yearly rate."}
                 </p>
               </div>
             </div>
@@ -319,60 +339,66 @@ function PlansPageContent() {
               </div>
             )}
 
-            <div className="grid gap-4 xl:grid-cols-2">
-              {(["monthly", "yearly"] as PlanInterval[]).map((plan) => {
-                const details = PLAN_DETAILS[plan]
-                return (
-                  <button
-                    key={plan}
-                    onClick={() => handleCheckout(plan)}
-                    disabled={loading || !user || isBusy || (hasPremiumAccess && hasSubscription)}
-                    className={`group relative overflow-hidden rounded-[24px] border p-5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-55 ${
-                      plan === "yearly"
-                        ? "border-amber-300 bg-[linear-gradient(180deg,rgba(255,251,235,1)_0%,rgba(255,255,255,1)_70%)] shadow-[0_16px_40px_-28px_rgba(217,119,6,0.45)] hover:border-amber-400"
-                        : "border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-white"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-semibold text-slate-950">{details.name}</h3>
-                          {details.badge && (
-                            <span className="rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
-                              {details.badge}
-                            </span>
-                          )}
+            {isGrandfathered ? (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                Grandfathered accounts already have premium features. You can still use billing tools on the right to view status and manage payment settings if needed.
+              </div>
+            ) : (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {(["monthly", "yearly"] as PlanInterval[]).map((plan) => {
+                  const details = PLAN_DETAILS[plan]
+                  return (
+                    <button
+                      key={plan}
+                      onClick={() => handlePlanSelection(plan)}
+                      disabled={loading || !user || isBusy || (hasPremiumAccess && hasSubscription)}
+                      className={`group relative overflow-hidden rounded-[24px] border p-5 text-left transition-all disabled:cursor-not-allowed disabled:opacity-55 ${
+                        plan === "yearly"
+                          ? "border-amber-300 bg-[linear-gradient(180deg,rgba(255,251,235,1)_0%,rgba(255,255,255,1)_70%)] shadow-[0_16px_40px_-28px_rgba(217,119,6,0.45)] hover:border-amber-400"
+                          : "border-slate-200 bg-slate-50/70 hover:border-slate-300 hover:bg-white"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold text-slate-950">{details.name}</h3>
+                            {details.badge && (
+                              <span className="rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white">
+                                {details.badge}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-2 text-sm text-slate-600">{details.note}</p>
                         </div>
-                        <p className="mt-2 text-sm text-slate-600">{details.note}</p>
+                        <div className="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-right shadow-sm">
+                          <div className="text-2xl font-bold tracking-tight text-slate-950">{details.price}</div>
+                          <div className="text-xs text-slate-500">{details.cadence}</div>
+                        </div>
                       </div>
-                      <div className="rounded-2xl border border-slate-200 bg-white/80 px-3 py-2 text-right shadow-sm">
-                        <div className="text-2xl font-bold tracking-tight text-slate-950">{details.price}</div>
-                        <div className="text-xs text-slate-500">{details.cadence}</div>
-                      </div>
-                    </div>
 
-                    <div className="mt-5 space-y-2 text-sm text-slate-700">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                        3-day free trial before billing starts.
+                      <div className="mt-5 space-y-2 text-sm text-slate-700">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          3-day free trial before billing starts.
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          Premium AI editing, swaps, and smarter plan generation.
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          Saved favorites and subscription management through Stripe.
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                        Premium AI editing, swaps, and smarter plan generation.
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                        Saved favorites and subscription management through Stripe.
-                      </div>
-                    </div>
 
-                    <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition-colors group-hover:bg-slate-800">
-                      {(hasPremiumAccess && hasSubscription) ? "Already subscribed" : `Start ${plan} plan`}
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
+                      <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition-colors group-hover:bg-slate-800">
+                        {(hasPremiumAccess && hasSubscription) ? "Already subscribed" : `Start ${plan} plan`}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </section>
 
           <section className="space-y-6">
@@ -475,6 +501,38 @@ function PlansPageContent() {
           </section>
         </div>
       </div>
+
+      {selectedPlanForCheckout && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+          <div className="w-full max-w-lg rounded-3xl border border-white/70 bg-white p-6 shadow-2xl">
+            <h3 className="text-xl font-semibold text-slate-950">Before checkout</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              You selected <span className="font-semibold text-slate-900">{PLAN_DETAILS[selectedPlanForCheckout].name}</span>.
+              Here is what you get before you continue to Stripe.
+            </p>
+            <ul className="mt-4 space-y-2 text-sm text-slate-700">
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> 3-day free trial before billing starts</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Unlimited premium AI plan upgrades and smarter venue recommendations</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Saved favorites and full Stripe self-serve billing portal</li>
+              <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Cancel anytime in billing settings</li>
+            </ul>
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <button
+                onClick={() => setSelectedPlanForCheckout(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Not now
+              </button>
+              <button
+                onClick={handleConfirmCheckout}
+                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                Continue to checkout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
