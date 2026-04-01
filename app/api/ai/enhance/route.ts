@@ -176,15 +176,6 @@ function getGroundedModel() {
   })
 }
 
-export async function GET() {
-  const apiKey = getApiKey()
-  return NextResponse.json({
-    hasKey: !!apiKey,
-    keyPrefix: apiKey ? apiKey.substring(0, 8) : 'none',
-    envKeys: Object.keys(process.env).filter(k => k.toLowerCase().includes('gemini'))
-  })
-}
-
 export async function POST(request: NextRequest) {
   try {
     const decoded = await verifyRequestUser(request)
