@@ -71,6 +71,14 @@ function writeLocalAcceptance(record: LegalAcceptanceRecord) {
   window.localStorage.setItem(LEGAL_ACCEPTANCE_STORAGE_KEY, JSON.stringify(record));
 }
 
+function clearLocalAcceptance() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.removeItem(LEGAL_ACCEPTANCE_STORAGE_KEY);
+}
+
 export const LegalProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user, loading: authLoading } = useAuth();
   const [hasScrolledTerms, setHasScrolledTerms] = useState(false);
@@ -137,13 +145,11 @@ export const LegalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           setHasAcceptedLegal(true);
           setHasScrolledTerms(true);
           setHasScrolledPrivacy(true);
-        } else if (localAcceptance) {
-          await set(acceptanceRef, localAcceptance);
-          setHasAcceptedLegal(true);
-          setHasScrolledTerms(true);
-          setHasScrolledPrivacy(true);
         } else {
+          clearLocalAcceptance();
           setHasAcceptedLegal(false);
+          setHasScrolledTerms(false);
+          setHasScrolledPrivacy(false);
         }
       } catch (error) {
         console.error('Failed to sync legal acceptance', error);

@@ -33,6 +33,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { motion } from "framer-motion"
 import { validateCustomInput } from "@/lib/profanity-filter"
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
 import { useAuth } from "@/lib/auth-context"
@@ -172,6 +173,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
   const locationDropdownRef = useRef<HTMLDivElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const actionMotion = { whileHover: { y: -2, scale: 1.01 }, whileTap: { scale: 0.98 } }
 
   useEffect(() => {
     const id = window.requestAnimationFrame(() => setIsReady(true))
@@ -579,89 +581,100 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
 
             {/* Quick Actions */}
             <div className="flex gap-2">
-              <button
+              <motion.button
                 onClick={() => {
                   handleSurpriseMe()
                   setShowMobileMenu(false)
                 }}
                 className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-400/60 py-2.5 text-xs font-medium text-slate-700 transition-all active:scale-[0.98] hover:bg-slate-100"
+                {...actionMotion}
               >
                 <Shuffle className="w-3.5 h-3.5" />
                 Surprise Me
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 onClick={() => {
                   setShowHistory(true)
                   setShowMobileMenu(false)
                   scrollToModal()
                 }}
                 className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-dashed border-amber-400/60 py-2.5 text-xs font-medium text-amber-700 transition-all active:scale-[0.98] hover:bg-amber-50"
+                {...actionMotion}
               >
                 <History className="w-3.5 h-3.5" />
                 History
-              </button>
+              </motion.button>
             </div>
 
-            <Link
-              href="/plans"
-              onClick={() => setShowMobileMenu(false)}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-cyan-400/70 py-2.5 text-xs font-medium text-cyan-700 transition-all active:scale-[0.98] hover:bg-cyan-50"
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              Billing & Plans
-            </Link>
+            <motion.div {...actionMotion}>
+              <Link
+                href="/plans"
+                onClick={() => setShowMobileMenu(false)}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-cyan-400/70 py-2.5 text-xs font-medium text-cyan-700 transition-all active:scale-[0.98] hover:bg-cyan-50"
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                Billing & Plans
+              </Link>
+            </motion.div>
 
             {user && (
-              <button
+              <motion.button
                 onClick={handleSignOut}
-                className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-rose-400/70 py-2.5 text-xs font-medium text-rose-700 transition-all active:scale-[0.98] hover:bg-rose-50"
+                className="ml-auto inline-flex items-center justify-center gap-2 rounded-xl border border-dashed border-rose-400/70 px-3.5 py-2.5 text-xs font-medium text-rose-700 transition-all active:scale-[0.98] hover:bg-rose-50"
+                {...actionMotion}
               >
                 <LogOut className="w-3.5 h-3.5" />
                 Log Out
-              </button>
+              </motion.button>
             )}
           </div>
         )}
 
         {/* Randomize - Desktop Only */}
         <div
-          className={`mb-6 hidden grid-cols-3 gap-3 transition-all duration-700 md:grid ${
+          className={`mb-6 hidden gap-3 transition-all duration-700 md:grid ${user ? "md:grid-cols-4" : "md:grid-cols-3"} ${
             isReady ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
           }`}
           style={{ transitionDelay: "140ms" }}
         >
-          <button
+          <motion.button
             onClick={handleSurpriseMe}
             className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-400/60 bg-white/70 py-2.5 text-xs font-semibold text-slate-700 shadow-sm transition-all active:scale-[0.98] hover:bg-slate-100"
+            {...actionMotion}
           >
             <Shuffle className="w-3.5 h-3.5" />
             Surprise Me
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             onClick={() => {
               setShowHistory(true)
               scrollToModal()
             }}
             className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-amber-400/60 bg-white/70 py-2.5 text-xs font-semibold text-amber-700 shadow-sm transition-all active:scale-[0.98] hover:bg-amber-50"
+            {...actionMotion}
           >
             <History className="w-3.5 h-3.5" />
             View Past Plans
-          </button>
-          <Link
-            href="/plans"
-            className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-cyan-400/70 bg-white/70 py-2.5 text-xs font-semibold text-cyan-700 shadow-sm transition-all active:scale-[0.98] hover:bg-cyan-50"
-          >
-            <CreditCard className="w-3.5 h-3.5" />
-            Billing & Plans
-          </Link>
+          </motion.button>
+          <motion.div {...actionMotion}>
+            <Link
+              href="/plans"
+              className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-cyan-400/70 bg-white/70 py-2.5 text-xs font-semibold text-cyan-700 shadow-sm transition-all active:scale-[0.98] hover:bg-cyan-50"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              Billing & Plans
+            </Link>
+          </motion.div>
           {user && (
-            <button
+            <motion.button
               onClick={handleSignOut}
-              className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-rose-400/70 bg-white/70 py-2.5 text-xs font-semibold text-rose-700 shadow-sm transition-all active:scale-[0.98] hover:bg-rose-50"
+              className="justify-self-end inline-flex items-center justify-center gap-2 rounded-xl border border-dashed border-rose-400/70 bg-white/70 px-3 py-2.5 text-xs font-semibold text-rose-700 shadow-sm transition-all active:scale-[0.98] hover:bg-rose-50"
+              aria-label="Log out"
+              {...actionMotion}
             >
               <LogOut className="w-3.5 h-3.5" />
-              Log Out
-            </button>
+              <span className="hidden lg:inline">Log Out</span>
+            </motion.button>
           )}
         </div>
 
@@ -1070,15 +1083,26 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
 
         {/* CTA */}
         <div className="mt-2 border-t border-slate-200/80 pt-5">
-          <button
+          <motion.button
             onClick={handleSubmit}
             data-tutorial="submit"
             disabled={vibes.length === 0 || !location || location.trim().length === 0 || hasInputErrors()}
-            className="w-full rounded-2xl bg-slate-900 py-4 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition-all hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+            className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-800 px-5 py-4 text-left text-white shadow-lg shadow-slate-900/25 transition-all hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+            whileHover={{ y: -3, scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
           >
-            <Sparkles className="w-4 h-4" />
-            Plan My Night
-          </button>
+            <span className="relative z-10 flex items-center justify-between">
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <Sparkles className="w-4 h-4" />
+                Plan My Night
+              </span>
+              <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            </span>
+            <span className="relative z-10 mt-1 block text-[11px] font-medium text-slate-300">
+              Build your personalized date route in seconds
+            </span>
+            <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.18),transparent_50%)]" />
+          </motion.button>
           {vibes.length === 0 && (
             <p className="text-center text-xs text-destructive mt-2">Select at least one vibe to continue</p>
           )}

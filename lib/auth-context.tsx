@@ -99,6 +99,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         `Firebase authentication not available (source=${debugInfo.source}; attempts=${debugInfo.attempts.join(',') || 'none'}; missing=${debugInfo.missingKeys.join(',') || 'none'}${debugInfo.lastError ? `; error=${debugInfo.lastError}` : ''})`
       )
     }
+
+    // Always show the account picker instead of silently reusing the last Google session.
+    googleProvider.setCustomParameters({ prompt: "select_account" })
+
     try {
       const result: UserCredential = await signInWithPopup(auth, googleProvider)
       setUser(result.user)
