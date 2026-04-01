@@ -554,31 +554,6 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
         {/* Mobile Menu */}
         {showMobileMenu && (
           <div className="mb-6 space-y-4 rounded-2xl border border-white/70 bg-white/85 p-4 shadow-lg shadow-slate-200/50 backdrop-blur-sm md:hidden animate-slide-down-fade">
-            {/* Budget in Mobile Menu */}
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-2.5">
-                <DollarSign className="w-3 h-3" />
-                Budget
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {BUDGET_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setBudget(opt.value)}
-                    className={`rounded-xl border p-3 transition-all ${
-                      budget === opt.value
-                        ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                        : "border-slate-200 bg-white hover:border-slate-400"
-                    }`}
-                  >
-                    <div className="text-lg mb-0.5">{opt.emoji}</div>
-                    <div className="text-xs font-semibold">{opt.label}</div>
-                    <div className="text-[10px] opacity-70">{opt.price}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Quick Actions */}
             <div className="flex gap-2">
               <motion.button
@@ -814,8 +789,7 @@ export function SetupScreen({ onSubmit }: SetupScreenProps) {
           </div>
 
           {/* Budget */}
-          {/* Budget - Desktop Only (Mobile has it in hamburger menu) */}
-          <section data-tutorial="budget" className="hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md md:block">
+          <section data-tutorial="budget" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
             <label className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <DollarSign className="w-3 h-3" />
               Budget
